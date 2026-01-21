@@ -33,9 +33,9 @@ func (f *Formatter) IssueList(issues []linear.Issue, fmt Format, page *Paginatio
 
 	var b strings.Builder
 
-	// Header
-	if page != nil && page.TotalCount > 0 {
-		b.WriteString(fmtSprintf("ISSUES (%d total)\n", page.TotalCount))
+	// Header with range
+	if page != nil {
+		b.WriteString(formatPaginationHeader("ISSUES", page))
 	} else {
 		b.WriteString(fmtSprintf("ISSUES (%d)\n", len(issues)))
 	}
@@ -49,13 +49,33 @@ func (f *Formatter) IssueList(issues []linear.Issue, fmt Format, page *Paginatio
 	}
 
 	// Pagination footer
-	if page != nil && page.HasNextPage && page.EndCursor != "" {
+	if page != nil && page.HasNextPage {
 		b.WriteString(line(40))
 		b.WriteString("\n")
-		b.WriteString(fmtSprintf("Next: cursor=%s\n", page.EndCursor))
+		b.WriteString("More results available.\n")
+		nextStart := page.Start + page.Limit
+		b.WriteString(fmtSprintf("Next page: linear issues list --start %d --limit %d\n",
+			nextStart, page.Limit))
 	}
 
 	return b.String()
+}
+
+// formatPaginationHeader creates consistent headers for list commands
+func formatPaginationHeader(resource string, page *Pagination) string {
+	start := page.Start + 1 // Convert to 1-indexed for display
+	end := page.Start + page.Count
+
+	// Show exact total when available (from viewer.assignedIssues)
+	if page.TotalCount > 0 {
+		return fmtSprintf("%s (%d-%d of %d)\n", resource, start, end, page.TotalCount)
+	}
+
+	// Fallback: show + when more pages exist
+	if page.HasNextPage {
+		return fmtSprintf("%s (%d-%d+)\n", resource, start, end)
+	}
+	return fmtSprintf("%s (%d-%d)\n", resource, start, end)
 }
 
 func (f *Formatter) issueMinimal(issue *linear.Issue) string {

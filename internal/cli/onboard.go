@@ -70,26 +70,43 @@ func runOnboard() error {
 		if len(teams) == 0 {
 			fmt.Println("  No teams found")
 		} else {
-			for _, team := range teams {
+			for i, team := range teams {
 				fmt.Printf("  %s (%s)\n", team.Name, team.Key)
 
 				// Get team members
 				users, err := client.ListUsersWithPagination(&linear.UserFilter{
 					TeamID: team.ID,
-					First:  50,
+					First:  100, // Increased to get more members
 				})
 				if err == nil && len(users.Users) > 0 {
 					var memberNames []string
 					for _, u := range users.Users {
-						if len(memberNames) < 5 {
-							memberNames = append(memberNames, u.Name)
-						}
+						memberNames = append(memberNames, u.Name)
 					}
 					memberStr := strings.Join(memberNames, ", ")
-					if len(users.Users) > 5 {
-						memberStr += fmt.Sprintf(" +%d more", len(users.Users)-5)
+					fmt.Printf("    ├─ Members (%d): %s\n", len(users.Users), memberStr)
+				}
+
+				// Get workflow states for this team
+				states, err := client.Workflows.GetWorkflowStates(team.ID)
+				if err != nil {
+					fmt.Printf("    └─ Workflow States: ⚠️  Could not fetch states: %v\n", err)
+				} else if len(states) > 0 {
+					fmt.Println("    └─ Workflow States:")
+					for j, state := range states {
+						prefix := "       ├─"
+						if j == len(states)-1 {
+							prefix = "       └─"
+						}
+						fmt.Printf("%s %s (%s)\n", prefix, state.Name, state.Type)
 					}
-					fmt.Printf("    └─ Members: %s\n", memberStr)
+				} else {
+					fmt.Println("    └─ Workflow States: (none found)")
+				}
+
+				// Add spacing between teams
+				if i < len(teams)-1 {
+					fmt.Println()
 				}
 			}
 		}
@@ -99,28 +116,25 @@ func runOnboard() error {
 	// Quick reference
 	fmt.Println("Quick Reference")
 	fmt.Println("---------------")
-	fmt.Println("  linear issues list              List your assigned issues")
-	fmt.Println("  linear issues get <ID>          Show issue details (e.g., CEN-123)")
-	fmt.Println("  linear auth status              Check login status")
-	fmt.Println("  linear auth logout              Log out")
 	fmt.Println()
-
-	// MCP setup
-	fmt.Println("Claude Code Setup")
-	fmt.Println("-----------------")
-	fmt.Println("  Add to MCP settings:")
+	fmt.Println("Basic commands:")
+	fmt.Println("  linear issues list                    List your assigned issues")
+	fmt.Println("  linear issues get CEN-123             Show issue details")
+	fmt.Println("  linear auth status                    Check login status")
 	fmt.Println()
-	fmt.Println("    {")
-	fmt.Println("      \"mcpServers\": {")
-	fmt.Println("        \"linear\": {")
-	fmt.Printf("          \"command\": \"%s/.local/bin/linear-mcp\"\n", getHomeDir())
-	fmt.Println("        }")
-	fmt.Println("      }")
-	fmt.Println("    }")
+	fmt.Println("Create issue (full example):")
+	fmt.Println("  cat feature.md | linear i create \"Add user authentication\" \\")
+	fmt.Println("    -t CEN \\")
+	fmt.Println("    -s \"In Progress\" \\")
+	fmt.Println("    -p 1 \\")
+	fmt.Println("    -a me \\")
+	fmt.Println("    -P \"Q1 Goals\" \\")
+	fmt.Println("    -e 5 \\")
+	fmt.Println("    --due 2026-02-01")
 	fmt.Println()
-	fmt.Println("  Or run: claude mcp add linear ~/.local/bin/linear-mcp")
+	fmt.Println("Update issue:")
+	fmt.Println("  linear i update CEN-123 -s Done -a \"alice@company.com\"")
 	fmt.Println()
-
 	return nil
 }
 

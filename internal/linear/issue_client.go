@@ -1595,9 +1595,11 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 	}
 
 	const query = `
-		query ListAllIssues($first: Int!, $after: String, $filter: IssueFilter, $orderBy: IssueOrderBy) {
-			issues(first: $first, after: $after, filter: $filter, orderBy: $orderBy) {
-				nodes {
+		query ListAssignedIssues($first: Int!, $after: String, $orderBy: PaginationOrderBy) {
+			viewer {
+				assignedIssues(first: $first, after: $after, orderBy: $orderBy) {
+					totalCount
+					nodes {
 					id
 					identifier
 					title
@@ -1656,19 +1658,8 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 				}
 			}
 		}
+		}
 	`
-
-	// Build filter object
-	var filterObj map[string]interface{}
-	if hasFilters(filter) {
-		filterObj = buildFilterObject(filter)
-	}
-
-	// Build order by object
-	var orderBy map[string]interface{}
-	if filter.OrderBy != "" {
-		orderBy = buildOrderByObject(filter.OrderBy, filter.Direction)
-	}
 
 	variables := map[string]interface{}{
 		"first": filter.First,
@@ -1676,16 +1667,17 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 	if filter.After != "" {
 		variables["after"] = filter.After
 	}
-	if filterObj != nil {
-		variables["filter"] = filterObj
-	}
-	if orderBy != nil {
-		variables["orderBy"] = orderBy
+
+	// Add orderBy if specified (Linear supports "createdAt" or "updatedAt" enum)
+	if filter.OrderBy != "" {
+		variables["orderBy"] = filter.OrderBy
 	}
 
 	var response struct {
-		Issues struct {
-			Nodes []struct {
+		Viewer struct {
+			AssignedIssues struct {
+				TotalCount int `json:"totalCount"`
+				Nodes      []struct {
 				ID          string        `json:"id"`
 				Identifier  string        `json:"identifier"`
 				Title       string        `json:"title"`
@@ -1705,7 +1697,8 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 				HasNextPage bool   `json:"hasNextPage"`
 				EndCursor   string `json:"endCursor"`
 			} `json:"pageInfo"`
-		} `json:"issues"`
+			} `json:"assignedIssues"`
+		} `json:"viewer"`
 	}
 
 	err := ic.base.executeRequest(query, variables, &response)
@@ -1715,13 +1708,14 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 
 	// Convert response to result type
 	result := &ListAllIssuesResult{
-		Issues:      make([]IssueWithDetails, 0, len(response.Issues.Nodes)),
-		HasNextPage: response.Issues.PageInfo.HasNextPage,
-		EndCursor:   response.Issues.PageInfo.EndCursor,
+		Issues:      make([]IssueWithDetails, 0, len(response.Viewer.AssignedIssues.Nodes)),
+		HasNextPage: response.Viewer.AssignedIssues.PageInfo.HasNextPage,
+		EndCursor:   response.Viewer.AssignedIssues.PageInfo.EndCursor,
+		TotalCount:  response.Viewer.AssignedIssues.TotalCount,
 	}
 
 	// Process each issue
-	for _, node := range response.Issues.Nodes {
+	for _, node := range response.Viewer.AssignedIssues.Nodes {
 		issue := IssueWithDetails{
 			ID:          node.ID,
 			Identifier:  node.Identifier,

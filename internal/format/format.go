@@ -36,9 +36,13 @@ func ParseFormat(s string) (Format, error) {
 
 // Pagination holds pagination metadata for list responses
 type Pagination struct {
-	HasNextPage bool
-	EndCursor   string
-	TotalCount  int
+	Start       int  // Starting position (0-indexed)
+	Limit       int  // Items per page
+	Count       int  // Items in this page
+	TotalCount  int  // Total items
+	HasNextPage bool // More results exist
+	// Deprecated: Use offset-based pagination instead
+	EndCursor   string // Cursor for cursor-based pagination
 }
 
 // Formatter formats Linear resources as ASCII text

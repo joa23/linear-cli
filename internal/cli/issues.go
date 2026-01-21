@@ -37,17 +37,42 @@ func newIssuesCmd() *cobra.Command {
 }
 
 func newIssuesListCmd() *cobra.Command {
+	var (
+		start     int
+		limit     int
+		sort      string
+		direction string
+	)
+
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List recent issues",
-		Long:  "List recent Linear issues.",
+		Long:  "List recent Linear issues assigned to you with offset-based pagination.",
+		Example: `  # First 10 issues (default)
+  linear issues list
+
+  # Items 11-20
+  linear issues list --start 10 --limit 10
+
+  # Sort by priority (highest first)
+  linear issues list --sort priority
+
+  # Sort by creation date (oldest first)
+  linear issues list --sort created --direction asc`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			svc, err := getIssueService()
 			if err != nil {
 				return err
 			}
 
-			output, err := svc.ListAssigned(10, format.Compact)
+			pagination := &linear.PaginationInput{
+				Start:     start,
+				Limit:     limit,
+				Sort:      sort,
+				Direction: direction,
+			}
+
+			output, err := svc.ListAssignedWithPagination(pagination)
 			if err != nil {
 				return fmt.Errorf("failed to list issues: %w", err)
 			}
@@ -56,6 +81,11 @@ func newIssuesListCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().IntVar(&start, "start", 0, "Starting position (0-indexed)")
+	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of items (max 250)")
+	cmd.Flags().StringVar(&sort, "sort", "updated", "Sort by: priority|created|updated")
+	cmd.Flags().StringVar(&direction, "direction", "desc", "Sort direction: asc|desc")
 
 	return cmd
 }
@@ -211,15 +241,15 @@ func newIssuesCreateCmd() *cobra.Command {
 	}
 
 	// Add flags (with short versions for common flags)
-	cmd.Flags().StringVarP(&team, "team", "t", "", "Team key (uses .linear.yaml default if not specified)")
+	cmd.Flags().StringVarP(&team, "team", "t", "", "Team name or key (uses .linear.yaml default if not specified)")
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Issue description (or pipe to stdin)")
-	cmd.Flags().StringVarP(&state, "state", "s", "", "Workflow state name")
+	cmd.Flags().StringVarP(&state, "state", "s", "", "Workflow state name (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().IntVarP(&priority, "priority", "p", 0, "Priority 0-4 (0=none, 1=urgent, 4=low)")
 	cmd.Flags().Float64VarP(&estimate, "estimate", "e", 0, "Story points estimate")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Comma-separated label names/IDs")
-	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Cycle ID or 'current'/'next'")
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Project name/ID")
-	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Assignee name (use 'me' for yourself)")
+	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Cycle number or name (e.g., 'current', 'next')")
+	cmd.Flags().StringVarP(&project, "project", "P", "", "Project name or ID")
+	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Assignee name or email (use 'me' for yourself)")
 	cmd.Flags().StringVar(&dueDate, "due", "", "Due date YYYY-MM-DD")
 	cmd.Flags().StringVar(&parent, "parent", "", "Parent issue ID (for sub-issues)")
 	cmd.Flags().StringVar(&dependsOn, "depends-on", "", "Comma-separated issue IDs this depends on")
@@ -370,13 +400,13 @@ func newIssuesUpdateCmd() *cobra.Command {
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&title, "title", "T", "", "Update issue title")
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Update description (or pipe to stdin)")
-	cmd.Flags().StringVarP(&state, "state", "s", "", "Update workflow state")
+	cmd.Flags().StringVarP(&state, "state", "s", "", "Update workflow state name (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().StringVarP(&priority, "priority", "p", "", "Update priority 0-4 (0=none, 1=urgent, 4=low)")
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "Update story points estimate")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Update labels (comma-separated)")
-	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Update cycle")
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Update project")
-	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Update assignee (use 'me' for yourself)")
+	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Update cycle number or name")
+	cmd.Flags().StringVarP(&project, "project", "P", "", "Update project name or ID")
+	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Update assignee name or email (use 'me' for yourself)")
 	cmd.Flags().StringVar(&dueDate, "due", "", "Update due date YYYY-MM-DD")
 	cmd.Flags().StringVar(&parent, "parent", "", "Update parent issue")
 	cmd.Flags().StringVar(&dependsOn, "depends-on", "", "Update dependencies (comma-separated issue IDs)")

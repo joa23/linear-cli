@@ -24,6 +24,7 @@ type Config struct {
 type LinearConfig struct {
 	ClientID     string `yaml:"client_id,omitempty"`
 	ClientSecret string `yaml:"client_secret,omitempty"`
+	Port         int    `yaml:"port,omitempty"` // OAuth callback port (default: 37412)
 }
 
 // WorkspaceConfig represents a Linear workspace configuration

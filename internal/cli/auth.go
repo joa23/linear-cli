@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/joa23/linear-cli/internal/config"
@@ -82,6 +83,7 @@ func handleLogin() error {
 
 	clientID := cfg.Linear.ClientID
 	clientSecret := cfg.Linear.ClientSecret
+	port := cfg.Linear.Port
 
 	// Also check environment variables
 	if clientID == "" {
@@ -92,8 +94,8 @@ func handleLogin() error {
 	}
 
 	// If credentials missing, prompt for them
-	if clientID == "" || clientSecret == "" {
-		clientID, clientSecret, err = promptCredentials()
+	if clientID == "" || clientSecret == "" || port == 0 {
+		clientID, clientSecret, port, err = promptCredentials()
 		if err != nil {
 			return err
 		}
@@ -102,6 +104,7 @@ func handleLogin() error {
 		if promptConfirmation(fmt.Sprintf("\nSave credentials to %s?", cfgManager.GetConfigPath())) {
 			cfg.Linear.ClientID = clientID
 			cfg.Linear.ClientSecret = clientSecret
+			cfg.Linear.Port = port
 			if err := cfgManager.Save(cfg); err != nil {
 				fmt.Printf("Warning: Could not save config: %v\n", err)
 			} else {
@@ -114,8 +117,9 @@ func handleLogin() error {
 	oauthHandler := oauth.NewHandlerWithClient(clientID, clientSecret, linear.GetSharedHTTPClient())
 	state := oauth.GenerateState()
 
-	port := "3000"
-	redirectURI := fmt.Sprintf("http://localhost:%s/oauth-callback", port)
+	// Use specified port (must match OAuth app configuration)
+	portStr := fmt.Sprintf("%d", port)
+	redirectURI := fmt.Sprintf("http://localhost:%s/oauth-callback", portStr)
 
 	var authURL string
 	if authMode == "user" {
@@ -131,8 +135,11 @@ func handleLogin() error {
 	openBrowser(authURL)
 
 	// Handle OAuth callback
-	accessToken, err := oauthHandler.HandleCallback(port, state)
+	accessToken, err := oauthHandler.HandleCallback(portStr, state)
 	if err != nil {
+		if strings.Contains(err.Error(), "address already in use") {
+			return fmt.Errorf("port %d is already in use.\n\nTo fix this:\n  1. Find the process using port %d: lsof -i :%d\n  2. Kill it, or wait and try again\n  3. Or use a different port: linear auth login --port <PORT>", port, port, port)
+		}
 		return fmt.Errorf("OAuth callback failed: %w", err)
 	}
 
@@ -167,9 +174,17 @@ func handleLogin() error {
 
 // promptAuthMode asks the user to choose between user and agent authentication
 func promptAuthMode() (string, error) {
-	fmt.Println("\nHow would you like to authenticate?")
-	fmt.Println("  [1] As yourself (personal use)")
-	fmt.Println("  [2] As an agent (MCP server, automation)")
+	fmt.Println("\n" + strings.Repeat("─", 50))
+	fmt.Println("Authentication Mode")
+	fmt.Println(strings.Repeat("─", 50))
+	fmt.Println("\n[1] As yourself (personal use)")
+	fmt.Println("    • Your actions appear under your Linear account")
+	fmt.Println("    • For personal task management")
+	fmt.Println("\n[2] As an agent (MCP server, automation)")
+	fmt.Println("    • Agent appears as a separate entity in Linear")
+	fmt.Println("    • Requires admin approval to install")
+	fmt.Println("    • Agent can be @mentioned and assigned issues")
+	fmt.Println("    • For bots and automated workflows")
 	fmt.Print("\nChoice [1/2]: ")
 
 	reader := bufio.NewReader(os.Stdin)
@@ -183,6 +198,7 @@ func promptAuthMode() (string, error) {
 	case "1", "":
 		return "user", nil
 	case "2":
+		fmt.Println("\n⚠️  Agent mode requires Linear workspace admin approval")
 		return "agent", nil
 	default:
 		return "", fmt.Errorf("invalid choice: %s (expected 1 or 2)", input)
@@ -190,35 +206,56 @@ func promptAuthMode() (string, error) {
 }
 
 // promptCredentials prompts the user for OAuth credentials
-func promptCredentials() (clientID, clientSecret string, err error) {
+func promptCredentials() (clientID, clientSecret string, port int, err error) {
 	fmt.Println("\n" + strings.Repeat("─", 50))
 	fmt.Println("Linear OAuth credentials not found.")
 	fmt.Println("\nTo get credentials, create an OAuth app at:")
 	fmt.Println("  Linear → Settings → API → OAuth Applications → New")
-	fmt.Println("\nCallback URL: http://localhost:3000/oauth-callback")
 	fmt.Println(strings.Repeat("─", 50))
 
 	reader := bufio.NewReader(os.Stdin)
 
+	// Prompt for port first
+	fmt.Print("\nOAuth callback port [37412]: ")
+	portInput, err := reader.ReadString('\n')
+	if err != nil {
+		return "", "", 0, fmt.Errorf("failed to read port: %w", err)
+	}
+	portInput = strings.TrimSpace(portInput)
+
+	// Use default if empty
+	if portInput == "" {
+		port = 37412
+	} else {
+		port, err = strconv.Atoi(portInput)
+		if err != nil {
+			return "", "", 0, fmt.Errorf("invalid port number: %w", err)
+		}
+	}
+
+	// Show the callback URL they should configure
+	fmt.Printf("\nCallback URL: http://localhost:%d/oauth-callback\n", port)
+	fmt.Println("(Configure this in your Linear OAuth app)")
+
 	fmt.Print("\nClient ID: ")
 	clientID, err = reader.ReadString('\n')
 	if err != nil {
-		return "", "", fmt.Errorf("failed to read client ID: %w", err)
+		return "", "", 0, fmt.Errorf("failed to read client ID: %w", err)
 	}
 	clientID = strings.TrimSpace(clientID)
 
 	fmt.Print("Client Secret: ")
 	clientSecret, err = reader.ReadString('\n')
 	if err != nil {
-		return "", "", fmt.Errorf("failed to read client secret: %w", err)
+		return "", "", 0, fmt.Errorf("failed to read client secret: %w", err)
 	}
 	clientSecret = strings.TrimSpace(clientSecret)
 
 	if clientID == "" || clientSecret == "" {
-		return "", "", fmt.Errorf("client ID and client secret are required")
+		return "", "", 0, fmt.Errorf("client ID and client secret are required")
 	}
 
-	return clientID, clientSecret, nil
+	return clientID, clientSecret, port, nil
 }
 
 // promptConfirmation asks a yes/no question and returns true for yes

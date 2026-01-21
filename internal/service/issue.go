@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/internal/linear"
@@ -131,6 +132,116 @@ func (s *IssueService) ListAssigned(limit int, outputFormat format.Format) (stri
 	return s.formatter.IssueList(issues, outputFormat, nil), nil
 }
 
+// ListAssignedWithPagination lists assigned issues with offset-based pagination
+func (s *IssueService) ListAssignedWithPagination(pagination *linear.PaginationInput) (string, error) {
+	// Validate and normalize pagination
+	pagination = linear.ValidatePagination(pagination)
+
+	// Get viewer ID
+	viewer, err := s.client.GetViewer()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current user: %w", err)
+	}
+
+	// Build filter - fetch enough to cover offset + page
+	filter := &linear.IssueFilter{
+		AssigneeID: viewer.ID,
+		First:      pagination.Start + pagination.Limit, // Fetch enough to skip to offset
+	}
+
+	// Use API-level sorting if supported (createdAt, updatedAt)
+	// Note: Linear's orderBy doesn't support direction, always returns desc
+	// For priority or asc direction, we'll do client-side sorting
+	orderBy := linear.MapSortField(pagination.Sort)
+	if orderBy != "" && pagination.Direction == "desc" {
+		filter.OrderBy = orderBy
+	}
+
+	// Execute query
+	result, err := s.client.Issues.ListAllIssues(filter)
+	if err != nil {
+		return "", fmt.Errorf("failed to list assigned issues: %w", err)
+	}
+
+	// Apply client-side sorting if needed (priority or asc direction)
+	if orderBy == "" || pagination.Direction == "asc" {
+		sortIssues(result.Issues, pagination.Sort, pagination.Direction)
+	}
+
+	// Slice to offset range
+	totalFetched := len(result.Issues)
+	start := pagination.Start
+	end := start + pagination.Limit
+
+	if start > totalFetched {
+		return "No issues found.", nil
+	}
+	if end > totalFetched {
+		end = totalFetched
+	}
+
+	pageIssues := result.Issues[start:end]
+
+	// Convert to display format
+	issues := convertIssueDetails(pageIssues)
+
+	// Build pagination metadata
+	pageResult := &format.Pagination{
+		Start:       pagination.Start,
+		Limit:       pagination.Limit,
+		Count:       len(issues),
+		HasNextPage: end < totalFetched || result.HasNextPage,
+		TotalCount:  result.TotalCount,
+	}
+
+	return s.formatter.IssueList(issues, format.Compact, pageResult), nil
+}
+
+// convertIssueDetails converts IssueWithDetails to Issue for formatting
+func convertIssueDetails(details []linear.IssueWithDetails) []linear.Issue {
+	issues := make([]linear.Issue, len(details))
+	for i, d := range details {
+		priority := d.Priority
+		issues[i] = linear.Issue{
+			ID:          d.ID,
+			Identifier:  d.Identifier,
+			Title:       d.Title,
+			Description: d.Description,
+			State: struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			}{ID: d.State.ID, Name: d.State.Name},
+			Priority:  &priority,
+			Assignee:  d.Assignee,
+			CreatedAt: d.CreatedAt,
+			UpdatedAt: d.UpdatedAt,
+		}
+	}
+	return issues
+}
+
+// sortIssues sorts issues by the specified field and direction
+func sortIssues(issues []linear.IssueWithDetails, sortBy, direction string) {
+	sort.Slice(issues, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "priority":
+			less = issues[i].Priority > issues[j].Priority // Higher priority first
+		case "created":
+			less = issues[i].CreatedAt < issues[j].CreatedAt
+		case "updated":
+			less = issues[i].UpdatedAt < issues[j].UpdatedAt
+		default:
+			less = issues[i].UpdatedAt < issues[j].UpdatedAt
+		}
+
+		if direction == "desc" {
+			return !less
+		}
+		return less
+	})
+}
+
 // CreateIssueInput represents input for creating an issue
 type CreateIssueInput struct {
 	Title       string
@@ -175,7 +286,12 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 	needsUpdate := false
 
 	if input.StateID != "" {
-		updateInput.StateID = &input.StateID
+		// Resolve state name to ID if needed
+		stateID, err := s.resolveStateID(input.StateID, teamID)
+		if err != nil {
+			return "", fmt.Errorf("could not resolve state '%s': %w\n\nRun 'linear onboard' to see valid states for your teams", input.StateID, err)
+		}
+		updateInput.StateID = &stateID
 		needsUpdate = true
 	}
 	if input.AssigneeID != "" {
@@ -289,7 +405,21 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 
 	// Resolve state if provided
 	if input.StateID != nil {
-		linearInput.StateID = input.StateID
+		// Extract team key from issue identifier and resolve to team ID
+		teamKey := extractTeamKeyFromIdentifier(issue.Identifier)
+		if teamKey == "" {
+			return "", fmt.Errorf("could not extract team from issue identifier '%s'", issue.Identifier)
+		}
+		teamID, err := s.client.ResolveTeamIdentifier(teamKey)
+		if err != nil {
+			return "", fmt.Errorf("could not resolve team '%s': %w", teamKey, err)
+		}
+
+		stateID, err := s.resolveStateID(*input.StateID, teamID)
+		if err != nil {
+			return "", fmt.Errorf("could not resolve state '%s': %w\n\nRun 'linear onboard' to see valid states for your teams", *input.StateID, err)
+		}
+		linearInput.StateID = &stateID
 	}
 
 	// Resolve assignee if provided
@@ -421,4 +551,35 @@ func (s *IssueService) GetIssueID(identifier string) (string, error) {
 		return "", fmt.Errorf("failed to get issue %s: %w", identifier, err)
 	}
 	return issue.ID, nil
+}
+
+// extractTeamKeyFromIdentifier extracts the team key from an issue identifier
+// e.g., "CEN-123" -> "CEN"
+func extractTeamKeyFromIdentifier(identifier string) string {
+	parts := fmt.Sprintf("%s", identifier)
+	idx := 0
+	for i, c := range parts {
+		if c == '-' {
+			idx = i
+			break
+		}
+	}
+	if idx > 0 {
+		return parts[:idx]
+	}
+	return ""
+}
+
+// resolveStateID resolves a state name to a valid state ID
+func (s *IssueService) resolveStateID(stateName, teamID string) (string, error) {
+	// Always resolve by name - no UUID support
+	state, err := s.client.Workflows.GetWorkflowStateByName(teamID, stateName)
+	if err != nil {
+		return "", fmt.Errorf("state '%s' not found in team workflow: %w", stateName, err)
+	}
+	if state == nil {
+		return "", fmt.Errorf("state '%s' not found in team workflow", stateName)
+	}
+
+	return state.ID, nil
 }

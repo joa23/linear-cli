@@ -62,16 +62,34 @@ make build
 linear auth login
 ```
 
-The wizard will guide you through OAuth authentication. Actions will appear as "You created this issue" in Linear.
+You'll be prompted to choose an authentication mode:
+
+**Personal Use** - Authenticate as yourself
+- Your actions appear under your Linear account
+- For personal task management
+
+**Agent/App** - Authenticate as an agent
+- Agent appears as a separate entity in Linear
+- Requires admin approval to install
+- Agent can be @mentioned and assigned issues
+- For automation, bots, and MCP servers
 
 ### OAuth Setup
 
-If prompted, create an OAuth app in Linear:
-1. Go to Linear → Settings → API → OAuth Applications → New
-2. Set callback URL: `http://localhost:3000/oauth-callback`
-3. Enter the Client ID and Secret when prompted
+During login, you'll be prompted for:
 
-Credentials are stored in `~/.config/linear/`.
+1. **OAuth callback port** (default: 37412)
+   - Press Enter to use default, or specify a custom port
+   - The wizard shows you the callback URL to configure
+
+2. **Create an OAuth app in Linear:**
+   - Go to Linear → Settings → API → OAuth Applications → New
+   - Set callback URL: `http://localhost:YOUR_PORT/oauth-callback`
+   - Copy the Client ID and Secret
+
+3. **Enter credentials** when prompted
+
+Credentials (including port) are saved to `~/.config/linear/config.yaml`.
 
 ### Other Auth Commands
 
@@ -88,6 +106,19 @@ linear auth logout   # Remove credentials
 # Basic operations
 linear issues list                           # List your assigned issues
 linear issues get ENG-123                    # Get issue details
+
+# Pagination - offset-based for easy navigation
+linear issues list                           # First 10 issues (default)
+linear issues list --start 10 --limit 10     # Items 11-20
+linear issues list --start 20 --limit 5      # Items 21-25
+
+# Sorting
+linear issues list --sort priority           # Sort by priority (highest first)
+linear issues list --sort created            # Sort by creation date
+linear issues list --sort updated --direction asc  # Oldest updated first
+
+# Combine pagination and sorting
+linear issues list --start 20 --limit 10 --sort created --direction asc
 
 # Create with full context
 linear issues create "Implement OAuth2 login" \

@@ -652,6 +652,7 @@ type ListAllIssuesResult struct {
 	Issues      []IssueWithDetails `json:"issues"`
 	HasNextPage bool               `json:"hasNextPage"`
 	EndCursor   string             `json:"endCursor"`
+	TotalCount  int                `json:"totalCount"`
 }
 
 // IssueWithDetails represents an issue with full details including metadata
@@ -807,4 +808,12 @@ type IssueWithRelations struct {
 	} `json:"state"`
 	Relations        IssueRelationConnection `json:"relations"`
 	InverseRelations IssueRelationConnection `json:"inverseRelations"`
+}
+
+// PaginationInput represents offset-based pagination parameters
+type PaginationInput struct {
+	Start     int    `json:"start"`     // Starting position (0-indexed)
+	Limit     int    `json:"limit"`     // Number of items per page
+	Sort      string `json:"sort"`      // Sort field: priority|created|updated
+	Direction string `json:"direction"` // Sort direction: asc|desc
 }

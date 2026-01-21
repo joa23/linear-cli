@@ -152,12 +152,20 @@ func TestFormatter_IssueList(t *testing.T) {
 
 	t.Run("with pagination", func(t *testing.T) {
 		page := &Pagination{
+			Start:       10,
+			Limit:       10,
+			Count:       2,
 			HasNextPage: true,
-			EndCursor:   "cursor123",
 		}
 		result := f.IssueList(issues, Minimal, page)
-		if !strings.Contains(result, "cursor=cursor123") {
-			t.Error("should contain pagination cursor")
+		if !strings.Contains(result, "--start 20 --limit 10") {
+			t.Error("should contain offset-based pagination")
+		}
+		if !strings.Contains(result, "More results available") {
+			t.Error("should contain pagination message")
+		}
+		if !strings.Contains(result, "ISSUES (11-12+)") {
+			t.Error("should contain pagination range with +")
 		}
 	})
 }
