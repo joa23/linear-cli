@@ -1,0 +1,92 @@
+version: 2
+
+project_name: linear-cli
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: linear
+    binary: linear
+    main: ./cmd/linear
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: linear-cli
+    builds:
+      - linear
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^build:'
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: joa23
+    name: linear-cli
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Linear CLI {{.Tag}}
+
+    A token-efficient CLI for Linear.
+
+    ### Installation
+
+    ```bash
+    brew tap joa23/linear-cli
+    brew install linear-cli
+    ```
+
+    Or download the binary for your platform from the assets below.
+
+  footer: |
+    **Full Changelog**: https://github.com/joa23/linear-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
