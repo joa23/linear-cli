@@ -42,8 +42,8 @@ type TokenResponse struct {
 // ToTokenData converts OAuth TokenResponse to storage TokenData format
 func (tr *TokenResponse) ToTokenData() *token.TokenData {
 	data := &token.TokenData{
-		AccessToken:  tr.AccessToken,
-		RefreshToken: tr.RefreshToken,
+		AccessToken:  token.SanitizeToken(tr.AccessToken),
+		RefreshToken: token.SanitizeToken(tr.RefreshToken),
 		TokenType:    tr.TokenType,
 		Scope:        tr.Scope,
 	}

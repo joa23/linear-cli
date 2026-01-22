@@ -101,8 +101,9 @@ func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, e
 			return nil, fmt.Errorf("failed to get valid token: %w", err)
 		}
 
-		// Set Authorization header with current token
-		req.Header.Set("Authorization", accessToken)
+		// Set Authorization header with current token (sanitized with Bearer prefix)
+		authHeader := token.FormatAuthHeader(accessToken)
+		req.Header.Set("Authorization", authHeader)
 
 		// Reset body for each attempt if we have one
 		// Why: Each HTTP request attempt needs a fresh reader because

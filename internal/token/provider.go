@@ -25,9 +25,9 @@ func NewStaticProvider(token string) *StaticProvider {
 	return &StaticProvider{token: token}
 }
 
-// GetToken returns the static token
+// GetToken returns the static token (sanitized for safety)
 func (p *StaticProvider) GetToken() (string, error) {
-	return p.token, nil
+	return SanitizeToken(p.token), nil
 }
 
 // RefreshIfNeeded always fails for static tokens

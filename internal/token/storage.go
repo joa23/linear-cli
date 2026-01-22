@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -44,20 +43,26 @@ func NewStorage(tokenPath string) *Storage {
 // token can act as the authenticated user. Restricting file permissions
 // prevents other users on the system from reading the token.
 func (s *Storage) SaveToken(token string) error {
+	// Sanitize and validate token before saving
+	sanitized := SanitizeToken(token)
+	if err := ValidateToken(sanitized); err != nil {
+		return fmt.Errorf("invalid token: %w", err)
+	}
+
 	// Ensure directory exists with secure permissions
 	// 0700 = rwx------ (only owner can read, write, or access directory)
 	dir := filepath.Dir(s.tokenPath)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return fmt.Errorf("failed to create token directory: %w", err)
 	}
-	
+
 	// Write token with secure permissions
 	// 0600 = rw------- (only owner can read or write the file)
 	// WriteFile is atomic - it writes to a temp file then renames
-	if err := os.WriteFile(s.tokenPath, []byte(token), 0600); err != nil {
+	if err := os.WriteFile(s.tokenPath, []byte(sanitized), 0600); err != nil {
 		return fmt.Errorf("failed to write token file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -161,6 +166,12 @@ func LoadTokenWithFallback() string {
 // SaveTokenData saves structured token data as JSON with secure permissions.
 // This replaces the legacy plain-string token format and enables automatic refresh.
 func (s *Storage) SaveTokenData(data *TokenData) error {
+	// Sanitize tokens before saving
+	data.AccessToken = SanitizeToken(data.AccessToken)
+	if data.RefreshToken != "" {
+		data.RefreshToken = SanitizeToken(data.RefreshToken)
+	}
+
 	// Ensure directory exists with secure permissions
 	dir := filepath.Dir(s.tokenPath)
 	if err := os.MkdirAll(dir, 0700); err != nil {
@@ -195,7 +206,7 @@ func (s *Storage) LoadTokenData() (*TokenData, error) {
 		return nil, fmt.Errorf("failed to read token file: %w", err)
 	}
 
-	content := strings.TrimSpace(string(data))
+	content := SanitizeToken(string(data))
 
 	// Try parsing as JSON first (new format)
 	var tokenData TokenData
