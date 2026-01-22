@@ -3,7 +3,7 @@ package skills
 
 import "embed"
 
-//go:embed prd/* triage/* cycle-plan/* retro/* deps/* link-deps/*
+//go:embed prd/* triage/* cycle-plan/* retro/* deps/* link-deps/* release/*
 var SkillFiles embed.FS
 
 // SkillInfo describes an available skill
@@ -44,6 +44,11 @@ var AvailableSkills = []SkillInfo{
 		Name:        "link-deps",
 		Description: "Discover and link related issues as dependencies across your backlog",
 		Dir:         "link-deps",
+	},
+	{
+		Name:        "release",
+		Description: "Pre-release checklist ensuring CHANGELOG, versions, tests, and docs are updated",
+		Dir:         "release",
 	},
 }
 

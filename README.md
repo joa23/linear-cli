@@ -18,7 +18,14 @@ Linear becomes the coordination layer—tracking what's planned, what's in progr
 
 ## Quickstart
 
-Get started in 3 steps:
+Install with Homebrew:
+
+```bash
+brew tap joa23/linear-cli
+brew install linear-cli
+```
+
+Then configure in 3 steps:
 
 ```bash
 # 1. Authenticate
@@ -37,7 +44,9 @@ linear issues list
 linear issues create "My first issue" --team YOUR-TEAM
 ```
 
-See [Authentication](#authentication) for OAuth setup details.
+**Other installation methods:** See [Installation](#installation) below for manual download options.
+
+**Authentication setup:** See [Authentication](#authentication) for OAuth configuration details.
 
 ---
 
@@ -356,6 +365,7 @@ Available skills:
 - `/retro` - Generate sprint retrospective analysis
 - `/deps` - Analyze dependency chains
 - `/link-deps` - Discover and link related issues as dependencies
+- `/release` - Pre-release checklist for CHANGELOG, versions, and tests
 
 ## Output Format
 

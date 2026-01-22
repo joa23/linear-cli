@@ -148,6 +148,7 @@ After running `linear init`, use these skills:
 - `/retro` - Generate sprint retrospectives
 - `/deps` - Visualize dependency graphs
 - `/link-deps` - **NEW** Discover and link missing dependencies across backlog
+- `/release` - **NEW** Pre-release checklist ensuring CHANGELOG is updated
 
 ## CLI Commands
 
