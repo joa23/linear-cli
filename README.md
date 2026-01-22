@@ -76,6 +76,8 @@ You'll be prompted to choose an authentication mode:
 
 ### OAuth Setup
 
+#### Personal Mode Setup
+
 During login, you'll be prompted for:
 
 1. **OAuth callback port** (default: 37412)
@@ -90,6 +92,37 @@ During login, you'll be prompted for:
 3. **Enter credentials** when prompted
 
 Credentials (including port) are saved to `~/.config/linear/config.yaml`.
+
+#### Agent Mode Setup
+
+For agent/automation use (MCP servers, bots, CI/CD):
+
+1. **Create an OAuth app in Linear:**
+   - Go to Linear → Settings → API → OAuth Applications → New
+   - Name: `linear-cli-agent` (or your preferred name)
+   - **Callback URL: `http://localhost:3000/oauth-callback`**
+   - Actor: Application (not User)
+   - Click "Create"
+
+2. **Save your credentials:**
+   - **Client ID**: Copy and save this (you'll need it for login)
+   - **Client Secret**: Copy and save this immediately (shown only once)
+   - Store these securely - you'll need them to authenticate
+
+3. **Authenticate:**
+   ```bash
+   linear auth login
+   # Select "Agent/App" mode
+   # Enter port: 3000
+   # Enter Client ID and Secret when prompted
+   ```
+
+4. **Admin approval required:**
+   - After authentication, a Linear admin must approve the app installation
+   - Go to Linear → Settings → Installed Applications
+   - Approve the pending installation
+
+Once approved, the agent can be @mentioned and assigned issues like any team member.
 
 ### Other Auth Commands
 
