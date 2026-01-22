@@ -72,7 +72,7 @@ You'll be prompted to choose an authentication mode:
 - Agent appears as a separate entity in Linear
 - Requires admin approval to install
 - Agent can be @mentioned and assigned issues
-- For automation, bots, and MCP servers
+- For automation, bots, and integrations
 
 ### OAuth Setup
 
@@ -95,7 +95,7 @@ Credentials (including port) are saved to `~/.config/linear/config.yaml`.
 
 #### Agent Mode Setup
 
-For agent/automation use (MCP servers, bots, CI/CD):
+For agent/automation use (bots, CI/CD, integrations):
 
 1. **Create an OAuth app in Linear:**
    - Go to Linear → Settings → API → OAuth Applications → New

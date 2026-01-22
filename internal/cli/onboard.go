@@ -22,7 +22,7 @@ func newOnboardCmd() *cobra.Command {
 }
 
 func runOnboard() error {
-	fmt.Println("Light Linear MCP - Setup Status")
+	fmt.Println("Linear CLI - Setup Status")
 	fmt.Println("================================")
 	fmt.Println()
 

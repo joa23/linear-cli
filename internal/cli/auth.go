@@ -180,11 +180,11 @@ func promptAuthMode() (string, error) {
 	fmt.Println("\n[1] As yourself (personal use)")
 	fmt.Println("    • Your actions appear under your Linear account")
 	fmt.Println("    • For personal task management")
-	fmt.Println("\n[2] As an agent (MCP server, automation)")
+	fmt.Println("\n[2] As an agent (automation, bots)")
 	fmt.Println("    • Agent appears as a separate entity in Linear")
 	fmt.Println("    • Requires admin approval to install")
 	fmt.Println("    • Agent can be @mentioned and assigned issues")
-	fmt.Println("    • For bots and automated workflows")
+	fmt.Println("    • For automated workflows and integrations")
 	fmt.Print("\nChoice [1/2]: ")
 
 	reader := bufio.NewReader(os.Stdin)
