@@ -1,6 +1,7 @@
 package linear
 
 import (
+	"github.com/joa23/linear-cli/internal/token"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,11 +12,11 @@ import (
 )
 
 // createTestBaseClient creates a BaseClient for testing
-func createTestBaseClient(serverURL, token string) *BaseClient {
+func createTestBaseClient(serverURL, tokenStr string) *BaseClient {
 	return &BaseClient{
-		apiToken:   token,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
-		baseURL:    serverURL,
+		tokenProvider: token.NewStaticProvider(tokenStr),
+		httpClient:    &http.Client{Timeout: 10 * time.Second},
+		baseURL:       serverURL,
 	}
 }
 

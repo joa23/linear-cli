@@ -134,8 +134,8 @@ func handleLogin() error {
 	// Open browser
 	openBrowser(authURL)
 
-	// Handle OAuth callback
-	accessToken, err := oauthHandler.HandleCallback(portStr, state)
+	// Handle OAuth callback and get full token response
+	tokenResponse, err := oauthHandler.HandleCallbackWithFullResponse(portStr, state)
 	if err != nil {
 		if strings.Contains(err.Error(), "address already in use") {
 			return fmt.Errorf("port %d is already in use.\n\nTo fix this:\n  1. Find the process using port %d: lsof -i :%d\n  2. Kill it, or wait and try again\n  3. Or use a different port: linear auth login --port <PORT>", port, port, port)
@@ -143,14 +143,21 @@ func handleLogin() error {
 		return fmt.Errorf("OAuth callback failed: %w", err)
 	}
 
-	// Save token
+	// Convert to structured format and save
+	tokenData := tokenResponse.ToTokenData()
 	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
-	if err := tokenStorage.SaveToken(accessToken); err != nil {
+	if err := tokenStorage.SaveTokenData(tokenData); err != nil {
 		return fmt.Errorf("failed to save token: %w", err)
 	}
 
 	fmt.Println("\nSuccessfully authenticated with Linear!")
 	fmt.Println("Token saved to:", token.GetDefaultTokenPath())
+	if tokenData.RefreshToken != "" {
+		fmt.Println("✓ Token will be automatically refreshed before expiration")
+	}
+
+	// Extract access token for showing teams
+	accessToken := tokenData.AccessToken
 
 	// Show available teams
 	fmt.Println("\nAvailable teams:")

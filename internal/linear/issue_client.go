@@ -1595,11 +1595,9 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 	}
 
 	const query = `
-		query ListAssignedIssues($first: Int!, $after: String, $orderBy: PaginationOrderBy) {
-			viewer {
-				assignedIssues(first: $first, after: $after, orderBy: $orderBy) {
-					totalCount
-					nodes {
+		query ListAllIssues($first: Int!, $after: String, $filter: IssueFilter, $orderBy: IssueOrderBy) {
+			issues(first: $first, after: $after, filter: $filter, orderBy: $orderBy) {
+				nodes {
 					id
 					identifier
 					title
@@ -1658,7 +1656,6 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 				}
 			}
 		}
-		}
 	`
 
 	variables := map[string]interface{}{
@@ -1668,16 +1665,20 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 		variables["after"] = filter.After
 	}
 
-	// Add orderBy if specified (Linear supports "createdAt" or "updatedAt" enum)
+	// Build filter object if any filters are specified
+	if hasFilters(filter) {
+		variables["filter"] = buildFilterObject(filter)
+	}
+
+	// Add orderBy if specified
 	if filter.OrderBy != "" {
-		variables["orderBy"] = filter.OrderBy
+		orderByObj := buildOrderByObject(filter.OrderBy, filter.Direction)
+		variables["orderBy"] = orderByObj
 	}
 
 	var response struct {
-		Viewer struct {
-			AssignedIssues struct {
-				TotalCount int `json:"totalCount"`
-				Nodes      []struct {
+		Issues struct {
+			Nodes []struct {
 				ID          string        `json:"id"`
 				Identifier  string        `json:"identifier"`
 				Title       string        `json:"title"`
@@ -1697,8 +1698,7 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 				HasNextPage bool   `json:"hasNextPage"`
 				EndCursor   string `json:"endCursor"`
 			} `json:"pageInfo"`
-			} `json:"assignedIssues"`
-		} `json:"viewer"`
+		} `json:"issues"`
 	}
 
 	err := ic.base.executeRequest(query, variables, &response)
@@ -1708,14 +1708,14 @@ func (ic *IssueClient) ListAllIssues(filter *IssueFilter) (*ListAllIssuesResult,
 
 	// Convert response to result type
 	result := &ListAllIssuesResult{
-		Issues:      make([]IssueWithDetails, 0, len(response.Viewer.AssignedIssues.Nodes)),
-		HasNextPage: response.Viewer.AssignedIssues.PageInfo.HasNextPage,
-		EndCursor:   response.Viewer.AssignedIssues.PageInfo.EndCursor,
-		TotalCount:  response.Viewer.AssignedIssues.TotalCount,
+		Issues:      make([]IssueWithDetails, 0, len(response.Issues.Nodes)),
+		HasNextPage: response.Issues.PageInfo.HasNextPage,
+		EndCursor:   response.Issues.PageInfo.EndCursor,
+		TotalCount:  len(response.Issues.Nodes), // Note: Linear issues endpoint doesn't return totalCount
 	}
 
 	// Process each issue
-	for _, node := range response.Viewer.AssignedIssues.Nodes {
+	for _, node := range response.Issues.Nodes {
 		issue := IssueWithDetails{
 			ID:          node.ID,
 			Identifier:  node.Identifier,

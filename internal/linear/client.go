@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/joa23/linear-cli/internal/config"
+	"github.com/joa23/linear-cli/internal/oauth"
 	"github.com/joa23/linear-cli/internal/token"
 )
 
@@ -57,29 +59,80 @@ func NewClient(apiToken string) *Client {
 	return client
 }
 
-// NewClientWithTokenPath creates a new Linear API client with token loading
-// It first tries to load token from the specified path, then falls back to env var
+// NewClientWithTokenPath creates a new Linear API client with token loading.
+// It intelligently selects between static and refreshing token providers based on:
+// - Whether a refresh token is available
+// - Whether OAuth credentials are configured
 func NewClientWithTokenPath(tokenPath string) *Client {
-	var apiToken string
-	
-	// Try to load from stored token first
-	// Why: Users may have authenticated via OAuth and stored their token.
-	// This provides persistence across sessions.
 	storage := token.NewStorage(tokenPath)
+	var provider token.TokenProvider
+	var apiToken string // For backward compatibility
+
+	// Try to load from stored token first
 	if storage.TokenExists() {
-		if loadedToken, err := storage.LoadToken(); err == nil {
-			apiToken = loadedToken
+		tokenData, err := storage.LoadTokenData()
+		if err == nil {
+			apiToken = tokenData.AccessToken
+
+			// Check if OAuth credentials available for refresh
+			cfgManager := config.NewManager("")
+			cfg, _ := cfgManager.Load()
+
+			clientID := cfg.Linear.ClientID
+			clientSecret := cfg.Linear.ClientSecret
+
+			// Also check env vars
+			if clientID == "" {
+				clientID = os.Getenv("LINEAR_CLIENT_ID")
+			}
+			if clientSecret == "" {
+				clientSecret = os.Getenv("LINEAR_CLIENT_SECRET")
+			}
+
+			// If OAuth credentials available AND token has refresh capability
+			if clientID != "" && clientSecret != "" && tokenData.RefreshToken != "" {
+				oauthHandler := oauth.NewHandlerWithClient(clientID, clientSecret, GetSharedHTTPClient())
+				refresherAdapter := oauth.NewRefresherAdapter(oauthHandler)
+				refresher := token.NewRefresher(storage, refresherAdapter)
+				provider = token.NewRefreshingProvider(refresher)
+			} else {
+				// No refresh capability - use static provider
+				provider = token.NewStaticProvider(tokenData.AccessToken)
+			}
 		}
 	}
-	
+
 	// Fall back to environment variable if no stored token
-	// Why: Environment variables are a common way to provide API tokens,
-	// especially in CI/CD environments or containerized deployments.
-	if apiToken == "" {
+	if provider == nil {
 		apiToken = os.Getenv("LINEAR_API_TOKEN")
+		if apiToken == "" {
+			// No token available at all
+			return nil
+		}
+		provider = token.NewStaticProvider(apiToken)
 	}
-	
-	return NewClient(apiToken)
+
+	// Create base client with provider
+	base := NewBaseClientWithProvider(provider)
+
+	// Initialize the main client with all sub-clients
+	client := &Client{
+		base:          base,
+		Issues:        NewIssueClient(base),
+		Projects:      NewProjectClient(base),
+		Comments:      NewCommentClient(base),
+		Teams:         NewTeamClient(base),
+		Notifications: NewNotificationClient(base),
+		Workflows:     NewWorkflowClient(base),
+		Attachments:   NewAttachmentClient(base),
+		Cycles:        NewCycleClient(base),
+		apiToken:      apiToken,
+	}
+
+	// Initialize resolver with the client
+	client.resolver = NewResolver(client)
+
+	return client
 }
 
 // NewDefaultClient creates a new Linear API client using default token path

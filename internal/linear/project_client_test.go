@@ -1,6 +1,7 @@
 package linear
 
 import (
+	"github.com/joa23/linear-cli/internal/token"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -113,7 +114,7 @@ func TestProjectIssuesUnmarshaling(t *testing.T) {
 			base := &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			}
 			pc := NewProjectClient(base)
 
@@ -244,7 +245,7 @@ func TestListUserProjectsUnmarshaling(t *testing.T) {
 	base := &BaseClient{
 		httpClient: server.Client(),
 		baseURL:    server.URL,
-		apiToken:   "test-token",
+		tokenProvider: token.NewStaticProvider("test-token"),
 	}
 	pc := NewProjectClient(base)
 
@@ -314,7 +315,7 @@ func TestCreateProjectUnmarshaling(t *testing.T) {
 	base := &BaseClient{
 		httpClient: server.Client(),
 		baseURL:    server.URL,
-		apiToken:   "test-token",
+		tokenProvider: token.NewStaticProvider("test-token"),
 	}
 	pc := NewProjectClient(base)
 

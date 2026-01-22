@@ -1,6 +1,7 @@
 package linear
 
 import (
+	"github.com/joa23/linear-cli/internal/token"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -117,13 +118,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -220,13 +221,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -305,13 +306,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -393,13 +394,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -478,13 +479,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -560,13 +561,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -665,13 +666,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -749,13 +750,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -848,13 +849,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -904,13 +905,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}
@@ -947,13 +948,13 @@ func TestListAllIssues(t *testing.T) {
 			base: &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			},
 			Issues: &IssueClient{
 				base: &BaseClient{
 					httpClient: server.Client(),
 					baseURL:    server.URL,
-					apiToken:   "test-token",
+					tokenProvider: token.NewStaticProvider("test-token"),
 				},
 			},
 		}

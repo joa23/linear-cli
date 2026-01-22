@@ -3,6 +3,7 @@ package linear
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -11,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/joa23/linear-cli/internal/token"
 )
 
 const linearAPIURL = "https://api.linear.app/graphql"
@@ -19,12 +22,13 @@ const linearAPIURL = "https://api.linear.app/graphql"
 // that all sub-clients will use. This ensures we have a single HTTP client
 // instance and consistent request handling across all Linear API operations.
 type BaseClient struct {
-	apiToken   string
-	httpClient *http.Client
-	baseURL    string
+	tokenProvider token.TokenProvider
+	httpClient    *http.Client
+	baseURL       string
 }
 
-// NewBaseClient creates a new base client with a shared HTTP client
+// NewBaseClient creates a new base client with a shared HTTP client.
+// For backward compatibility, this wraps the API token in a StaticProvider.
 func NewBaseClient(apiToken string) *BaseClient {
 	// Create a single HTTP client instance that will be reused
 	// for all requests. This improves performance by reusing
@@ -32,9 +36,19 @@ func NewBaseClient(apiToken string) *BaseClient {
 	httpClient := NewOptimizedHTTPClient()
 
 	return &BaseClient{
-		apiToken:   apiToken,
-		httpClient: httpClient,
-		baseURL:    linearAPIURL,
+		tokenProvider: token.NewStaticProvider(apiToken),
+		httpClient:    httpClient,
+		baseURL:       linearAPIURL,
+	}
+}
+
+// NewBaseClientWithProvider creates a new base client with a custom token provider.
+// This enables automatic token refresh for OAuth apps with expiring tokens.
+func NewBaseClientWithProvider(provider token.TokenProvider) *BaseClient {
+	return &BaseClient{
+		tokenProvider: provider,
+		httpClient:    NewOptimizedHTTPClient(),
+		baseURL:       linearAPIURL,
 	}
 }
 
@@ -74,19 +88,29 @@ func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, e
 		req.Body.Close()
 	}
 	
-	// Add auth header once, it will persist across retries
-	req.Header.Set("Authorization", bc.apiToken)
+	// Set Content-Type header once
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	var lastErr error
+	var attemptedRefresh bool // Track if we've attempted token refresh
+
 	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Get valid token (may proactively refresh if expiring soon)
+		accessToken, err := bc.tokenProvider.GetToken()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get valid token: %w", err)
+		}
+
+		// Set Authorization header with current token
+		req.Header.Set("Authorization", accessToken)
+
 		// Reset body for each attempt if we have one
 		// Why: Each HTTP request attempt needs a fresh reader because
 		// the previous attempt consumed the body stream.
 		if bodyBytes != nil {
 			req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 		}
-		
+
 		resp, err := bc.httpClient.Do(req)
 		
 		// Handle network errors with retry logic
@@ -121,7 +145,41 @@ func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, e
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return resp, nil
 		}
-		
+
+		// Handle 401 Unauthorized - attempt token refresh (max 1 attempt)
+		// Why: Tokens expire after 24 hours for new OAuth apps. When we get 401,
+		// we attempt to refresh the token using the refresh token if available.
+		// Double-checked locking in the provider prevents multiple refresh attempts.
+		if resp.StatusCode == http.StatusUnauthorized && !attemptedRefresh {
+			resp.Body.Close()
+			attemptedRefresh = true
+
+			// Attempt to refresh the token
+			newToken, refreshErr := bc.tokenProvider.RefreshIfNeeded(accessToken)
+			if refreshErr != nil {
+				// Check if session expired (both tokens invalid)
+				var sessionExpiredErr *token.SessionExpiredError
+				if errors.As(refreshErr, &sessionExpiredErr) {
+					return nil, fmt.Errorf("session expired - please re-authenticate: linear auth login")
+				}
+
+				// Check if no refresh token available
+				var noRefreshErr *token.NoRefreshTokenError
+				if errors.As(refreshErr, &noRefreshErr) {
+					// No refresh capability - return 401 as-is
+					return nil, fmt.Errorf("unauthorized - token may be expired or invalid: linear auth login")
+				}
+
+				// Other refresh failure
+				lastErr = fmt.Errorf("token refresh failed: %w - please re-authenticate: linear auth login", refreshErr)
+				break
+			}
+
+			// Successfully refreshed - update token for next attempt and retry
+			accessToken = newToken
+			continue
+		}
+
 		// Handle rate limiting with Retry-After header
 		// Why: Linear enforces rate limits to protect their infrastructure.
 		// When we hit these limits, they tell us exactly when we can retry
@@ -275,8 +333,8 @@ func (bc *BaseClient) executeRequest(query string, variables map[string]interfac
 // NewTestBaseClient creates a new base client for testing with custom URL
 func NewTestBaseClient(apiToken string, baseURL string, httpClient *http.Client) *BaseClient {
 	return &BaseClient{
-		apiToken:   apiToken,
-		httpClient: httpClient,
-		baseURL:    baseURL,
+		tokenProvider: token.NewStaticProvider(apiToken),
+		httpClient:    httpClient,
+		baseURL:       baseURL,
 	}
 }

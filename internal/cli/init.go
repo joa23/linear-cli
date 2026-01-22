@@ -178,24 +178,40 @@ func appendToAgentFile(filename, teamKey string) error {
 func generateAgentContent(teamKey string) string {
 	return fmt.Sprintf(`## Linear
 
-This project uses **Linear** for issue tracking via the Light Linear MCP.
+This project uses **Linear** for issue tracking.
 Default team: **%s**
 
-**Quick reference:**
-- `+"`linear issues list`"+` - List your assigned issues
-- `+"`linear issues get <ID>`"+` - Get issue details (e.g., %s-123)
-- `+"`linear cycles list`"+` - List current cycles
-- `+"`linear projects list`"+` - List projects
+### Creating Issues
 
-**MCP tools available (for Claude Code):**
-- `+"`linear_search`"+` - Search issues, projects, users, cycles
-- `+"`linear_get`"+` - Get any resource (issues/ID, projects/ID, viewer)
-- `+"`linear_create`"+` - Create issues, comments, projects
-- `+"`linear_update`"+` - Update issues, metadata, projects
-- `+"`linear_analyze_cycles`"+` - Analyze team velocity
+`+"```bash"+`
+# Create a simple issue
+linear issues create "Fix login bug" --team %s --priority high
 
-Run `+"`linear onboard`"+` for full setup status and team info.
-`, teamKey, teamKey)
+# Create with full details and dependencies
+linear issues create "Add OAuth integration" \
+  --team %s \
+  --description "Integrate Google and GitHub OAuth providers" \
+  --parent %s-100 \
+  --depends-on %s-99 \
+  --labels "backend,security" \
+  --estimate 5
+
+# List and view issues
+linear issues list
+linear issues get %s-123
+`+"```"+`
+
+### Claude Code Skills
+
+Available workflow skills (install with `+"`linear skills install --all`"+`):
+- `+"`/prd`"+` - Create agent-friendly tickets with PRDs and sub-issues
+- `+"`/triage`"+` - Analyze and prioritize backlog
+- `+"`/cycle-plan`"+` - Plan cycles using velocity analytics
+- `+"`/retro`"+` - Generate sprint retrospectives
+- `+"`/deps`"+` - Analyze dependency chains
+
+Run `+"`linear skills list`"+` for details.
+`, teamKey, teamKey, teamKey, teamKey, teamKey, teamKey)
 }
 
 // LoadProjectConfig loads the .linear.yaml config from current or parent directories

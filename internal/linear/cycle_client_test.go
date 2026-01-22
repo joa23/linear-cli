@@ -1,6 +1,7 @@
 package linear
 
 import (
+	"github.com/joa23/linear-cli/internal/token"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -101,7 +102,7 @@ func TestGetCycle(t *testing.T) {
 			base := &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			}
 			cc := NewCycleClient(base)
 
@@ -240,7 +241,7 @@ func TestListCycles(t *testing.T) {
 			base := &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			}
 			cc := NewCycleClient(base)
 
@@ -332,7 +333,7 @@ func TestGetActiveCycle(t *testing.T) {
 			base := &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			}
 			cc := NewCycleClient(base)
 
@@ -389,7 +390,7 @@ func TestGetCycleIssues(t *testing.T) {
 	base := &BaseClient{
 		httpClient: server.Client(),
 		baseURL:    server.URL,
-		apiToken:   "test-token",
+		tokenProvider: token.NewStaticProvider("test-token"),
 	}
 	cc := NewCycleClient(base)
 
@@ -480,7 +481,7 @@ func TestCreateCycle(t *testing.T) {
 			base := &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			}
 			cc := NewCycleClient(base)
 
@@ -559,7 +560,7 @@ func TestUpdateCycle(t *testing.T) {
 			base := &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			}
 			cc := NewCycleClient(base)
 
@@ -627,7 +628,7 @@ func TestArchiveCycle(t *testing.T) {
 			base := &BaseClient{
 				httpClient: server.Client(),
 				baseURL:    server.URL,
-				apiToken:   "test-token",
+				tokenProvider: token.NewStaticProvider("test-token"),
 			}
 			cc := NewCycleClient(base)
 
@@ -721,7 +722,7 @@ func TestListCyclesRequestBody(t *testing.T) {
 	base := &BaseClient{
 		httpClient: server.Client(),
 		baseURL:    server.URL,
-		apiToken:   "test-token",
+		tokenProvider: token.NewStaticProvider("test-token"),
 	}
 	cc := NewCycleClient(base)
 
@@ -779,7 +780,7 @@ func TestGetCycleIssuesEmptyCycleID(t *testing.T) {
 	base := &BaseClient{
 		httpClient: http.DefaultClient,
 		baseURL:    "http://example.com",
-		apiToken:   "test-token",
+		tokenProvider: token.NewStaticProvider("test-token"),
 	}
 	cc := NewCycleClient(base)
 

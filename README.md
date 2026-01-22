@@ -16,6 +16,31 @@ Linear becomes the coordination layer—tracking what's planned, what's in progr
 
 ---
 
+## Quickstart
+
+Get started in 3 steps:
+
+```bash
+# 1. Authenticate
+linear auth login
+
+# 2. Initialize your project (select default team)
+linear init
+
+# 3. Install Claude Code skills (optional but recommended)
+linear skills install --all
+```
+
+You're ready! Try:
+```bash
+linear issues list
+linear issues create "My first issue" --team YOUR-TEAM
+```
+
+See [Authentication](#authentication) for OAuth setup details.
+
+---
+
 A **token-efficient** command-line interface for [Linear](https://linear.app).
 
 > **Why this tool?** Human-readable identifiers ("TEST-123" not UUIDs), smart caching, and ASCII output—90% fewer tokens than alternatives.

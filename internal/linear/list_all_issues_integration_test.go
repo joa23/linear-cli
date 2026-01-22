@@ -3,6 +3,7 @@
 package linear
 
 import (
+	"github.com/joa23/linear-cli/internal/token"
 	"os"
 	"testing"
 

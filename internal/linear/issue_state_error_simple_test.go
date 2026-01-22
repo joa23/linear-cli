@@ -1,6 +1,7 @@
 package linear
 
 import (
+	"github.com/joa23/linear-cli/internal/token"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -32,7 +33,7 @@ func TestUpdateIssueStateInvalidStateID(t *testing.T) {
 
 	// Create base client and issue client
 	base := &BaseClient{
-		apiToken: "test-token",
+		tokenProvider: token.NewStaticProvider("test-token"),
 		httpClient: http.DefaultClient,
 		baseURL: server.URL,
 	}

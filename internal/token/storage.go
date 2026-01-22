@@ -1,10 +1,24 @@
 package token
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 )
+
+// TokenData represents structured OAuth token information with expiration tracking.
+// Supports both refresh-capable tokens (new OAuth apps created after Oct 1, 2025)
+// and legacy tokens without expiration.
+type TokenData struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token,omitempty"`
+	TokenType    string    `json:"token_type"`
+	ExpiresAt    time.Time `json:"expires_at,omitempty"`
+	Scope        string    `json:"scope"`
+}
 
 // Storage handles token storage and retrieval with secure file permissions.
 // Tokens are sensitive credentials that must be protected from unauthorized access.
@@ -139,7 +153,81 @@ func LoadTokenWithFallback() string {
 			return token
 		}
 	}
-	
+
 	// Fall back to environment variable
 	return os.Getenv("LINEAR_API_TOKEN")
+}
+
+// SaveTokenData saves structured token data as JSON with secure permissions.
+// This replaces the legacy plain-string token format and enables automatic refresh.
+func (s *Storage) SaveTokenData(data *TokenData) error {
+	// Ensure directory exists with secure permissions
+	dir := filepath.Dir(s.tokenPath)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return fmt.Errorf("failed to create token directory: %w", err)
+	}
+
+	// Marshal to JSON with indentation for human readability
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal token data: %w", err)
+	}
+
+	// Write with secure permissions (0600 = rw-------)
+	if err := os.WriteFile(s.tokenPath, jsonData, 0600); err != nil {
+		return fmt.Errorf("failed to write token file: %w", err)
+	}
+
+	return nil
+}
+
+// LoadTokenData loads structured token data with backward compatibility.
+//
+// Behavior:
+// - If file contains JSON: parse and return TokenData
+// - If file contains plain string: treat as legacy access token (no refresh)
+// - Returns error only on file read failure or invalid JSON
+//
+// This enables seamless migration from legacy token format to new format.
+func (s *Storage) LoadTokenData() (*TokenData, error) {
+	data, err := os.ReadFile(s.tokenPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read token file: %w", err)
+	}
+
+	content := strings.TrimSpace(string(data))
+
+	// Try parsing as JSON first (new format)
+	var tokenData TokenData
+	if err := json.Unmarshal([]byte(content), &tokenData); err == nil {
+		// Successfully parsed as JSON
+		return &tokenData, nil
+	}
+
+	// Fall back to legacy plain string format
+	// Treat as access token with no refresh capability
+	return &TokenData{
+		AccessToken: content,
+		TokenType:   "Bearer",
+		// No RefreshToken, no ExpiresAt - indicates legacy token
+	}, nil
+}
+
+// IsExpired checks if the token has expired.
+// Returns false for tokens without expiration (legacy tokens or long-lived tokens).
+func IsExpired(data *TokenData) bool {
+	if data.ExpiresAt.IsZero() {
+		return false // No expiration set
+	}
+	return time.Now().After(data.ExpiresAt)
+}
+
+// NeedsRefresh checks if the token should be proactively refreshed.
+// Returns true if the token will expire within the buffer duration.
+// Returns false for tokens without expiration.
+func NeedsRefresh(data *TokenData, buffer time.Duration) bool {
+	if data.ExpiresAt.IsZero() {
+		return false // No expiration set
+	}
+	return time.Now().Add(buffer).After(data.ExpiresAt)
 }
