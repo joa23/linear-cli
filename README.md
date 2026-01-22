@@ -325,6 +325,18 @@ All configuration is stored in `~/.config/linear/`:
 ### "cannot be opened" on macOS
 Right-click → Open → Click "Open" in security dialog.
 
+### Re-authenticating Agent Mode (Already Installed App)
+
+If you've previously installed the app in agent mode and need to re-authenticate, you'll see "This app is already installed" with no authorize button. To fix this:
+
+1. **Go to Linear → Settings → Installed Applications**
+2. **Find your OAuth app** (match the Client ID you're using)
+3. **Click "Manage"** → then click **"Revoke Access"**
+4. **Run `linear auth login`** again and select agent mode
+5. Click "Install" when the authorization screen appears
+
+This generates a new authorization token while keeping the app installed.
+
 ### Authentication Issues
 ```bash
 ls -la ~/.config/linear/   # Check config exists

@@ -85,7 +85,7 @@ func (h *Handler) GetAppAuthorizationURL(redirectURI, state string) string {
 		"state":         []string{state},
 		"scope":         []string{"app:assignable app:mentionable read write"},
 		"actor":         []string{"app"},
-		"prompt":        []string{"consent"}, // Force re-authorization even if already installed
+		"prompt":        []string{"consent"}, // Force consent screen for multi-workspace support
 	}
 
 	return linearAuthURL + "?" + params.Encode()
