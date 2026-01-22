@@ -1,6 +1,6 @@
 # Version from git tag or commit
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-LDFLAGS := -ldflags "-X main.Version=$(VERSION)"
+LDFLAGS := -ldflags "-X github.com/joa23/linear-cli/internal/cli.Version=$(VERSION)"
 
 # Build CLI
 build:

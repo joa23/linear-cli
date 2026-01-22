@@ -10,6 +10,9 @@ import (
 var (
 	outputFormat string // global flag for output format (table, json, markdown)
 	verbose      bool   // global flag for verbose output
+
+	// Version is set via ldflags at build time
+	Version = "dev"
 )
 
 // customHelpTemplate puts Flags before Examples (industry standard)
@@ -49,8 +52,9 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 // NewRootCmd creates the root command for the 'linear' CLI
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:   "linear",
-		Short: "Light Linear - Token-efficient Linear CLI and MCP server",
+		Use:     "linear",
+		Short:   "Light Linear - Token-efficient Linear CLI",
+		Version: Version,
 		Long: `Light Linear - Token-efficient Linear CLI
 
 A lightweight CLI for Linear. Run 'linear onboard' to get started.
