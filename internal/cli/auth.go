@@ -316,14 +316,14 @@ func handleStatus() error {
 	}
 
 	// Try to load token and verify it
-	linearToken, err := tokenStorage.LoadToken()
-	if err != nil || linearToken == "" {
+	tokenData, err := tokenStorage.LoadTokenData()
+	if err != nil || tokenData.AccessToken == "" {
 		fmt.Println("⚠️  Token file exists but could not be read")
 		return nil
 	}
 
 	// Create Linear client and test connection
-	client := linear.NewClient(linearToken)
+	client := linear.NewClient(tokenData.AccessToken)
 	if viewer, err := client.GetViewer(); err == nil {
 		fmt.Println("✅ Logged in to Linear")
 		fmt.Printf("User: %s (%s)\n", viewer.Name, viewer.Email)

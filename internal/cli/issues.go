@@ -910,12 +910,13 @@ func getLinearClient() (*linear.Client, error) {
 		return nil, fmt.Errorf("not authenticated. Run 'linear auth login' to authenticate")
 	}
 
-	linearToken, err := tokenStorage.LoadToken()
+	tokenData, err := tokenStorage.LoadTokenData()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load token: %w", err)
 	}
 
-	return linear.NewClient(linearToken), nil
+	// Use the access token from the structured data
+	return linear.NewClient(tokenData.AccessToken), nil
 }
 
 // getIssueService retrieves the issue service with authenticated client

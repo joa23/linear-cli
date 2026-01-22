@@ -49,12 +49,12 @@ func runInit() error {
 		return nil
 	}
 
-	linearToken, err := tokenStorage.LoadToken()
+	tokenData, err := tokenStorage.LoadTokenData()
 	if err != nil {
 		return fmt.Errorf("failed to load token: %w", err)
 	}
 
-	client := linear.NewClient(linearToken)
+	client := linear.NewClient(tokenData.AccessToken)
 
 	// Get teams
 	teams, err := client.GetTeams()

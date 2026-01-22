@@ -33,13 +33,13 @@ func runOnboard() error {
 		return nil
 	}
 
-	linearToken, err := tokenStorage.LoadToken()
+	tokenData, err := tokenStorage.LoadTokenData()
 	if err != nil {
 		printNotLoggedIn()
 		return nil
 	}
 
-	client := linear.NewClient(linearToken)
+	client := linear.NewClient(tokenData.AccessToken)
 
 	// Get current user
 	viewer, err := client.GetViewer()
