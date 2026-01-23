@@ -17,7 +17,7 @@ type SkillInfo struct {
 var AvailableSkills = []SkillInfo{
 	{
 		Name:        "linear",
-		Description: "Complete Linear CLI reference - semantic search, dependencies, cycle analytics",
+		Description: "Linear issue tracking - MUST READ before using Linear commands",
 		Dir:         "linear",
 	},
 	{

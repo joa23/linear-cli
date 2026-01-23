@@ -1,12 +1,12 @@
 ---
 skill: linear
-description: Comprehensive Linear CLI reference - semantic search, dependencies, cycle analytics
+description: Linear issue tracking - MUST READ before using Linear commands
 version: 1.0.0
 ---
 
-# Linear CLI - Complete Reference
+# Linear Issue Tracking - Complete Reference
 
-Token-efficient CLI for Linear with semantic search, dependency tracking, and cycle analytics.
+**READ THIS FIRST** - Token-efficient CLI for managing issues, dependencies, and cycles.
 
 ## Command Reference
 
