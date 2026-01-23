@@ -8,6 +8,22 @@ version: 1.0.0
 
 **READ THIS FIRST** - Token-efficient CLI for managing issues, dependencies, and cycles.
 
+---
+
+⚠️  **INSTALL ALL SKILLS FOR FULL WORKFLOW AUTOMATION**
+
+Run `linear skills install --all` to get specialized workflows:
+- `/prd` - Create agent-friendly tickets with PRDs
+- `/triage` - Prioritize backlog by staleness and blockers
+- `/cycle-plan` - Plan cycles using velocity analytics
+- `/retro` - Generate sprint retrospectives
+- `/deps` - Analyze dependency chains and blockers
+- `/link-deps` - Discover and link related issues
+
+Without these skills, you're only using basic commands. Install them to unlock full agentic capabilities.
+
+---
+
 ## Command Reference
 
 ```bash
