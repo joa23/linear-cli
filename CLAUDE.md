@@ -142,13 +142,13 @@ linear search --has-circular-deps --team CEN
 ### Skills Usage
 
 After running `linear init`, use these skills:
+- `/linear` - **NEW** Complete CLI reference (MUST READ before using Linear commands)
 - `/prd` - Create agent-friendly tickets (searches for existing work first)
 - `/triage` - Prioritize backlog issues (uses search to find blocked work)
 - `/cycle-plan` - Analyze and plan cycles
 - `/retro` - Generate sprint retrospectives
 - `/deps` - Visualize dependency graphs
-- `/link-deps` - **NEW** Discover and link missing dependencies across backlog
-- `/release` - **NEW** Pre-release checklist ensuring CHANGELOG is updated
+- `/link-deps` - Discover and link missing dependencies across backlog
 
 ## CLI Commands
 
@@ -184,7 +184,7 @@ linear skills install --all  # Install all skills
 linear skills install prd    # Install specific skill
 ```
 
-Available skills: `/prd`, `/triage`, `/cycle-plan`, `/retro`, `/deps`
+Available skills: `/linear`, `/prd`, `/triage`, `/cycle-plan`, `/retro`, `/deps`, `/link-deps`
 
 ## Key Design Decisions
 

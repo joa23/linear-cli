@@ -359,13 +359,13 @@ linear skills install prd       # Install specific skill
 ```
 
 Available skills:
+- `/linear` - Complete CLI reference for LLMs (semantic search, dependencies, cycle analytics)
 - `/prd` - Create agent-friendly tickets with success criteria
 - `/triage` - Analyze and prioritize backlog
 - `/cycle-plan` - Plan cycles using velocity data
 - `/retro` - Generate sprint retrospective analysis
 - `/deps` - Analyze dependency chains
 - `/link-deps` - Discover and link related issues as dependencies
-- `/release` - Pre-release checklist for CHANGELOG, versions, and tests
 
 ## Output Format
 

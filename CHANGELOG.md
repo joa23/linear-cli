@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-01-22
+
+### Added
+
+**New Skill for LLMs:**
+- `/linear` - Comprehensive CLI reference optimized for LLM in-context learning
+  - Token-compact format designed for frequent loading by Claude Code
+  - Covers all features: semantic search, dependency tracking, cycle analytics
+  - Example-driven with powerful filter combinations and real-world workflows
+  - Highlights semantic search capabilities and dependency management
+  - Output format guidance (minimal/compact/full) for token efficiency
+  - Prominent skills installation prompt with ⚠️ warning
+  - Replaces internal `/release` skill (moved to `.claude/skills/` for maintainer use)
+
+### Changed
+
+**Skill System:**
+- Removed `/release` from user-installable skills (maintainer-only)
+- Made `/linear` skill description more forceful: "MUST READ before using Linear commands"
+- Added installation urgency prompt to encourage `linear skills install --all`
+
+### Fixed
+
+**Version Display:**
+- Fixed goreleaser ldflags path: binaries now show correct version instead of "dev"
+- Changed from `main.version` to `github.com/joa23/linear-cli/internal/cli.Version`
+
 ## [1.2.1] - 2026-01-22
 
 ### Fixed
@@ -135,6 +162,7 @@ A token-efficient CLI for Linear.
 - Linux (64-bit)
 - Windows (64-bit)
 
+[1.2.2]: https://github.com/joa23/linear-cli/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/joa23/linear-cli/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/joa23/linear-cli/compare/v1.0.1...v1.2.0
 [1.0.1]: https://github.com/joa23/linear-cli/compare/v1.0.0...v1.0.1
