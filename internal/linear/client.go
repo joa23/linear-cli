@@ -181,6 +181,32 @@ func (c *Client) TestConnection() error {
 	return err
 }
 
+// Sub-client accessor methods for service layer
+// These provide interface-based access to sub-clients
+
+func (c *Client) CommentClient() *comments.Client {
+	return c.Comments
+}
+
+func (c *Client) WorkflowClient() *workflows.Client {
+	return c.Workflows
+}
+
+func (c *Client) IssueClient() *issues.Client {
+	return c.Issues
+}
+
+func (c *Client) CycleClient() *cycles.Client {
+	return c.Cycles
+}
+
+func (c *Client) ProjectClient() *projects.Client {
+	return c.Projects
+}
+
+func (c *Client) TeamClient() *teams.Client {
+	return c.Teams
+}
 
 // Direct method delegates for backward compatibility
 // These methods maintain the existing API surface while delegating to sub-clients

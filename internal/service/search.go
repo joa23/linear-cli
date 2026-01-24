@@ -155,7 +155,7 @@ func (s *SearchService) filterByDependencies(issues []core.Issue, opts *SearchOp
 
 	for _, issue := range issues {
 		// Fetch full relations for this issue
-		fullIssue, err := s.client.GetIssueWithRelations(issue.Identifier)
+		fullIssue, err := s.client.IssueClient().GetIssueWithRelations(issue.Identifier)
 		if err != nil {
 			// If we can't fetch relations, skip this issue
 			continue
@@ -305,7 +305,7 @@ func (s *SearchService) calculateDepth(issueID string, visited map[string]bool, 
 	visited[issueID] = true
 
 	// Get issue with relations
-	fullIssue, err := s.client.GetIssueWithRelations(issueID)
+	fullIssue, err := s.client.IssueClient().GetIssueWithRelations(issueID)
 	if err != nil {
 		return currentDepth
 	}

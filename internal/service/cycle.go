@@ -46,7 +46,7 @@ func (s *CycleService) Get(cycleIDOrNumber string, teamID string, outputFormat f
 		}
 	}
 
-	cycle, err := s.client.GetCycle(resolvedID)
+	cycle, err := s.client.CycleClient().GetCycle(resolvedID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get cycle %s: %w", cycleIDOrNumber, err)
 	}
@@ -200,14 +200,14 @@ func (s *CycleService) Analyze(input *AnalyzeInput) (string, error) {
 	userIssuesMap := make(map[string][]core.Issue)
 
 	for _, cycle := range result.Cycles {
-		fullCycle, err := s.client.GetCycle(cycle.ID)
+		fullCycle, err := s.client.CycleClient().GetCycle(cycle.ID)
 		if err != nil {
 			continue
 		}
 		fullCycles = append(fullCycles, fullCycle)
 
 		if assigneeID != "" {
-			issues, err := s.client.GetCycleIssues(cycle.ID, 100)
+			issues, err := s.client.CycleClient().GetCycleIssues(cycle.ID, 100)
 			if err == nil {
 				for _, issue := range issues {
 					if issue.Assignee != nil && issue.Assignee.ID == assigneeID {

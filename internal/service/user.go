@@ -31,7 +31,7 @@ type UserFilters struct {
 
 // GetViewer returns the current authenticated user
 func (s *UserService) GetViewer() (string, error) {
-	viewer, err := s.client.GetViewer()
+	viewer, err := s.client.TeamClient().GetViewer()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current user: %w", err)
 	}
@@ -83,7 +83,7 @@ func (s *UserService) Search(filters *UserFilters) (string, error) {
 	}
 
 	// Execute search with pagination
-	result, err := s.client.ListUsersWithPagination(linearFilters)
+	result, err := s.client.TeamClient().ListUsersWithPagination(linearFilters)
 	if err != nil {
 		return "", fmt.Errorf("failed to list users: %w", err)
 	}
@@ -112,7 +112,7 @@ func (s *UserService) ResolveByName(name string) (string, error) {
 
 	// Handle "me" as current user
 	if name == "me" {
-		viewer, err := s.client.GetViewer()
+		viewer, err := s.client.TeamClient().GetViewer()
 		if err != nil {
 			return "", fmt.Errorf("failed to get current user: %w", err)
 		}

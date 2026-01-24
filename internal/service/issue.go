@@ -139,7 +139,7 @@ func (s *IssueService) ListAssignedWithPagination(pagination *core.PaginationInp
 	pagination = helpers.ValidatePagination(pagination)
 
 	// Get viewer ID
-	viewer, err := s.client.GetViewer()
+	viewer, err := s.client.TeamClient().GetViewer()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current user: %w", err)
 	}
@@ -159,7 +159,7 @@ func (s *IssueService) ListAssignedWithPagination(pagination *core.PaginationInp
 	}
 
 	// Execute query
-	result, err := s.client.ListAllIssues(filter)
+	result, err := s.client.IssueClient().ListAllIssues(filter)
 	if err != nil {
 		return "", fmt.Errorf("failed to list assigned issues: %w", err)
 	}
@@ -537,7 +537,7 @@ func (s *IssueService) AddComment(identifier, body string) (string, error) {
 		return "", fmt.Errorf("failed to get issue %s: %w", identifier, err)
 	}
 
-	comment, err := s.client.CreateComment(issue.ID, body)
+	comment, err := s.client.CommentClient().CreateComment(issue.ID, body)
 	if err != nil {
 		return "", fmt.Errorf("failed to create comment: %w", err)
 	}
@@ -552,7 +552,7 @@ func (s *IssueService) ReplyToComment(issueIdentifier, parentCommentID, body str
 		return nil, fmt.Errorf("failed to get issue %s: %w", issueIdentifier, err)
 	}
 
-	comment, err := s.client.CreateCommentReply(issue.ID, parentCommentID, body)
+	comment, err := s.client.CommentClient().CreateCommentReply(issue.ID, parentCommentID, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create reply: %w", err)
 	}
@@ -562,7 +562,7 @@ func (s *IssueService) ReplyToComment(issueIdentifier, parentCommentID, body str
 
 // AddReaction adds a reaction to an issue or comment
 func (s *IssueService) AddReaction(targetID, emoji string) error {
-	return s.client.AddReaction(targetID, emoji)
+	return s.client.CommentClient().AddReaction(targetID, emoji)
 }
 
 // GetIssueID resolves an issue identifier to its UUID
@@ -594,7 +594,7 @@ func extractTeamKeyFromIdentifier(identifier string) string {
 // resolveStateID resolves a state name to a valid state ID
 func (s *IssueService) resolveStateID(stateName, teamID string) (string, error) {
 	// Always resolve by name - no UUID support
-	state, err := s.client.GetWorkflowStateByName(teamID, stateName)
+	state, err := s.client.WorkflowClient().GetWorkflowStateByName(teamID, stateName)
 	if err != nil {
 		return "", fmt.Errorf("state '%s' not found in team workflow: %w", stateName, err)
 	}

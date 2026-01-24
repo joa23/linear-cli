@@ -23,7 +23,7 @@ func NewProjectService(client ProjectClientOperations, formatter *format.Formatt
 
 // Get retrieves a single project by ID
 func (s *ProjectService) Get(projectID string) (string, error) {
-	project, err := s.client.GetProject(projectID)
+	project, err := s.client.ProjectClient().GetProject(projectID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get project %s: %w", projectID, err)
 	}
@@ -37,7 +37,7 @@ func (s *ProjectService) ListAll(limit int) (string, error) {
 		limit = 50
 	}
 
-	projects, err := s.client.ListAllProjects(limit)
+	projects, err := s.client.ProjectClient().ListAllProjects(limit)
 	if err != nil {
 		return "", fmt.Errorf("failed to list projects: %w", err)
 	}
@@ -57,7 +57,7 @@ func (s *ProjectService) ListByTeam(teamID string, limit int) (string, error) {
 		return "", fmt.Errorf("failed to resolve team '%s': %w", teamID, err)
 	}
 
-	projects, err := s.client.ListByTeam(resolvedTeamID, limit)
+	projects, err := s.client.ProjectClient().ListByTeam(resolvedTeamID, limit)
 	if err != nil {
 		return "", fmt.Errorf("failed to list projects by team: %w", err)
 	}
@@ -72,12 +72,12 @@ func (s *ProjectService) ListUserProjects(limit int) (string, error) {
 	}
 
 	// Get current user
-	viewer, err := s.client.GetViewer()
+	viewer, err := s.client.TeamClient().GetViewer()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current user: %w", err)
 	}
 
-	projects, err := s.client.ListUserProjects(viewer.ID, limit)
+	projects, err := s.client.ProjectClient().ListUserProjects(viewer.ID, limit)
 	if err != nil {
 		return "", fmt.Errorf("failed to list user projects: %w", err)
 	}
@@ -143,7 +143,7 @@ func (s *ProjectService) Create(input *CreateProjectInput) (string, error) {
 			return "", fmt.Errorf("failed to update project after creation: %w", err)
 		}
 		// Re-fetch to get updated project
-		project, err = s.client.GetProject(project.ID)
+		project, err = s.client.ProjectClient().GetProject(project.ID)
 		if err != nil {
 			return "", fmt.Errorf("failed to get updated project: %w", err)
 		}
@@ -196,7 +196,7 @@ func (s *ProjectService) Update(projectID string, input *UpdateProjectInput) (st
 	}
 
 	// Update project
-	project, err := s.client.UpdateProject(projectID, linearInput)
+	project, err := s.client.ProjectClient().UpdateProject(projectID, linearInput)
 	if err != nil {
 		return "", fmt.Errorf("failed to update project: %w", err)
 	}
