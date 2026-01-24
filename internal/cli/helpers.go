@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/joa23/linear-cli/internal/linear"
@@ -111,4 +112,10 @@ func validateAndNormalizeLimit(limit int) (int, error) {
 		return 0, fmt.Errorf("--limit cannot exceed %d (Linear API maximum), got %d", MaxLimit, limit)
 	}
 	return limit, nil
+}
+
+// looksLikeCycleNumber returns true if the string appears to be a cycle number (all digits)
+func looksLikeCycleNumber(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
 }

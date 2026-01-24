@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/internal/service"
@@ -152,14 +151,9 @@ TIP: Run 'linear init' once to set default team, then use cycle numbers directly
 			}
 
 			// Check if cycleID looks like a number and team is missing
-			if teamID == "" {
-				// Check if this looks like a cycle number (all digits)
-				_, err := strconv.Atoi(cycleID)
-				isNumber := err == nil
-				if isNumber {
-					return fmt.Errorf("team context required for cycle number %s. "+
-						"Run 'linear init' to set default team, use --team flag, or use cycle UUID instead of number", cycleID)
-				}
+			if teamID == "" && looksLikeCycleNumber(cycleID) {
+				return fmt.Errorf("team context required for cycle number %s. "+
+					"Run 'linear init' to set default team, use --team flag, or use cycle UUID instead of number", cycleID)
 			}
 
 			svc, err := getCycleService()
