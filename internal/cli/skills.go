@@ -172,7 +172,7 @@ func installSkill(skill skills.SkillInfo, targetDir string) error {
 
 	if err != nil {
 		// Clean up on failure
-		os.RemoveAll(skillDir)
+		_ = os.RemoveAll(skillDir)
 		return fmt.Errorf("failed to copy files: %w", err)
 	}
 

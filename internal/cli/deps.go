@@ -332,14 +332,14 @@ func renderSubtree(b *strings.Builder, nodeID, prefix string, isLast bool, nodes
 
 	// Render this node
 	if rendered[nodeID] {
-		b.WriteString(fmt.Sprintf("%s%s %s [%s] (see above)\n",
-			prefix, connector, node.Identifier, node.State))
+		fmt.Fprintf(b, "%s%s %s [%s] (see above)\n",
+			prefix, connector, node.Identifier, node.State)
 		return
 	}
 	rendered[nodeID] = true
 
-	b.WriteString(fmt.Sprintf("%s%s %s [%s] %s\n",
-		prefix, connector, node.Identifier, node.State, truncateTitle(node.Title, 35)))
+	fmt.Fprintf(b, "%s%s %s [%s] %s\n",
+		prefix, connector, node.Identifier, node.State, truncateTitle(node.Title, 35))
 
 	// Render children
 	children := adj[nodeID]

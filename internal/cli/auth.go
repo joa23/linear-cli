@@ -292,7 +292,7 @@ func openBrowser(url string) {
 	}
 
 	if cmd != nil {
-		cmd.Run()
+		_ = cmd.Run()
 	}
 }
 
@@ -309,7 +309,8 @@ func handleLogout() error {
 
 func handleStatus() error {
 	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
-	if !tokenStorage.TokenExists() {
+	exists, _ := tokenStorage.TokenExistsWithError()
+	if !exists {
 		fmt.Println("❌ Not logged in to Linear")
 		fmt.Println("Run 'linear auth login' to authenticate")
 		return nil

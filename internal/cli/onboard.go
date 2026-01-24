@@ -28,7 +28,8 @@ func runOnboard() error {
 
 	// Check authentication
 	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
-	if !tokenStorage.TokenExists() {
+	exists, _ := tokenStorage.TokenExistsWithError()
+	if !exists {
 		printNotLoggedIn()
 		return nil
 	}

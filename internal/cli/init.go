@@ -44,7 +44,8 @@ func runInit() error {
 
 	// Check authentication
 	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
-	if !tokenStorage.TokenExists() {
+	exists, _ := tokenStorage.TokenExistsWithError()
+	if !exists {
 		fmt.Println("❌ Not logged in. Run 'linear auth login' first.")
 		return nil
 	}
@@ -162,14 +163,14 @@ func appendToAgentFile(filename, teamKey string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Add newlines if file has content
 	if len(existing) > 0 && !strings.HasSuffix(string(existing), "\n\n") {
 		if strings.HasSuffix(string(existing), "\n") {
-			f.WriteString("\n")
+			_, _ = f.WriteString("\n")
 		} else {
-			f.WriteString("\n\n")
+			_, _ = f.WriteString("\n\n")
 		}
 	}
 

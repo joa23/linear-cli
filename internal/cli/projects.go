@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/joa23/linear-cli/internal/service"
@@ -67,7 +68,7 @@ func newProjectsListCmd() *cobra.Command {
 					teamID = GetDefaultTeam()
 				}
 				if teamID == "" {
-					return fmt.Errorf(ErrTeamRequired)
+					return errors.New(ErrTeamRequired)
 				}
 
 				output, err = svc.ListByTeam(teamID, limit)
@@ -144,7 +145,7 @@ func newProjectsCreateCmd() *cobra.Command {
 				team = GetDefaultTeam()
 			}
 			if team == "" {
-				return fmt.Errorf(ErrTeamRequired)
+				return errors.New(ErrTeamRequired)
 			}
 
 			// Get description from flag or stdin

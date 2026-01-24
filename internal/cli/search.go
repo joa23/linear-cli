@@ -336,7 +336,7 @@ func searchAll(cmd *cobra.Command, textQuery, team string, limit int, formatStr 
 	fmt.Println(generateSeparator("─", 50))
 	if err := searchIssues(cmd, textQuery, team, "", 0, "", "", "", "", "", false, false, false, 0, limit, formatStr); err != nil {
 		errs = append(errs, fmt.Errorf("issues: %w", err))
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search issues: %v\n", err)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search issues: %v\n", err)
 	}
 
 	// Search cycles
@@ -344,7 +344,7 @@ func searchAll(cmd *cobra.Command, textQuery, team string, limit int, formatStr 
 	fmt.Println(generateSeparator("─", 50))
 	if err := searchCycles(cmd, textQuery, team, limit, formatStr); err != nil {
 		errs = append(errs, fmt.Errorf("cycles: %w", err))
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search cycles: %v\n", err)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search cycles: %v\n", err)
 	}
 
 	// Search projects
@@ -352,7 +352,7 @@ func searchAll(cmd *cobra.Command, textQuery, team string, limit int, formatStr 
 	fmt.Println(generateSeparator("─", 50))
 	if err := searchProjects(cmd, textQuery, limit); err != nil {
 		errs = append(errs, fmt.Errorf("projects: %w", err))
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search projects: %v\n", err)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search projects: %v\n", err)
 	}
 
 	// Search users
@@ -360,7 +360,7 @@ func searchAll(cmd *cobra.Command, textQuery, team string, limit int, formatStr 
 	fmt.Println(generateSeparator("─", 50))
 	if err := searchUsers(cmd, textQuery, team, limit); err != nil {
 		errs = append(errs, fmt.Errorf("users: %w", err))
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search users: %v\n", err)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search users: %v\n", err)
 	}
 
 	// Return error if all searches failed
@@ -370,7 +370,7 @@ func searchAll(cmd *cobra.Command, textQuery, team string, limit int, formatStr 
 
 	// Warn if some searches failed
 	if len(errs) > 0 {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nWarning: %d search(es) failed\n", len(errs))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\nWarning: %d search(es) failed\n", len(errs))
 	}
 
 	return nil

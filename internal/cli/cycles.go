@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -68,7 +69,7 @@ TIP: Run 'linear init' to set default team.`,
 				teamID = GetDefaultTeam()
 			}
 			if teamID == "" {
-				return fmt.Errorf(ErrTeamRequired)
+				return errors.New(ErrTeamRequired)
 			}
 
 			svc, err := getCycleService()
@@ -230,7 +231,7 @@ USE THIS BEFORE PLANNING: Always run analyze before planning cycles to understan
 				teamID = GetDefaultTeam()
 			}
 			if teamID == "" {
-				return fmt.Errorf(ErrTeamRequired)
+				return errors.New(ErrTeamRequired)
 			}
 
 			svc, err := getCycleService()

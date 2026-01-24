@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -98,7 +99,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 				teamID = GetDefaultTeam()
 			}
 			if teamID == "" {
-				return fmt.Errorf(ErrTeamRequired)
+				return errors.New(ErrTeamRequired)
 			}
 
 			// Validate limit
@@ -272,7 +273,7 @@ TIP: Run 'linear init' first to set default team.`,
 				team = GetDefaultTeam()
 			}
 			if team == "" {
-				return fmt.Errorf(ErrTeamRequired)
+				return errors.New(ErrTeamRequired)
 			}
 
 			// Get description from flag or stdin
@@ -891,7 +892,8 @@ func newIssuesBlockingCmd() *cobra.Command {
 // getLinearClient retrieves an authenticated Linear client
 func getLinearClient() (*linear.Client, error) {
 	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
-	if !tokenStorage.TokenExists() {
+	exists, _ := tokenStorage.TokenExistsWithError()
+	if !exists {
 		return nil, fmt.Errorf("not authenticated. Run 'linear auth login' to authenticate")
 	}
 
