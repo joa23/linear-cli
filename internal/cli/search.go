@@ -8,6 +8,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// IssueSearchOptions holds all parameters for issue search
+type IssueSearchOptions struct {
+	TextQuery   string
+	Team        string
+	State       string
+	Priority    int
+	Assignee    string
+	Cycle       string
+	Labels      string
+	BlockedBy   string
+	Blocks      string
+	HasBlockers bool
+	HasDeps     bool
+	HasCircular bool
+	DepthMax    int
+	Limit       int
+	Format      string
+}
+
 func newSearchCmd() *cobra.Command {
 	var (
 		entityType  string
@@ -120,8 +139,23 @@ TIP: Use --format full for detailed output with descriptions.`,
 			// Route to appropriate search handler
 			switch entityType {
 			case "issues", "":
-				return searchIssues(cmd, textQuery, team, state, priority, assignee, cycle, labels,
-					blockedBy, blocks, hasBlockers, hasDeps, hasCircular, depthMax, limit, formatStr)
+				return searchIssues(IssueSearchOptions{
+					TextQuery:   textQuery,
+					Team:        team,
+					State:       state,
+					Priority:    priority,
+					Assignee:    assignee,
+					Cycle:       cycle,
+					Labels:      labels,
+					BlockedBy:   blockedBy,
+					Blocks:      blocks,
+					HasBlockers: hasBlockers,
+					HasDeps:     hasDeps,
+					HasCircular: hasCircular,
+					DepthMax:    depthMax,
+					Limit:       limit,
+					Format:      formatStr,
+				})
 			case "cycles":
 				return searchCycles(cmd, textQuery, team, limit, formatStr)
 			case "projects":
@@ -163,10 +197,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 }
 
 // searchIssues searches issues with optional dependency filtering
-func searchIssues(cmd *cobra.Command, textQuery, team, state string, priority int,
-	assignee, cycle, labels, blockedBy, blocks string, hasBlockers, hasDeps, hasCircular bool,
-	depthMax, limit int, formatStr string) error {
-
+func searchIssues(opts IssueSearchOptions) error {
 	// Get search service
 	svc, err := getSearchService()
 	if err != nil {
@@ -174,55 +205,55 @@ func searchIssues(cmd *cobra.Command, textQuery, team, state string, priority in
 	}
 
 	// Validate limit
-	limit, err = validateAndNormalizeLimit(limit)
+	opts.Limit, err = validateAndNormalizeLimit(opts.Limit)
 	if err != nil {
 		return err
 	}
 
 	// Build search options
-	opts := &service.SearchOptions{
+	searchOpts := &service.SearchOptions{
 		EntityType: "issues",
-		TextQuery:  textQuery,
-		TeamID:     team,
-		Limit:      limit,
+		TextQuery:  opts.TextQuery,
+		TeamID:     opts.Team,
+		Limit:      opts.Limit,
 	}
 
 	// Apply optional filters
-	if state != "" {
-		opts.StateIDs = []string{state}
+	if opts.State != "" {
+		searchOpts.StateIDs = []string{opts.State}
 	}
-	if priority > 0 {
-		opts.Priority = &priority
+	if opts.Priority > 0 {
+		searchOpts.Priority = &opts.Priority
 	}
-	if assignee != "" {
-		opts.AssigneeID = assignee
+	if opts.Assignee != "" {
+		searchOpts.AssigneeID = opts.Assignee
 	}
-	if cycle != "" {
-		opts.CycleID = cycle
+	if opts.Cycle != "" {
+		searchOpts.CycleID = opts.Cycle
 	}
-	if labels != "" {
-		opts.LabelIDs = parseCommaSeparated(labels)
+	if opts.Labels != "" {
+		searchOpts.LabelIDs = parseCommaSeparated(opts.Labels)
 	}
 
 	// Apply dependency filters
-	opts.BlockedBy = blockedBy
-	opts.Blocks = blocks
-	opts.HasBlockers = hasBlockers
-	opts.HasDeps = hasDeps
-	opts.HasCircular = hasCircular
-	opts.MaxDepth = depthMax
+	searchOpts.BlockedBy = opts.BlockedBy
+	searchOpts.Blocks = opts.Blocks
+	searchOpts.HasBlockers = opts.HasBlockers
+	searchOpts.HasDeps = opts.HasDeps
+	searchOpts.HasCircular = opts.HasCircular
+	searchOpts.MaxDepth = opts.DepthMax
 
 	// Set format
 	outputFormat := format.Compact
-	if formatStr == "full" {
+	if opts.Format == "full" {
 		outputFormat = format.Full
-	} else if formatStr == "minimal" {
+	} else if opts.Format == "minimal" {
 		outputFormat = format.Minimal
 	}
-	opts.Format = outputFormat
+	searchOpts.Format = outputFormat
 
 	// Execute search
-	output, err := svc.Search(opts)
+	output, err := svc.Search(searchOpts)
 	if err != nil {
 		return fmt.Errorf("failed to search issues: %w", err)
 	}
@@ -334,7 +365,12 @@ func searchAll(cmd *cobra.Command, textQuery, team string, limit int, formatStr 
 	// Search issues
 	fmt.Println("\nISSUES")
 	fmt.Println(generateSeparator("─", 50))
-	if err := searchIssues(cmd, textQuery, team, "", 0, "", "", "", "", "", false, false, false, 0, limit, formatStr); err != nil {
+	if err := searchIssues(IssueSearchOptions{
+		TextQuery: textQuery,
+		Team:      team,
+		Limit:     limit,
+		Format:    formatStr,
+	}); err != nil {
 		errs = append(errs, fmt.Errorf("issues: %w", err))
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to search issues: %v\n", err)
 	}
