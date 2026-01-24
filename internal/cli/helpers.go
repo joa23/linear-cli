@@ -2,9 +2,20 @@ package cli
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/joa23/linear-cli/internal/linear"
+)
+
+const (
+	// DefaultLimit is the default number of results to return
+	DefaultLimit = 25
+	// MaxLimit is the maximum number of results allowed by the Linear API
+	MaxLimit = 250
 )
 
 // hasStdinPipe detects if content is piped to stdin
@@ -67,4 +78,37 @@ func getDescriptionFromFlagOrStdin(flagValue string) (string, error) {
 	}
 
 	return "", nil
+}
+
+// uploadAndAppendAttachments uploads files and appends markdown image links to body
+// Returns the updated body string or an error if any upload fails
+func uploadAndAppendAttachments(client *linear.Client, body string, filePaths []string) (string, error) {
+	if len(filePaths) == 0 {
+		return body, nil
+	}
+
+	for _, filePath := range filePaths {
+		assetURL, err := client.Attachments.UploadFileFromPath(filePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to upload %s: %w", filePath, err)
+		}
+		// Append image markdown to body
+		if body != "" {
+			body += "\n\n"
+		}
+		body += fmt.Sprintf("![%s](%s)", filepath.Base(filePath), assetURL)
+	}
+	return body, nil
+}
+
+// validateAndNormalizeLimit validates and normalizes a limit parameter
+// Returns DefaultLimit if limit <= 0, returns error if limit > MaxLimit
+func validateAndNormalizeLimit(limit int) (int, error) {
+	if limit <= 0 {
+		return DefaultLimit, nil
+	}
+	if limit > MaxLimit {
+		return 0, fmt.Errorf("--limit cannot exceed %d (Linear API maximum), got %d", MaxLimit, limit)
+	}
+	return limit, nil
 }

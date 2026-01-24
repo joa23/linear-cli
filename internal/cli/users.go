@@ -52,7 +52,7 @@ func newUsersListCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&teamID, "team", "", "Filter by team ID")
+	cmd.Flags().StringVar(&teamID, "team", "", TeamFlagDescription)
 
 	return cmd
 }

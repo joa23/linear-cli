@@ -62,7 +62,7 @@ Detects and warns about circular dependencies.`,
 		},
 	}
 
-	cmd.Flags().StringVarP(&teamKey, "team", "t", "", "Show dependencies for all issues in team")
+	cmd.Flags().StringVarP(&teamKey, "team", "t", "", TeamFlagDescription)
 
 	return cmd
 }

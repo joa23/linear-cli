@@ -140,7 +140,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 	cmd.Flags().StringVar(&entityType, "type", "issues", "Entity type: issues|cycles|projects|users|all")
 
 	// Standard issue filters
-	cmd.Flags().StringVarP(&team, "team", "t", "", "Filter by team (uses .linear.yaml default)")
+	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().StringVar(&state, "state", "", "Filter by state")
 	cmd.Flags().IntVar(&priority, "priority", 0, "Filter by priority (0=none, 1=urgent, 2=high, 3=normal, 4=low)")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee")
@@ -174,11 +174,9 @@ func searchIssues(cmd *cobra.Command, textQuery, team, state string, priority in
 	}
 
 	// Validate limit
-	if limit > 250 {
-		return fmt.Errorf("--limit cannot exceed 250 (Linear API maximum). You specified: %d", limit)
-	}
-	if limit <= 0 {
-		limit = 10
+	limit, err = validateAndNormalizeLimit(limit)
+	if err != nil {
+		return err
 	}
 
 	// Build search options
@@ -241,6 +239,12 @@ func searchCycles(cmd *cobra.Command, textQuery, team string, limit int, formatS
 	}
 	svc := service.New(client).Cycles
 
+	// Validate limit
+	limit, err = validateAndNormalizeLimit(limit)
+	if err != nil {
+		return err
+	}
+
 	// Set format
 	outputFormat := format.Compact
 	if formatStr == "full" {
@@ -273,6 +277,12 @@ func searchProjects(cmd *cobra.Command, textQuery string, limit int, formatStr s
 	}
 	svc := service.New(client).Projects
 
+	// Validate limit
+	limit, err = validateAndNormalizeLimit(limit)
+	if err != nil {
+		return err
+	}
+
 	output, err := svc.ListAll(limit)
 	if err != nil {
 		return fmt.Errorf("failed to search projects: %w", err)
@@ -289,6 +299,12 @@ func searchUsers(cmd *cobra.Command, textQuery, team string, limit int, formatSt
 		return err
 	}
 	svc := service.New(client).Users
+
+	// Validate limit
+	limit, err = validateAndNormalizeLimit(limit)
+	if err != nil {
+		return err
+	}
 
 	// Build user filters
 	filters := &service.UserFilters{

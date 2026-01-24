@@ -98,15 +98,13 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 				teamID = GetDefaultTeam()
 			}
 			if teamID == "" {
-				return fmt.Errorf("--team is required (or run 'linear init' to set a default)")
+				return fmt.Errorf(ErrTeamRequired)
 			}
 
 			// Validate limit
-			if limit > 250 {
-				return fmt.Errorf("--limit cannot exceed 250 (Linear API maximum). You specified: %d", limit)
-			}
-			if limit <= 0 {
-				limit = 10 // Default
+			limit, err := validateAndNormalizeLimit(limit)
+			if err != nil {
+				return err
 			}
 
 			svc, err := getIssueService()
@@ -124,7 +122,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 			if state != "" {
 				filters.StateIDs = []string{state}
 			}
-			if priority > 0 {
+			if cmd.Flags().Changed("priority") {
 				filters.Priority = &priority
 			}
 			if assignee != "" {
@@ -156,7 +154,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 		},
 	}
 
-	cmd.Flags().StringVarP(&teamID, "team", "t", "", "Team ID or key (uses .linear.yaml default)")
+	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().StringVar(&state, "state", "", "Filter by workflow state (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().IntVar(&priority, "priority", 0, "Filter by priority (0=none, 1=urgent, 2=high, 3=normal, 4=low)")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee (email or 'me')")
@@ -274,7 +272,7 @@ TIP: Run 'linear init' first to set default team.`,
 				team = GetDefaultTeam()
 			}
 			if team == "" {
-				return fmt.Errorf("team is required. Use --team or run 'linear init' to set a default")
+				return fmt.Errorf(ErrTeamRequired)
 			}
 
 			// Get description from flag or stdin
@@ -289,17 +287,9 @@ TIP: Run 'linear init' first to set default team.`,
 				if err != nil {
 					return err
 				}
-
-				for _, filePath := range attachFiles {
-					assetURL, err := client.Attachments.UploadFileFromPath(filePath)
-					if err != nil {
-						return fmt.Errorf("failed to upload %s: %w", filePath, err)
-					}
-					// Append image markdown to description
-					if desc != "" {
-						desc += "\n\n"
-					}
-					desc += fmt.Sprintf("![%s](%s)", filePath, assetURL)
+				desc, err = uploadAndAppendAttachments(client, desc, attachFiles)
+				if err != nil {
+					return err
 				}
 			}
 
@@ -314,7 +304,7 @@ TIP: Run 'linear init' first to set default team.`,
 			if state != "" {
 				input.StateID = state
 			}
-			if priority > 0 {
+			if cmd.Flags().Changed("priority") {
 				input.Priority = &priority
 			}
 			if estimate > 0 {
@@ -361,7 +351,7 @@ TIP: Run 'linear init' first to set default team.`,
 	}
 
 	// Add flags (with short versions for common flags)
-	cmd.Flags().StringVarP(&team, "team", "t", "", "Team name or key (uses .linear.yaml default if not specified)")
+	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Issue description (or pipe to stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Workflow state name (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().IntVarP(&priority, "priority", "p", 0, "Priority 0-4 (0=none, 1=urgent, 4=low)")
@@ -447,17 +437,9 @@ func newIssuesUpdateCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-
-				for _, filePath := range attachFiles {
-					assetURL, err := client.Attachments.UploadFileFromPath(filePath)
-					if err != nil {
-						return fmt.Errorf("failed to upload %s: %w", filePath, err)
-					}
-					// Append image markdown to description
-					if desc != "" {
-						desc += "\n\n"
-					}
-					desc += fmt.Sprintf("![%s](%s)", filePath, assetURL)
+				desc, err = uploadAndAppendAttachments(client, desc, attachFiles)
+				if err != nil {
+					return err
 				}
 			}
 
@@ -545,7 +527,7 @@ func newIssuesUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&dependsOn, "depends-on", "", "Update dependencies (comma-separated issue IDs)")
 	cmd.Flags().StringVar(&blockedBy, "blocked-by", "", "Update blocked-by (comma-separated issue IDs)")
 	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
-	cmd.Flags().StringVarP(&team, "team", "t", "", "Team context for cycle resolution (optional, uses .linear.yaml or issue identifier)")
+	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
 
 	return cmd
 }
@@ -572,6 +554,12 @@ func newIssuesCommentCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
 
+			// Get Linear client
+			client, err := getLinearClient()
+			if err != nil {
+				return err
+			}
+
 			// Get body from flag or stdin
 			commentBody, err := getDescriptionFromFlagOrStdin(body)
 			if err != nil {
@@ -580,21 +568,9 @@ func newIssuesCommentCmd() *cobra.Command {
 
 			// Upload attachments and append to body
 			if len(attachFiles) > 0 {
-				client, err := getLinearClient()
+				commentBody, err = uploadAndAppendAttachments(client, commentBody, attachFiles)
 				if err != nil {
 					return err
-				}
-
-				for _, filePath := range attachFiles {
-					assetURL, err := client.Attachments.UploadFileFromPath(filePath)
-					if err != nil {
-						return fmt.Errorf("failed to upload %s: %w", filePath, err)
-					}
-					// Append image markdown to body
-					if commentBody != "" {
-						commentBody += "\n\n"
-					}
-					commentBody += fmt.Sprintf("![%s](%s)", filePath, assetURL)
 				}
 			}
 
@@ -603,10 +579,6 @@ func newIssuesCommentCmd() *cobra.Command {
 			}
 
 			// Get the issue first to get its ID (comments need issue ID, not identifier)
-			client, err := getLinearClient()
-			if err != nil {
-				return err
-			}
 
 			issue, err := client.GetIssue(issueID)
 			if err != nil {
@@ -717,16 +689,9 @@ func newIssuesReplyCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-
-				for _, filePath := range attachFiles {
-					assetURL, err := client.Attachments.UploadFileFromPath(filePath)
-					if err != nil {
-						return fmt.Errorf("failed to upload %s: %w", filePath, err)
-					}
-					if replyBody != "" {
-						replyBody += "\n\n"
-					}
-					replyBody += fmt.Sprintf("![%s](%s)", filePath, assetURL)
+				replyBody, err = uploadAndAppendAttachments(client, replyBody, attachFiles)
+				if err != nil {
+					return err
 				}
 			}
 

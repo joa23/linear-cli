@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/internal/service"
@@ -67,7 +68,7 @@ TIP: Run 'linear init' to set default team.`,
 				teamID = GetDefaultTeam()
 			}
 			if teamID == "" {
-				return fmt.Errorf("--team is required (or run 'linear init' to set a default)")
+				return fmt.Errorf(ErrTeamRequired)
 			}
 
 			svc, err := getCycleService()
@@ -76,8 +77,9 @@ TIP: Run 'linear init' to set default team.`,
 			}
 
 			// Set default limit if not specified
-			if limit <= 0 {
-				limit = 25
+			limit, err := validateAndNormalizeLimit(limit)
+			if err != nil {
+				return err
 			}
 
 			filters := &service.CycleFilters{
@@ -99,7 +101,7 @@ TIP: Run 'linear init' to set default team.`,
 		},
 	}
 
-	cmd.Flags().StringVar(&teamID, "team", "", "Team ID or key (uses .linear.yaml default)")
+	cmd.Flags().StringVar(&teamID, "team", "", TeamFlagDescription)
 	cmd.Flags().BoolVar(&activeOnly, "active", false, "Only show active cycles")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 25, "Number of cycles to return (default 25)")
 
@@ -151,13 +153,8 @@ TIP: Run 'linear init' once to set default team, then use cycle numbers directly
 			// Check if cycleID looks like a number and team is missing
 			if teamID == "" {
 				// Check if this looks like a cycle number (all digits)
-				isNumber := true
-				for _, c := range cycleID {
-					if c < '0' || c > '9' {
-						isNumber = false
-						break
-					}
-				}
+				_, err := strconv.Atoi(cycleID)
+				isNumber := err == nil
 				if isNumber {
 					return fmt.Errorf(`team context required for cycle numbers
 
@@ -183,7 +180,7 @@ Alternatively, use cycle UUID instead of number.`, cycleID)
 		},
 	}
 
-	cmd.Flags().StringVar(&teamID, "team", "", "Team ID or key (uses .linear.yaml default, required for cycle numbers)")
+	cmd.Flags().StringVar(&teamID, "team", "", TeamFlagDescription)
 
 	return cmd
 }
@@ -233,7 +230,7 @@ USE THIS BEFORE PLANNING: Always run analyze before planning cycles to understan
 				teamID = GetDefaultTeam()
 			}
 			if teamID == "" {
-				return fmt.Errorf("--team is required (or run 'linear init' to set a default)")
+				return fmt.Errorf(ErrTeamRequired)
 			}
 
 			svc, err := getCycleService()
@@ -258,7 +255,7 @@ USE THIS BEFORE PLANNING: Always run analyze before planning cycles to understan
 		},
 	}
 
-	cmd.Flags().StringVar(&teamID, "team", "", "Team ID or key (uses .linear.yaml default)")
+	cmd.Flags().StringVar(&teamID, "team", "", TeamFlagDescription)
 	cmd.Flags().IntVar(&cycleCount, "count", 10, "Number of cycles to analyze")
 	cmd.Flags().StringVar(&assigneeID, "assignee", "", "Filter by assignee ID")
 

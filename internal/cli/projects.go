@@ -52,8 +52,9 @@ func newProjectsListCmd() *cobra.Command {
 			}
 
 			// Set default limit
-			if limit <= 0 {
-				limit = 25
+			limit, err := validateAndNormalizeLimit(limit)
+			if err != nil {
+				return err
 			}
 
 			var output string
@@ -66,7 +67,7 @@ func newProjectsListCmd() *cobra.Command {
 					teamID = GetDefaultTeam()
 				}
 				if teamID == "" {
-					return fmt.Errorf("team is required. Use --team or run 'linear init' to set a default")
+					return fmt.Errorf(ErrTeamRequired)
 				}
 
 				output, err = svc.ListByTeam(teamID, limit)
@@ -81,7 +82,7 @@ func newProjectsListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&mine, "mine", false, "Only show projects you're involved in (ignores team)")
-	cmd.Flags().StringVarP(&teamID, "team", "t", "", "Team key or ID (uses .linear.yaml if not specified)")
+	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().IntVarP(&limit, "limit", "n", 25, "Number of projects to return")
 
 	return cmd
@@ -143,7 +144,7 @@ func newProjectsCreateCmd() *cobra.Command {
 				team = GetDefaultTeam()
 			}
 			if team == "" {
-				return fmt.Errorf("team is required. Use --team or run 'linear init' to set a default")
+				return fmt.Errorf(ErrTeamRequired)
 			}
 
 			// Get description from flag or stdin
@@ -198,7 +199,7 @@ func newProjectsCreateCmd() *cobra.Command {
 	}
 
 	// Add flags (with short versions for common flags)
-	cmd.Flags().StringVarP(&team, "team", "t", "", "Team key (uses .linear.yaml default if not specified)")
+	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description (or pipe to stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Project state: planned, started, paused, completed, canceled")
 	cmd.Flags().StringVarP(&lead, "lead", "l", "", "Project lead name (use 'me' for yourself)")
