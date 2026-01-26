@@ -311,14 +311,8 @@ func (s *TaskExportService) buildActiveForm(title string) string {
 		return strings.Join(words, " ")
 	}
 
-	// Default: just add -ing if it's a simple verb
-	if len(firstWord) > 2 && !strings.HasSuffix(firstWord, "ing") {
-		// Simple heuristic: add -ing
-		words[0] = strings.Title(firstWord) + "ing"
-		return strings.Join(words, " ")
-	}
-
-	// Fallback: capitalize and return as-is
+	// Fallback: capitalize first word and return as-is
+	// Don't try to add -ing for unknown verbs as it can produce incorrect results
 	words[0] = strings.Title(firstWord)
 	return strings.Join(words, " ")
 }
