@@ -356,6 +356,47 @@ linear tasks export CEN-123 ./my-tasks/ --dry-run
 3. Claude Code loads tasks and executes in dependency order
 4. Update Linear as work progresses
 
+**For Claude Code Agents:**
+
+Claude can export tasks directly to its own session by discovering its session ID from the transcript path:
+
+```bash
+# Claude discovers its session ID from hook input or transcript path
+# Example: ~/.claude/projects/.../e162ccc7-f5a5-4328-b173-20ab7a0d13c5.jsonl
+# Session ID: e162ccc7-f5a5-4328-b173-20ab7a0d13c5
+
+# Export tasks to current session
+linear tasks export CEN-123 ~/.claude/tasks/e162ccc7-f5a5-4328-b173-20ab7a0d13c5/
+
+# Tasks immediately appear in Claude's task system
+# Use TaskList, TaskGet, TaskUpdate to manage exported work
+```
+
+**Autonomous Workflows (Ralph Loop Integration):**
+
+The Ralph Loop pattern enables continuous autonomous execution. Combine Linear task export with Claude Code stop hooks for fully autonomous development cycles:
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "linear tasks export $(linear issues list --assignee me --state 'In Progress' --format minimal --output json | jq -r '.[0].identifier' 2>/dev/null) ~/.claude/tasks/$CLAUDE_SESSION_ID/ 2>/dev/null || true"
+      }]
+    }]
+  }
+}
+```
+
+This creates a self-sustaining loop:
+1. Claude completes current tasks
+2. Stop hook triggers, exports next Linear issue to task queue
+3. Claude picks up the new task and continues working
+4. Repeat indefinitely until backlog is clear
+
+Memory persists in git commits and Linear updates, not LLM context. Each iteration starts fresh with clean context but full awareness of completed work through file system state.
+
 ### Issues
 
 ```bash
