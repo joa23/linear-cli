@@ -397,6 +397,50 @@ This creates a self-sustaining loop:
 
 Memory persists in git commits and Linear updates, not LLM context. Each iteration starts fresh with clean context but full awareness of completed work through file system state.
 
+**Rita Vrataski Loop (Context-Preserving Alternative):**
+
+Traditional Ralph Loops restart the CLI each iteration, losing session context. Task Injection keeps Claude in the same session indefinitely - the CLI exports issues directly into Claude's task folder, and Claude picks them up immediately without restart.
+
+```bash
+#!/bin/bash
+# Vrataski Loop - continuous autonomous execution with context preservation
+SESSION=~/.claude/tasks/$CLAUDE_SESSION_ID
+
+while true; do
+  # Get next To Do issue assigned to me
+  ISSUE=$(linear issues list --assignee me --state "To Do" --limit 1 --output json | jq -r '.[0].identifier')
+  [ -z "$ISSUE" ] && { sleep 60; continue; }
+
+  # Move to In Progress and export to Claude
+  linear issues update $ISSUE --state "In Progress"
+  linear tasks export $ISSUE $SESSION
+
+  # Wait for all tasks to complete (check task folder for pending tasks)
+  while true; do
+    PENDING=$(grep -l '"status": "pending"' $SESSION/*.json 2>/dev/null | wc -l)
+    [ "$PENDING" -eq 0 ] && break
+    sleep 10
+  done
+
+  # All tasks done - inject "create PR" task
+  echo '{"id":"create-pr","subject":"Create PR for '$ISSUE'","status":"pending"}' > $SESSION/create-pr.json
+
+  # Wait for PR task to complete
+  while grep -q '"status": "pending"' $SESSION/create-pr.json 2>/dev/null; do
+    sleep 10
+  done
+
+  # Update Linear and continue to next issue
+  linear issues update $ISSUE --state "Done"
+done
+```
+
+This pattern enables:
+- **Context preservation**: Claude stays in the same session across the entire backlog
+- **Prefix/postfix tasks**: Inject "create worktree" before work, "create PR" after
+- **Agent farming**: Multiple scripts can write to the task folder, coordinating work for one or more Claude sessions
+- **Linear as state machine**: External coordination layer - scripts inject, Claude executes
+
 ### Issues
 
 ```bash
