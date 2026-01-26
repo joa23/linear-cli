@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-01-26
+
+### Fixed
+
+**Label Resolution for Issue Create/Update:**
+- Fixed `--labels` flag failing with "Argument Validation Error" on `linear issues create` and `linear issues update`
+- Issue: Labels were passed as names (e.g., "Security") but API expects UUIDs
+- Root cause: Unlike states, cycles, and assignees, labels were never resolved from names to IDs
+- Fix: Added `ResolveLabelIdentifier` method with full resolver infrastructure:
+  - Case-insensitive label name matching
+  - Team-scoped resolution (labels are team-specific)
+  - Caching for performance (5-minute TTL)
+  - Helpful error messages listing available labels when not found
+- Example: `linear issues create "Bug fix" --team CEN --labels "Security"` now works
+- Files changed: `resolver.go`, `resolver_cache.go`, `client.go`, `issue.go`, `client_interfaces.go`
+
 ## [1.3.0] - 2026-01-25
 
 ### Added

@@ -619,6 +619,10 @@ func (c *Client) ResolveCycleIdentifier(numberOrNameOrID string, teamID string) 
 	return c.resolver.ResolveCycle(numberOrNameOrID, teamID)
 }
 
+func (c *Client) ResolveLabelIdentifier(labelName string, teamID string) (string, error) {
+	return c.resolver.ResolveLabel(labelName, teamID)
+}
+
 // Issue search operations
 func (c *Client) SearchIssues(filters *core.IssueSearchFilters) (*core.IssueSearchResult, error) {
 	return c.Issues.SearchIssuesEnhanced(filters)

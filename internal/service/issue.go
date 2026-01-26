@@ -413,7 +413,16 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		needsUpdate = true
 	}
 	if len(input.LabelIDs) > 0 {
-		updateInput.LabelIDs = input.LabelIDs
+		// Resolve label names to IDs
+		resolvedLabelIDs := make([]string, 0, len(input.LabelIDs))
+		for _, labelName := range input.LabelIDs {
+			labelID, err := s.client.ResolveLabelIdentifier(labelName, teamID)
+			if err != nil {
+				return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
+			}
+			resolvedLabelIDs = append(resolvedLabelIDs, labelID)
+		}
+		updateInput.LabelIDs = resolvedLabelIDs
 		needsUpdate = true
 	}
 
@@ -562,7 +571,37 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 		linearInput.CycleID = &cycleID
 	}
 	if len(input.LabelIDs) > 0 {
-		linearInput.LabelIDs = input.LabelIDs
+		// Resolve team ID for label resolution
+		var teamIDForLabels string
+		var err error
+
+		if input.TeamID != nil && *input.TeamID != "" {
+			teamIDForLabels, err = s.client.ResolveTeamIdentifier(*input.TeamID)
+			if err != nil {
+				return "", fmt.Errorf("could not resolve team '%s': %w", *input.TeamID, err)
+			}
+		} else {
+			// Extract from issue identifier
+			teamKey, _, err := identifiers.ParseIssueIdentifier(issue.Identifier)
+			if err != nil {
+				return "", fmt.Errorf("invalid issue identifier '%s': %w", issue.Identifier, err)
+			}
+			teamIDForLabels, err = s.client.ResolveTeamIdentifier(teamKey)
+			if err != nil {
+				return "", fmt.Errorf("could not resolve team '%s': %w", teamKey, err)
+			}
+		}
+
+		// Resolve label names to IDs
+		resolvedLabelIDs := make([]string, 0, len(input.LabelIDs))
+		for _, labelName := range input.LabelIDs {
+			labelID, err := s.client.ResolveLabelIdentifier(labelName, teamIDForLabels)
+			if err != nil {
+				return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
+			}
+			resolvedLabelIDs = append(resolvedLabelIDs, labelID)
+		}
+		linearInput.LabelIDs = resolvedLabelIDs
 	}
 
 	// Perform update
