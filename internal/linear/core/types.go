@@ -202,6 +202,7 @@ type Issue struct {
 	Project  *Project               `json:"project,omitempty"`
 	Creator  *User                  `json:"creator,omitempty"`
 	Assignee *User                  `json:"assignee,omitempty"`
+	Delegate *User                  `json:"delegate,omitempty"` // Agent user delegated to work on issue (OAuth apps)
 	Parent   *ParentIssue           `json:"parent,omitempty"`
 	Children ChildrenNodes          `json:"children,omitempty"`
 	Cycle    *CycleReference        `json:"cycle,omitempty"`

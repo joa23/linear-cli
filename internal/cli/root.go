@@ -149,6 +149,7 @@ Configuration:
 		newCyclesCmd(),
 		newTeamsCmd(),
 		newUsersCmd(),
+		newNotificationsCmd(),
 
 		// Analysis
 		newDepsCmd(),

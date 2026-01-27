@@ -18,6 +18,7 @@ type IssueCompactDTO struct {
 	State      string   `json:"state"`
 	Priority   *int     `json:"priority"`
 	Assignee   *string  `json:"assignee"`
+	Delegate   *string  `json:"delegate,omitempty"` // OAuth app delegate
 	Estimate   *float64 `json:"estimate"`
 	DueDate    *string  `json:"dueDate"`
 	CycleNumber *int    `json:"cycleNumber"`
@@ -34,6 +35,7 @@ type IssueFullDTO struct {
 	State       *StateDTO            `json:"state"`
 	Priority    *int                 `json:"priority"`
 	Assignee    *UserDTO             `json:"assignee"`
+	Delegate    *UserDTO             `json:"delegate,omitempty"` // OAuth app delegate
 	Creator     *UserDTO             `json:"creator"`
 	Estimate    *float64             `json:"estimate"`
 	DueDate     *string              `json:"dueDate"`
@@ -230,6 +232,11 @@ func IssueToCompactDTO(issue *core.Issue) IssueCompactDTO {
 		dto.Assignee = &name
 	}
 
+	if issue.Delegate != nil {
+		name := issue.Delegate.Name
+		dto.Delegate = &name
+	}
+
 	if issue.Cycle != nil {
 		dto.CycleNumber = &issue.Cycle.Number
 	}
@@ -265,6 +272,14 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 			ID:    issue.Assignee.ID,
 			Name:  issue.Assignee.Name,
 			Email: issue.Assignee.Email,
+		}
+	}
+
+	if issue.Delegate != nil {
+		dto.Delegate = &UserDTO{
+			ID:    issue.Delegate.ID,
+			Name:  issue.Delegate.Name,
+			Email: issue.Delegate.Email,
 		}
 	}
 

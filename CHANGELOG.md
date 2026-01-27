@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-01-27
+
+### Fixed
+
+**OAuth Delegate Display:**
+- Fixed issue where `--assignee me` for OAuth apps appeared to succeed but showed "Unassigned"
+- Root cause: Linear has separate `delegate` field for OAuth apps, distinct from `assignee`
+- Fix: Added `delegate` field to GraphQL queries and display logic
+- Text output now shows "Delegate: AppName <email>" when delegate is set
+- JSON output includes full `delegate` object with id, name, email
+- When both assignee and delegate exist, assignee takes display priority
+
+### Added
+
+**Notifications Command:**
+- New `linear notifications list` - View recent @mentions and notifications
+- New `linear notifications read <id>` - Mark notification as read
+- Supports `--unread` flag to filter to unread only
+- Supports `--limit` flag to control number of results
+- Shows notification type, related issue/project, and timestamps
+
+### Changed
+
+- Updated GraphQL queries: `GetIssue`, `UpdateIssue` now include `delegate` field
+- Updated formatters: text and JSON renderers handle delegate display
+- Added `Delegate` field to `Issue` struct in core types
+
 ## [1.4.3] - 2026-01-27
 
 ### Fixed
@@ -290,6 +317,7 @@ A token-efficient CLI for Linear.
 - Linux (64-bit)
 - Windows (64-bit)
 
+[1.4.4]: https://github.com/joa23/linear-cli/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/joa23/linear-cli/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/joa23/linear-cli/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/joa23/linear-cli/compare/v1.4.0...v1.4.1

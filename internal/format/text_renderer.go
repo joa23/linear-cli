@@ -76,11 +76,13 @@ func (r *TextRenderer) issueCompact(issue *core.Issue) string {
 	// Line 1: Identifier [State] Title
 	b.WriteString(fmtSprintf("%s [%s] %s\n", issue.Identifier, issue.State.Name, issue.Title))
 
-	// Line 2: Metadata (assignee, priority, estimate, cycle)
+	// Line 2: Metadata (assignee/delegate, priority, estimate, cycle)
 	var meta []string
 
 	if issue.Assignee != nil {
 		meta = append(meta, "@"+issue.Assignee.Name)
+	} else if issue.Delegate != nil {
+		meta = append(meta, "Delegate:"+issue.Delegate.Name)
 	} else {
 		meta = append(meta, "Unassigned")
 	}
@@ -138,6 +140,8 @@ func (r *TextRenderer) issueFull(issue *core.Issue) string {
 
 	if issue.Assignee != nil {
 		b.WriteString(fmtSprintf("Assignee: %s <%s>\n", issue.Assignee.Name, issue.Assignee.Email))
+	} else if issue.Delegate != nil {
+		b.WriteString(fmtSprintf("Delegate: %s <%s>\n", issue.Delegate.Name, issue.Delegate.Email))
 	} else {
 		b.WriteString("Assignee: Unassigned\n")
 	}

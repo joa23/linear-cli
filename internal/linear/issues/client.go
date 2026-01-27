@@ -171,6 +171,11 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 					name
 					email
 				}
+				delegate {
+					id
+					name
+					email
+				}
 				createdAt
 				updatedAt
 				url
@@ -1436,6 +1441,11 @@ func (ic *Client) UpdateIssue(issueID string, input core.UpdateIssueInput) (*cor
 						name
 					}
 					assignee {
+						id
+						name
+						email
+					}
+					delegate {
 						id
 						name
 						email

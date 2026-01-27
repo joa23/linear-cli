@@ -97,8 +97,8 @@ func (nc *NotificationClient) MarkNotificationRead(notificationID string) error 
 	}
 
 	const mutation = `
-		mutation MarkNotificationAsRead($id: String!, $readAt: DateTime!) {
-			notificationUpdate(id: $id, readAt: $readAt) {
+		mutation MarkNotificationAsRead($id: String!, $input: NotificationUpdateInput!) {
+			notificationUpdate(id: $id, input: $input) {
 				success
 				notification {
 					id
@@ -109,8 +109,10 @@ func (nc *NotificationClient) MarkNotificationRead(notificationID string) error 
 	`
 
 	variables := map[string]interface{}{
-		"id":     notificationID,
-		"readAt": time.Now().Format(time.RFC3339),
+		"id": notificationID,
+		"input": map[string]interface{}{
+			"readAt": time.Now().Format(time.RFC3339),
+		},
 	}
 
 	var response struct {
