@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-01-27
+
+### Fixed
+
+**"me" Assignee Resolution:**
+- Fixed `--assignee me` not resolving to the current authenticated user
+- Issue: Resolver didn't handle the special "me" value documented in help
+- Fix: Added "me" handling that calls `GetViewer()` to resolve to authenticated user's ID
+- Also added UUID passthrough so already-resolved IDs aren't re-resolved as names
+- Example: `linear issues list --assignee me` now correctly filters your issues
+
 ## [1.4.1] - 2026-01-26
 
 ### Changed
