@@ -55,26 +55,6 @@ func (r *Resolver) ResolveUser(nameOrEmail string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve 'me': %w", err)
 		}
-		// Check if this is an OAuth application account (not a regular user)
-		// Application accounts have emails like <uuid>@oauthapp.linear.app
-		// They cannot be assigned to issues - Linear silently ignores such assignments
-		if strings.HasSuffix(viewer.Email, "@oauthapp.linear.app") {
-			return "", &guidance.ErrorWithGuidance{
-				Operation: "Resolve user 'me'",
-				Reason:    fmt.Sprintf("authenticated as OAuth application '%s', not a user account", viewer.Name),
-				Guidance: []string{
-					"OAuth applications cannot be assigned to issues in Linear",
-					"Use a specific user's email address instead",
-					"Example: --assignee john@company.com",
-				},
-				Example: `linear issues update CEN-123 --assignee john@company.com`,
-				OriginalErr: &core.ValidationError{
-					Field:  "assignee",
-					Value:  "me",
-					Reason: "resolves to OAuth application, not user",
-				},
-			}
-		}
 		return viewer.ID, nil
 	}
 

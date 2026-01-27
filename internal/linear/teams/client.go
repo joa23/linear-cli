@@ -104,7 +104,6 @@ func (tc *Client) GetViewer() (*core.User, error) {
 				email
 				displayName
 				avatarUrl
-				active
 				createdAt
 				isMe
 			}
