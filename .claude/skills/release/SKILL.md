@@ -194,7 +194,21 @@ make build
 
 ### Step 8: Execute Release
 
-Only after ALL previous steps pass. **IMPORTANT: Do NOT run goreleaser locally — GitHub Actions handles the build.**
+Only after ALL previous steps pass.
+
+> **CRITICAL: Do NOT run goreleaser locally**
+>
+> ```bash
+> # ❌ DON'T do this - causes duplicate upload errors:
+> goreleaser release --clean
+>
+> # ✅ DO this instead - let GitHub Actions build:
+> git tag vX.Y.Z && git push origin vX.Y.Z
+> gh run watch --exit-status
+> gh release download vX.Y.Z --pattern checksums.txt --output -
+> ```
+>
+> Running goreleaser locally AND having GitHub Actions run it causes duplicate artifact uploads and release failures.
 
 ```bash
 # 1. Commit any pending changes (CHANGELOG, code fixes)
