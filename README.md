@@ -21,7 +21,7 @@ Linear becomes the coordination layer—tracking what's planned, what's in progr
 Install with Homebrew:
 
 ```bash
-brew tap joa23/linear-cli
+brew tap joa23/linear-cli https://github.com/joa23/linear-cli
 brew install linear-cli
 ```
 
