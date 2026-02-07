@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+**Native Issue Relations (GitHub #6):**
+- `--blocked-by` and `--depends-on` flags now use native Linear relations (`issueRelationCreate`) instead of metadata storage
+- Fixed "no fields to update" error when using `--blocked-by` or `--depends-on` without other flags on `issues update`
+- Fixed silent no-op when `--blocked-by` or `--depends-on` were combined with other flags (e.g. `--labels`)
+- Relations created with these flags are now visible in Linear's UI immediately
+
 ## [1.4.6] - 2026-01-28
 
 ### Fixed
