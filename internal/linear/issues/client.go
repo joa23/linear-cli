@@ -2003,6 +2003,53 @@ func (ic *Client) GetIssueWithRelations(issueID string) (*core.IssueWithRelation
 	return &response.Issue, nil
 }
 
+// CreateRelation creates a relation between two issues using Linear's native issueRelationCreate mutation.
+// For "blocks" relations: issueID is the blocker, relatedIssueID is the issue being blocked.
+// Both parameters accept Linear identifiers (e.g., "CEN-123") directly.
+func (ic *Client) CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error {
+	if issueID == "" {
+		return &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
+	}
+	if relatedIssueID == "" {
+		return &core.ValidationError{Field: "relatedIssueID", Message: "relatedIssueID cannot be empty"}
+	}
+
+	const mutation = `
+		mutation CreateIssueRelation($issueId: String!, $relatedIssueId: String!, $type: IssueRelationType!) {
+			issueRelationCreate(input: {
+				issueId: $issueId,
+				relatedIssueId: $relatedIssueId,
+				type: $type
+			}) {
+				success
+			}
+		}
+	`
+
+	variables := map[string]interface{}{
+		"issueId":        issueID,
+		"relatedIssueId": relatedIssueID,
+		"type":           string(relationType),
+	}
+
+	var response struct {
+		IssueRelationCreate struct {
+			Success bool `json:"success"`
+		} `json:"issueRelationCreate"`
+	}
+
+	err := ic.base.ExecuteRequest(mutation, variables, &response)
+	if err != nil {
+		return fmt.Errorf("failed to create issue relation: %w", err)
+	}
+
+	if !response.IssueRelationCreate.Success {
+		return fmt.Errorf("issue relation creation was not successful")
+	}
+
+	return nil
+}
+
 // GetTeamIssuesWithRelations retrieves all issues for a team with their relations
 // for building a complete dependency graph.
 func (ic *Client) GetTeamIssuesWithRelations(teamID string, limit int) ([]core.IssueWithRelations, error) {

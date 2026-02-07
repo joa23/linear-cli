@@ -482,24 +482,21 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		}
 	}
 
-	// Store dependencies in metadata if provided
+	// Create native relations for dependencies
 	if len(input.DependsOn) > 0 {
-		if err := s.client.UpdateIssueMetadataKey(issue.ID, "dependencies", input.DependsOn); err != nil {
-			return "", fmt.Errorf("failed to set dependencies metadata: %w", err)
+		for _, depID := range input.DependsOn {
+			// depID blocks the new issue (the dependency blocks this issue)
+			if err := s.client.CreateRelation(depID, issue.Identifier, core.RelationBlocks); err != nil {
+				return "", fmt.Errorf("failed to create depends-on relation for %s: %w", depID, err)
+			}
 		}
 	}
 	if len(input.BlockedBy) > 0 {
-		if err := s.client.UpdateIssueMetadataKey(issue.ID, "blocked_by", input.BlockedBy); err != nil {
-			return "", fmt.Errorf("failed to set blocked_by metadata: %w", err)
-		}
-	}
-
-	// Re-fetch the issue to get updated state with metadata
-	if len(input.DependsOn) > 0 || len(input.BlockedBy) > 0 {
-		issue, err = s.client.GetIssue(issue.Identifier)
-		if err != nil {
-			// Not fatal - just return what we have
-			return s.formatter.Issue(issue, format.Full), nil
+		for _, blockerID := range input.BlockedBy {
+			// blockerID blocks the new issue
+			if err := s.client.CreateRelation(blockerID, issue.Identifier, core.RelationBlocks); err != nil {
+				return "", fmt.Errorf("failed to create blocked-by relation for %s: %w", blockerID, err)
+			}
 		}
 	}
 
@@ -660,30 +657,30 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 		linearInput.LabelIDs = resolvedLabelIDs
 	}
 
-	// Perform update
-	updatedIssue, err := s.client.UpdateIssue(issue.ID, linearInput)
-	if err != nil {
-		return "", fmt.Errorf("failed to update issue: %w", err)
+	// Perform update only if there are GraphQL fields to update
+	updatedIssue := issue
+	if hasServiceFieldsToUpdate(linearInput) {
+		updatedIssue, err = s.client.UpdateIssue(issue.ID, linearInput)
+		if err != nil {
+			return "", fmt.Errorf("failed to update issue: %w", err)
+		}
 	}
 
-	// Update dependencies metadata if provided
+	// Create native relations for dependencies
 	if len(input.DependsOn) > 0 {
-		if err := s.client.UpdateIssueMetadataKey(issue.ID, "dependencies", input.DependsOn); err != nil {
-			return "", fmt.Errorf("failed to set dependencies metadata: %w", err)
+		for _, depID := range input.DependsOn {
+			// depID blocks this issue (the dependency blocks this issue)
+			if err := s.client.CreateRelation(depID, issue.Identifier, core.RelationBlocks); err != nil {
+				return "", fmt.Errorf("failed to create depends-on relation for %s: %w", depID, err)
+			}
 		}
 	}
 	if len(input.BlockedBy) > 0 {
-		if err := s.client.UpdateIssueMetadataKey(issue.ID, "blocked_by", input.BlockedBy); err != nil {
-			return "", fmt.Errorf("failed to set blocked_by metadata: %w", err)
-		}
-	}
-
-	// Re-fetch if dependencies were updated
-	if len(input.DependsOn) > 0 || len(input.BlockedBy) > 0 {
-		updatedIssue, err = s.client.GetIssue(updatedIssue.Identifier)
-		if err != nil {
-			// Not fatal - just return what we have
-			return s.formatter.Issue(updatedIssue, format.Full), nil
+		for _, blockerID := range input.BlockedBy {
+			// blockerID blocks this issue
+			if err := s.client.CreateRelation(blockerID, issue.Identifier, core.RelationBlocks); err != nil {
+				return "", fmt.Errorf("failed to create blocked-by relation for %s: %w", blockerID, err)
+			}
 		}
 	}
 
@@ -746,6 +743,24 @@ func (s *IssueService) GetIssueID(identifier string) (string, error) {
 		return "", fmt.Errorf("failed to get issue %s: %w", identifier, err)
 	}
 	return issue.ID, nil
+}
+
+// hasServiceFieldsToUpdate checks if the UpdateIssueInput has any fields that
+// require a GraphQL UpdateIssue call (excludes relation-only operations).
+func hasServiceFieldsToUpdate(input core.UpdateIssueInput) bool {
+	return input.Title != nil ||
+		input.Description != nil ||
+		input.Priority != nil ||
+		input.Estimate != nil ||
+		input.DueDate != nil ||
+		input.StateID != nil ||
+		input.AssigneeID != nil ||
+		input.DelegateID != nil ||
+		input.ProjectID != nil ||
+		input.ParentID != nil ||
+		input.TeamID != nil ||
+		input.CycleID != nil ||
+		len(input.LabelIDs) > 0
 }
 
 // resolveStateID resolves a state name to a valid state ID

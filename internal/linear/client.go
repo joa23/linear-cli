@@ -356,6 +356,10 @@ func (c *Client) UpdateIssueMetadataKey(issueID, key string, value interface{}) 
 	return c.Issues.UpdateIssueMetadataKey(issueID, key, value)
 }
 
+func (c *Client) CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error {
+	return c.Issues.CreateRelation(issueID, relatedIssueID, relationType)
+}
+
 func (c *Client) RemoveIssueMetadataKey(issueID, key string) error {
 	return c.Issues.RemoveIssueMetadataKey(issueID, key)
 }
