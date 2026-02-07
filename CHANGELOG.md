@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+**OAuth Token Refresh (GitHub #7):**
+- Fixed OAuth token expiring daily and requiring re-authentication
+- Root cause: `initializeClient()` used a static token provider (`NewClientWithAuthMode`) instead of the existing refresh-capable provider (`NewClientWithTokenPath`)
+- Secondary fix: `NewClientWithTokenPath` now preserves `authMode` on the client struct, maintaining user/agent distinction
+- Tokens are now refreshed automatically (proactive before expiry, reactive on 401)
+- Legacy tokens (no refresh token) and `LINEAR_API_TOKEN` env var continue to work unchanged
+
 ## [1.4.6] - 2026-01-28
 
 ### Fixed
