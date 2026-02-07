@@ -89,12 +89,14 @@ func NewClientWithTokenPath(tokenPath string) *Client {
 	storage := token.NewStorage(tokenPath)
 	var provider token.TokenProvider
 	var apiToken string // For backward compatibility
+	var authMode string // Preserve auth mode from token data
 
 	// Try to load from stored token first
 	if storage.TokenExists() {
 		tokenData, err := storage.LoadTokenData()
 		if err == nil {
 			apiToken = tokenData.AccessToken
+			authMode = tokenData.AuthMode
 
 			// Check if OAuth credentials available for refresh
 			cfgManager := config.NewManager("")
@@ -149,6 +151,7 @@ func NewClientWithTokenPath(tokenPath string) *Client {
 		Attachments:   attachments.NewClient(base),
 		Cycles:        cycles.NewClient(base),
 		apiToken:      apiToken,
+		authMode:      authMode,
 	}
 
 	// Initialize resolver with the client
