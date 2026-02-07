@@ -468,7 +468,11 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		needsUpdate = true
 	}
 	if input.ProjectID != "" {
-		updateInput.ProjectID = &input.ProjectID
+		projectID, err := s.client.ResolveProjectIdentifier(input.ProjectID, teamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", input.ProjectID, err)
+		}
+		updateInput.ProjectID = &projectID
 		needsUpdate = true
 	}
 	if input.CycleID != "" {
@@ -601,7 +605,24 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 	}
 
 	if input.ProjectID != nil {
-		linearInput.ProjectID = input.ProjectID
+		// Resolve project name/ID to UUID
+		var resolveTeamID string
+		if input.TeamID != nil && *input.TeamID != "" {
+			resolveTeamID, err = s.client.ResolveTeamIdentifier(*input.TeamID)
+			if err != nil {
+				return "", fmt.Errorf("failed to resolve team '%s': %w", *input.TeamID, err)
+			}
+		} else {
+			teamKey, _, parseErr := identifiers.ParseIssueIdentifier(issue.Identifier)
+			if parseErr == nil {
+				resolveTeamID, _ = s.client.ResolveTeamIdentifier(teamKey)
+			}
+		}
+		projectID, err := s.client.ResolveProjectIdentifier(*input.ProjectID, resolveTeamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", *input.ProjectID, err)
+		}
+		linearInput.ProjectID = &projectID
 	}
 	if input.ParentID != nil {
 		linearInput.ParentID = input.ParentID
