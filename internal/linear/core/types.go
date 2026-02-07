@@ -712,6 +712,9 @@ type IssueSearchFilters struct {
 	// Team filter
 	TeamID string `json:"teamId,omitempty"`
 
+	// Project filter
+	ProjectID string `json:"projectId,omitempty"`
+
 	// Identifier filter (e.g., "CEN-123")
 	Identifier string `json:"identifier,omitempty"`
 
@@ -808,6 +811,10 @@ type IssueWithRelations struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"state"`
+	Project          *struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"project"`
 	Relations        IssueRelationConnection `json:"relations"`
 	InverseRelations IssueRelationConnection `json:"inverseRelations"`
 }

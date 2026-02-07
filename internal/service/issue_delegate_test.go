@@ -58,6 +58,9 @@ func (m *mockIssueClientForDelegate) ResolveCycleIdentifier(num, team string) (s
 func (m *mockIssueClientForDelegate) ResolveLabelIdentifier(label, team string) (string, error) {
 	return "label-uuid", nil
 }
+func (m *mockIssueClientForDelegate) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
+	return "project-uuid", nil
+}
 func (m *mockIssueClientForDelegate) UpdateIssueMetadataKey(id, key string, val interface{}) error {
 	return nil
 }

@@ -13,6 +13,7 @@ import (
 type IssueSearchOptions struct {
 	TextQuery   string
 	Team        string
+	Project     string
 	State       string
 	Priority    int
 	Assignee    string
@@ -36,6 +37,7 @@ func newSearchCmd() *cobra.Command {
 
 		// Standard issue filters
 		team     string
+		project  string
 		state    string
 		priority int
 		assignee string
@@ -150,6 +152,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 				return searchIssues(deps, IssueSearchOptions{
 					TextQuery:   textQuery,
 					Team:        team,
+					Project:     project,
 					State:       state,
 					Priority:    priority,
 					Assignee:    assignee,
@@ -184,6 +187,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 
 	// Standard issue filters
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
+	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
 	cmd.Flags().StringVar(&state, "state", "", "Filter by state")
 	cmd.Flags().IntVar(&priority, "priority", 0, "Filter by priority (0=none, 1=urgent, 2=high, 3=normal, 4=low)")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee")
@@ -228,6 +232,7 @@ func searchIssues(deps *Dependencies, opts IssueSearchOptions) error {
 	// Build search filters (using existing IssueService for consistency)
 	filters := &service.SearchFilters{
 		TeamID:     opts.Team,
+		ProjectID:  opts.Project,
 		StateIDs:   nil,
 		Priority:   nil,
 		AssigneeID: opts.Assignee,
@@ -255,6 +260,7 @@ func searchIssues(deps *Dependencies, opts IssueSearchOptions) error {
 			EntityType:  "issues",
 			TextQuery:   opts.TextQuery,
 			TeamID:      opts.Team,
+			ProjectID:   opts.Project,
 			StateIDs:    filters.StateIDs,
 			Priority:    filters.Priority,
 			AssigneeID:  opts.Assignee,

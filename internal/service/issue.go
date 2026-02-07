@@ -27,6 +27,7 @@ func NewIssueService(client IssueClientOperations, formatter *format.Formatter) 
 // SearchFilters represents filters for searching issues
 type SearchFilters struct {
 	TeamID     string
+	ProjectID  string
 	AssigneeID string
 	CycleID    string
 	StateIDs   []string
@@ -86,6 +87,15 @@ func (s *IssueService) Search(filters *SearchFilters) (string, error) {
 			return "", fmt.Errorf("failed to resolve team '%s': %w", filters.TeamID, err)
 		}
 		linearFilters.TeamID = teamID
+	}
+
+	// Resolve project identifier if provided (name or UUID)
+	if filters.ProjectID != "" {
+		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID, linearFilters.TeamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
+		}
+		linearFilters.ProjectID = projectID
 	}
 
 	// Resolve assignee identifier if provided
@@ -176,6 +186,15 @@ func (s *IssueService) SearchWithOutput(filters *SearchFilters, verbosity format
 			return "", fmt.Errorf("failed to resolve team '%s': %w", filters.TeamID, err)
 		}
 		linearFilters.TeamID = teamID
+	}
+
+	// Resolve project identifier if provided (name or UUID)
+	if filters.ProjectID != "" {
+		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID, linearFilters.TeamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
+		}
+		linearFilters.ProjectID = projectID
 	}
 
 	// Resolve assignee identifier if provided

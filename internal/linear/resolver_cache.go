@@ -37,6 +37,9 @@ type resolverCache struct {
 	// Label resolution cache (keyed by teamID:labelName)
 	labelByName map[string]*cacheEntry // teamID:labelName → labelID
 
+	// Project resolution cache
+	projectByName map[string]*cacheEntry // project name → projectID
+
 	mu  sync.RWMutex
 	ttl time.Duration
 }
@@ -50,6 +53,7 @@ func newResolverCache(ttl time.Duration) *resolverCache {
 		teamByKey:         make(map[string]*cacheEntry),
 		issueByIdentifier: make(map[string]*cacheEntry),
 		labelByName:       make(map[string]*cacheEntry),
+		projectByName:     make(map[string]*cacheEntry),
 		ttl:               ttl,
 	}
 
@@ -195,6 +199,29 @@ func (rc *resolverCache) setLabelByName(teamID, labelName, labelID string) {
 	}
 }
 
+// Project cache methods
+
+func (rc *resolverCache) getProjectByName(name string) (string, bool) {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+
+	entry, exists := rc.projectByName[name]
+	if !exists || entry.isExpired() {
+		return "", false
+	}
+	return entry.value, true
+}
+
+func (rc *resolverCache) setProjectByName(name, projectID string) {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+
+	rc.projectByName[name] = &cacheEntry{
+		value:     projectID,
+		expiresAt: time.Now().Add(rc.ttl),
+	}
+}
+
 // Utility methods
 
 // cleanup removes expired entries from the cache
@@ -244,6 +271,13 @@ func (rc *resolverCache) cleanup() {
 			delete(rc.labelByName, key)
 		}
 	}
+
+	// Clean up project cache
+	for name, entry := range rc.projectByName {
+		if entry.expiresAt.Before(now) {
+			delete(rc.projectByName, name)
+		}
+	}
 }
 
 // runCleanup runs periodic cleanup in a background goroutine
@@ -270,4 +304,5 @@ func (rc *resolverCache) clear() {
 	rc.teamByKey = make(map[string]*cacheEntry)
 	rc.issueByIdentifier = make(map[string]*cacheEntry)
 	rc.labelByName = make(map[string]*cacheEntry)
+	rc.projectByName = make(map[string]*cacheEntry)
 }

@@ -669,6 +669,10 @@ func (c *Client) ResolveLabelIdentifier(labelName string, teamID string) (string
 	return c.resolver.ResolveLabel(labelName, teamID)
 }
 
+func (c *Client) ResolveProjectIdentifier(nameOrID string, teamID string) (string, error) {
+	return c.resolver.ResolveProject(nameOrID, teamID)
+}
+
 // Issue search operations
 func (c *Client) SearchIssues(filters *core.IssueSearchFilters) (*core.IssueSearchResult, error) {
 	return c.Issues.SearchIssuesEnhanced(filters)

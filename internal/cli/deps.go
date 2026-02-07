@@ -25,6 +25,7 @@ type DepEdge struct {
 
 func newDepsCmd() *cobra.Command {
 	var teamID string
+	var project string
 
 	cmd := &cobra.Command{
 		Use:   "deps [issue-id]",
@@ -35,12 +36,16 @@ Shows blocking relationships between issues. Each issue shows:
   - What it blocks (→)
   - What blocks it (←)
 
-Detects and warns about circular dependencies.`,
+Detects and warns about circular dependencies.
+Use --project to filter to a specific project's issues.`,
 		Example: `  # Show dependencies for a single issue
   linear deps ENG-100
 
   # Show all dependencies for a team
-  linear deps --team ENG`,
+  linear deps --team ENG
+
+  # Show dependencies for a specific project
+  linear deps --team ENG --project "My Project"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			deps, err := getDeps(cmd)
 			if err != nil {
@@ -53,8 +58,8 @@ Detects and warns about circular dependencies.`,
 			}
 
 			if teamID != "" {
-				// Team mode
-				return showTeamDeps(deps, teamID)
+				// Team mode (with optional project filter)
+				return showTeamDeps(deps, teamID, project)
 			}
 
 			return fmt.Errorf("provide an issue ID or use --team to show team dependencies")
@@ -62,6 +67,7 @@ Detects and warns about circular dependencies.`,
 	}
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
+	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
 
 	return cmd
 }
@@ -121,16 +127,34 @@ func showIssueDeps(deps *Dependencies, issueID string) error {
 	return renderDependencyGraph(issue.Identifier, nodes, edges)
 }
 
-func showTeamDeps(deps *Dependencies, teamID string) error {
+func showTeamDeps(deps *Dependencies, teamID string, project string) error {
 	issues, err := deps.Client.Issues.GetTeamIssuesWithRelations(teamID, 250)
 	if err != nil {
 		return fmt.Errorf("failed to get team issues: %w", err)
+	}
+
+	// Resolve project name to UUID if provided, for client-side filtering
+	var projectID string
+	if project != "" {
+		resolvedTeamID, _ := deps.Client.ResolveTeamIdentifier(teamID)
+		if resolvedTeamID == "" {
+			resolvedTeamID = teamID
+		}
+		projectID, err = deps.Client.ResolveProjectIdentifier(project, resolvedTeamID)
+		if err != nil {
+			return fmt.Errorf("failed to resolve project '%s': %w", project, err)
+		}
 	}
 
 	nodes := make(map[string]*DepNode)
 	var edges []DepEdge
 
 	for _, issue := range issues {
+		// Filter by project if specified (client-side filter)
+		if projectID != "" && (issue.Project == nil || issue.Project.ID != projectID) {
+			continue
+		}
+
 		nodes[issue.Identifier] = &DepNode{
 			ID:         issue.ID,
 			Identifier: issue.Identifier,
