@@ -29,6 +29,7 @@ type SearchOptions struct {
 
 	// Standard filters
 	TeamID     string
+	ProjectID  string
 	StateIDs   []string
 	Priority   *int
 	AssigneeID string
@@ -88,6 +89,15 @@ func (s *SearchService) searchIssues(opts *SearchOptions) (string, error) {
 			return "", fmt.Errorf("failed to resolve team '%s': %w", opts.TeamID, err)
 		}
 		filters.TeamID = teamID
+	}
+
+	// Resolve project identifier if provided (name or UUID)
+	if opts.ProjectID != "" {
+		projectID, err := s.client.ResolveProjectIdentifier(opts.ProjectID, filters.TeamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", opts.ProjectID, err)
+		}
+		filters.ProjectID = projectID
 	}
 
 	// Resolve assignee identifier if provided

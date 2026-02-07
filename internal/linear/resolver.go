@@ -444,11 +444,15 @@ linear_search resource="issues" query={"cycleId":"%s"}`,
 
 // ResolveProject resolves a project identifier (name or UUID) to a project UUID
 // Supports:
-// - UUIDs: returned as-is
-// - Project names: "SCWM Experiments" (case-insensitive match)
+// - UUIDs - returned as-is
+// - Project names: "My Project" (case-insensitive match)
 //
-// Returns error if project not found
-func (r *Resolver) ResolveProject(nameOrID string) (string, error) {
+// When teamID is provided, only projects for that team are searched.
+// When teamID is empty, all workspace projects are searched.
+//
+// Returns error with suggestions if multiple projects match
+func (r *Resolver) ResolveProject(nameOrID string, teamID string) (string, error) {
+	// Validate input
 	if nameOrID == "" {
 		return "", &core.ValidationError{
 			Field:   "project",
@@ -466,45 +470,65 @@ func (r *Resolver) ResolveProject(nameOrID string) (string, error) {
 		return projectID, nil
 	}
 
-	// Fetch all projects
-	projects, err := r.client.Projects.ListAllProjects(100)
+	// Fetch projects (scoped to team if provided)
+	var allProjects []core.Project
+	var err error
+	if teamID != "" {
+		allProjects, err = r.client.Projects.ListByTeam(teamID, 100)
+	} else {
+		allProjects, err = r.client.Projects.ListAllProjects(100)
+	}
 	if err != nil {
-		return "", fmt.Errorf("failed to list projects for resolution: %w", err)
+		return "", fmt.Errorf("failed to fetch projects for resolution: %w", err)
 	}
 
-	// Try exact match on name (case-insensitive)
+	// Find matching projects by name (case-insensitive)
+	var matches []core.Project
 	nameLower := strings.ToLower(nameOrID)
-	var fuzzyMatches []core.Project
-	for _, project := range projects {
+
+	for _, project := range allProjects {
 		if strings.ToLower(project.Name) == nameLower {
-			// Cache and return
-			r.cache.setProjectByName(nameOrID, project.ID)
-			return project.ID, nil
-		}
-		// Track fuzzy matches for fallback
-		if strings.Contains(strings.ToLower(project.Name), nameLower) {
-			fuzzyMatches = append(fuzzyMatches, project)
+			matches = append(matches, project)
 		}
 	}
 
-	// Try single fuzzy match
-	if len(fuzzyMatches) == 1 {
-		r.cache.setProjectByName(nameOrID, fuzzyMatches[0].ID)
-		return fuzzyMatches[0].ID, nil
+	// Handle no matches
+	if len(matches) == 0 {
+		// Build list of available projects for error message
+		var available []string
+		for _, p := range allProjects {
+			available = append(available, p.Name)
+		}
+
+		return "", &guidance.ErrorWithGuidance{
+			Operation: "Resolve project",
+			Reason:    fmt.Sprintf("project '%s' not found", nameOrID),
+			Guidance: []string{
+				"Check the project name spelling (case-insensitive)",
+				"Use 'linear projects list' to see available projects",
+				"Use the project UUID for exact matching",
+			},
+			Example: fmt.Sprintf("Available projects: %s", strings.Join(available, ", ")),
+			OriginalErr: &core.NotFoundError{
+				ResourceType: "project",
+				ResourceID:   nameOrID,
+			},
+		}
 	}
 
-	// Ambiguous matches
-	if len(fuzzyMatches) > 1 {
+	// Handle ambiguous matches (unlikely for exact name match, but be safe)
+	if len(matches) > 1 {
 		var suggestions []string
-		for _, p := range fuzzyMatches {
-			suggestions = append(suggestions, p.Name)
+		for _, p := range matches {
+			suggestions = append(suggestions, fmt.Sprintf("%s (ID: %s)", p.Name, p.ID))
 		}
+
 		return "", &guidance.ErrorWithGuidance{
 			Operation: "Resolve project",
 			Reason:    fmt.Sprintf("multiple projects match '%s'", nameOrID),
 			Guidance: []string{
-				"Use the exact project name",
 				"Use the project UUID for exact matching",
+				"Choose from the suggestions below",
 			},
 			Example: fmt.Sprintf("Matching projects: %s", strings.Join(suggestions, ", ")),
 			OriginalErr: &core.ValidationError{
@@ -515,24 +539,10 @@ func (r *Resolver) ResolveProject(nameOrID string) (string, error) {
 		}
 	}
 
-	// No match found
-	var availableNames []string
-	for _, p := range projects {
-		availableNames = append(availableNames, p.Name)
-	}
-	return "", &guidance.ErrorWithGuidance{
-		Operation: "Resolve project",
-		Reason:    fmt.Sprintf("project '%s' not found", nameOrID),
-		Guidance: []string{
-			"Check the project name spelling",
-			"Use 'linear projects list' to see available projects",
-		},
-		Example: fmt.Sprintf("Available projects: %s", strings.Join(availableNames, ", ")),
-		OriginalErr: &core.NotFoundError{
-			ResourceType: "project",
-			ResourceID:   nameOrID,
-		},
-	}
+	// Single match found — cache and return
+	project := matches[0]
+	r.cache.setProjectByName(nameOrID, project.ID)
+	return project.ID, nil
 }
 
 // ResolveLabel resolves a label name to a label UUID within a specific team

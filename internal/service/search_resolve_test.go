@@ -20,6 +20,8 @@ type mockIssueClient struct {
 	resolveTeamErr       error
 	resolveLabelResult   string
 	resolveLabelErr      error
+	resolveProjectResult string
+	resolveProjectErr    error
 	searchResult         *core.IssueSearchResult
 	searchErr            error
 	workflowClient       *workflows.Client
@@ -52,8 +54,8 @@ func (m *mockIssueClient) ResolveCycleIdentifier(num, team string) (string, erro
 func (m *mockIssueClient) ResolveLabelIdentifier(label, team string) (string, error) {
 	return m.resolveLabelResult, m.resolveLabelErr
 }
-func (m *mockIssueClient) ResolveProjectIdentifier(nameOrID string) (string, error) {
-	return "project-uuid", nil
+func (m *mockIssueClient) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
+	return m.resolveProjectResult, m.resolveProjectErr
 }
 func (m *mockIssueClient) UpdateIssueMetadataKey(id, key string, val interface{}) error {
 	return nil
@@ -65,13 +67,15 @@ func (m *mockIssueClient) TeamClient() *teams.Client         { return nil }
 
 // mockSearchClient implements SearchClientOperations for search resolution tests
 type mockSearchClient struct {
-	resolveTeamResult  string
-	resolveTeamErr     error
-	resolveLabelResult string
-	resolveLabelErr    error
-	searchResult       *core.IssueSearchResult
-	searchErr          error
-	workflowClient     *workflows.Client
+	resolveTeamResult    string
+	resolveTeamErr       error
+	resolveLabelResult   string
+	resolveLabelErr      error
+	resolveProjectResult string
+	resolveProjectErr    error
+	searchResult         *core.IssueSearchResult
+	searchErr            error
+	workflowClient       *workflows.Client
 }
 
 func (m *mockSearchClient) SearchIssues(filters *core.IssueSearchFilters) (*core.IssueSearchResult, error) {
@@ -91,6 +95,9 @@ func (m *mockSearchClient) ResolveCycleIdentifier(num, team string) (string, err
 }
 func (m *mockSearchClient) ResolveLabelIdentifier(label, team string) (string, error) {
 	return m.resolveLabelResult, m.resolveLabelErr
+}
+func (m *mockSearchClient) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
+	return m.resolveProjectResult, m.resolveProjectErr
 }
 func (m *mockSearchClient) IssueClient() *issues.Client       { return nil }
 func (m *mockSearchClient) ProjectClient() *projects.Client    { return nil }
@@ -165,6 +172,62 @@ func TestIssueService_Search_LabelResolutionError(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected error from label resolution failure")
+	}
+}
+
+func TestIssueService_Search_ProjectResolutionSuccess(t *testing.T) {
+	mock := &mockIssueClient{
+		resolveTeamResult:    "team-uuid-123",
+		resolveProjectResult: "project-uuid-789",
+		searchResult: &core.IssueSearchResult{
+			Issues: []core.Issue{},
+		},
+	}
+	svc := NewIssueService(mock, format.New())
+
+	_, err := svc.Search(&SearchFilters{
+		TeamID:    "CEN",
+		ProjectID: "My Project",
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestIssueService_Search_ProjectResolutionError(t *testing.T) {
+	mock := &mockIssueClient{
+		resolveTeamResult: "team-uuid-123",
+		resolveProjectErr: fmt.Errorf("project 'nonexistent' not found"),
+	}
+	svc := NewIssueService(mock, format.New())
+
+	_, err := svc.Search(&SearchFilters{
+		TeamID:    "CEN",
+		ProjectID: "nonexistent",
+	})
+
+	if err == nil {
+		t.Fatal("expected error from project resolution failure")
+	}
+}
+
+func TestIssueService_Search_ProjectWithoutTeam(t *testing.T) {
+	mock := &mockIssueClient{
+		resolveProjectResult: "project-uuid-789",
+		searchResult: &core.IssueSearchResult{
+			Issues: []core.Issue{},
+		},
+	}
+	svc := NewIssueService(mock, format.New())
+
+	// Project resolution should work even without team (searches all workspace projects)
+	_, err := svc.Search(&SearchFilters{
+		ProjectID: "My Project",
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -290,5 +353,42 @@ func TestSearchService_Search_LabelResolutionError(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected error from label resolution failure")
+	}
+}
+
+func TestSearchService_Search_ProjectResolutionSuccess(t *testing.T) {
+	mock := &mockSearchClient{
+		resolveTeamResult:    "team-uuid-123",
+		resolveProjectResult: "project-uuid-789",
+		searchResult: &core.IssueSearchResult{
+			Issues: []core.Issue{},
+		},
+	}
+	svc := NewSearchService(mock, format.New())
+
+	_, err := svc.Search(&SearchOptions{
+		TeamID:    "CEN",
+		ProjectID: "My Project",
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSearchService_Search_ProjectResolutionError(t *testing.T) {
+	mock := &mockSearchClient{
+		resolveTeamResult: "team-uuid-123",
+		resolveProjectErr: fmt.Errorf("project 'nonexistent' not found"),
+	}
+	svc := NewSearchService(mock, format.New())
+
+	_, err := svc.Search(&SearchOptions{
+		TeamID:    "CEN",
+		ProjectID: "nonexistent",
+	})
+
+	if err == nil {
+		t.Fatal("expected error from project resolution failure")
 	}
 }

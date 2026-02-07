@@ -802,6 +802,15 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 		}
 	}
 
+	// Project filter
+	if filters.ProjectID != "" {
+		filter["project"] = map[string]interface{}{
+			"id": map[string]interface{}{
+				"eq": filters.ProjectID,
+			},
+		}
+	}
+
 	// Identifier filter (e.g., "CEN-123")
 	// Note: Use "identifier" field for issue identifiers, not "id"
 	if filters.Identifier != "" {
@@ -2030,6 +2039,10 @@ func (ic *Client) GetTeamIssuesWithRelations(teamID string, limit int) ([]core.I
 					identifier
 					title
 					state {
+						id
+						name
+					}
+					project {
 						id
 						name
 					}

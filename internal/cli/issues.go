@@ -38,6 +38,7 @@ func newIssuesCmd() *cobra.Command {
 func newIssuesListCmd() *cobra.Command {
 	var (
 		teamID     string
+		project    string
 		state      string
 		priority   string
 		assignee   string
@@ -61,13 +62,19 @@ IMPORTANT BEHAVIORS:
 - Returns 10 issues by default, use --limit to change
 
 TIP: Use --format full for detailed output, --format minimal for concise output.
-     Use --output json for machine-readable JSON output.`,
+     Use --output json for machine-readable JSON output.
+     Use --project to scope results to a specific project (name or UUID).`,
 		Example: `  # Minimal - list first 10 issues (requires 'linear init')
   linear issues list
+
+  # Filter by project (name or UUID)
+  linear issues list --project "My Project"
+  linear issues list -P "My Project" --state "In Progress"
 
   # Complete - using ALL available parameters
   linear issues list \
     --team CEN \
+    --project "My Project" \
     --state "In Progress" \
     --priority 1 \
     --assignee johannes.zillmann@centrum-ai.com \
@@ -79,16 +86,6 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 
   # JSON output for scripting
   linear issues list --output json | jq '.[] | select(.priority == 1)'
-
-  # Common pattern - high priority customer issues as JSON
-  linear issues list \
-    --labels customer \
-    --priority 1 \
-    --limit 20 \
-    --output json
-
-  # Get issues in specific cycle
-  linear issues list --cycle 65 --format full
 
   # Filter by assignee
   linear issues list --assignee me
@@ -132,8 +129,9 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 
 			// Build search filters
 			filters := &service.SearchFilters{
-				TeamID: teamID,
-				Limit:  limit,
+				TeamID:    teamID,
+				ProjectID: project,
+				Limit:     limit,
 			}
 
 			// Apply optional filters
@@ -171,6 +169,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	}
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
+	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
 	cmd.Flags().StringVar(&state, "state", "", "Filter by workflow state (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().StringVar(&priority, "priority", "", "Filter by priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee (email or 'me')")
