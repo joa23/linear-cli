@@ -392,7 +392,7 @@ TIP: Run 'linear init' first to set default team.`,
 
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Issue description (or pipe to stdin)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Issue description (use - to read from stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Workflow state name (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().StringVarP(&priority, "priority", "p", "", "Priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().Float64VarP(&estimate, "estimate", "e", 0, "Story points estimate")
@@ -457,15 +457,14 @@ func newIssuesUpdateCmd() *cobra.Command {
 			}
 			// Note: team can still be "" if no .linear.yaml, will fallback to issue identifier
 
-			// Check if any updates provided (stdin counts as description update)
-			hasStdin := hasStdinPipe()
+			// Check if any updates provided (description="-" means stdin pipe)
 			hasFlags := title != "" || description != "" || state != "" ||
 				priority != "" || estimate != "" || labels != "" ||
 				cycle != "" || project != "" || assignee != "" ||
 				dueDate != "" || parent != "" || dependsOn != "" || blockedBy != "" ||
 				len(attachFiles) > 0
 
-			if !hasFlags && !hasStdin {
+			if !hasFlags {
 				return fmt.Errorf("no updates specified. Use flags like --state, --priority, etc")
 			}
 
@@ -549,7 +548,7 @@ func newIssuesUpdateCmd() *cobra.Command {
 
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&title, "title", "T", "", "Update issue title")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Update description (or pipe to stdin)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Update description (use - to read from stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Update workflow state name (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().StringVarP(&priority, "priority", "p", "", "Priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "Update story points estimate")
@@ -576,15 +575,15 @@ func newIssuesCommentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "comment <issue-id>",
 		Short: "Add a comment to an issue",
-		Long:  `Add a comment to an issue. Comment body can be provided via --body flag or piped from stdin.`,
+		Long:  `Add a comment to an issue. Comment body can be provided via --body flag, or use --body - to read from stdin.`,
 		Example: `  # Add a simple comment
   linear issues comment CEN-123 --body "This is a comment"
 
   # Comment with screenshot attachment
   linear issues comment CEN-123 --body "Bug screenshot:" --attach /tmp/screenshot.png
 
-  # Pipe content from file
-  cat notes.md | linear issues comment CEN-123`,
+  # Pipe content from file (use -b - to read from pipe)
+  cat notes.md | linear issues comment CEN-123 -b -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
@@ -633,7 +632,7 @@ func newIssuesCommentCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&body, "body", "b", "", "Comment body (or pipe to stdin)")
+	cmd.Flags().StringVarP(&body, "body", "b", "", "Comment body (use - to read from stdin)")
 	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
 
 	return cmd
@@ -698,15 +697,15 @@ func newIssuesReplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reply <issue-id> <comment-id>",
 		Short: "Reply to a comment",
-		Long:  `Reply to an existing comment on an issue. Reply body can be provided via --body flag or piped from stdin.`,
+		Long:  `Reply to an existing comment on an issue. Reply body can be provided via --body flag, or use --body - to read from stdin.`,
 		Example: `  # Reply to a comment
   linear issues reply CEN-123 abc-comment-id --body "Thanks for the feedback!"
 
   # Reply with attachment
   linear issues reply CEN-123 abc-comment-id --body "Here's the fix:" --attach /tmp/screenshot.png
 
-  # Pipe content from file
-  cat response.md | linear issues reply CEN-123 abc-comment-id`,
+  # Pipe content from file (use -b - to read from pipe)
+  cat response.md | linear issues reply CEN-123 abc-comment-id -b -`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
@@ -746,7 +745,7 @@ func newIssuesReplyCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&body, "body", "b", "", "Reply body (or pipe to stdin)")
+	cmd.Flags().StringVarP(&body, "body", "b", "", "Reply body (use - to read from stdin)")
 	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
 
 	return cmd

@@ -126,6 +126,7 @@ func runOnboard() error {
 	fmt.Println("Create issue (full example):")
 	fmt.Println("  cat feature.md | linear i create \"Add user authentication\" \\")
 	fmt.Println("    -t CEN \\")
+	fmt.Println("    -d - \\")
 	fmt.Println("    -s \"In Progress\" \\")
 	fmt.Println("    -p 1 \\")
 	fmt.Println("    -a me \\")

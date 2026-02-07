@@ -170,8 +170,8 @@ func newProjectsCreateCmd() *cobra.Command {
 		Example: `  # Create a simple project
   linear projects create "Q1 Release" --team CEN
 
-  # Create with description from stdin
-  cat project-spec.md | linear projects create "Q1 Release" --team CEN
+  # Create with description from stdin (use -d - to read from pipe)
+  cat project-spec.md | linear projects create "Q1 Release" --team CEN -d -
 
   # Create with all options
   linear projects create "Q1 Release" --team CEN --state started --lead Stefan`,
@@ -235,7 +235,7 @@ func newProjectsCreateCmd() *cobra.Command {
 
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description (or pipe to stdin)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description (use - to read from stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Project state: planned, started, paused, completed, canceled")
 	cmd.Flags().StringVarP(&lead, "lead", "l", "", "Project lead name (use 'me' for yourself)")
 	cmd.Flags().StringVar(&startDate, "start-date", "", "Start date YYYY-MM-DD")
@@ -264,8 +264,8 @@ func newProjectsUpdateCmd() *cobra.Command {
   # Update project lead
   linear projects update PROJ-123 --lead john@example.com
 
-  # Update description from stdin
-  cat updated-spec.md | linear projects update PROJ-123`,
+  # Update description from stdin (use -d - to read from pipe)
+  cat updated-spec.md | linear projects update PROJ-123 -d -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID := args[0]
@@ -274,12 +274,11 @@ func newProjectsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			// Check if any updates provided (stdin counts as description update)
-			hasStdin := hasStdinPipe()
+			// Check if any updates provided (description="-" means stdin pipe)
 			hasFlags := name != "" || description != "" || state != "" ||
 				lead != "" || startDate != "" || endDate != ""
 
-			if !hasFlags && !hasStdin {
+			if !hasFlags {
 				return fmt.Errorf("no updates specified. Use flags like --state, --lead, etc")
 			}
 
@@ -328,7 +327,7 @@ func newProjectsUpdateCmd() *cobra.Command {
 
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Update project name")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Update description (or pipe to stdin)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Update description (use - to read from stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Update state: planned, started, paused, completed, canceled")
 	cmd.Flags().StringVarP(&lead, "lead", "l", "", "Update project lead (use 'me' for yourself)")
 	cmd.Flags().StringVar(&startDate, "start-date", "", "Update start date YYYY-MM-DD")

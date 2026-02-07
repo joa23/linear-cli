@@ -68,18 +68,21 @@ func parseCommaSeparated(s string) []string {
 	return result
 }
 
-// getDescriptionFromFlagOrStdin returns description from flag or stdin
-// Flag takes precedence over stdin
+// getDescriptionFromFlagOrStdin returns description from flag or stdin.
+// Stdin is only read when the flag value is explicitly "-" (e.g. -d -),
+// matching the convention used by git, gh, curl, etc.
+// Previously, stdin was read speculatively whenever a non-TTY pipe was
+// detected, which caused commands to hang in CI, && chains, and
+// subprocess contexts. See https://github.com/joa23/linear-cli/issues/10
 func getDescriptionFromFlagOrStdin(flagValue string) (string, error) {
-	if flagValue != "" {
-		return flagValue, nil
+	if flagValue == "-" {
+		if hasStdinPipe() {
+			return readStdin()
+		}
+		return "", fmt.Errorf("'-' requires piped input (e.g. cat file.md | linear ... -d -)")
 	}
 
-	if hasStdinPipe() {
-		return readStdin()
-	}
-
-	return "", nil
+	return flagValue, nil
 }
 
 // uploadAndAppendAttachments uploads files and appends markdown image links to body
