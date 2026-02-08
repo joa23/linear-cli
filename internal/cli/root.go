@@ -103,6 +103,12 @@ Teams (alias: t):
   t labels <ID>                List team labels
   t states <ID>                List workflow states
 
+Labels:
+  labels list --team <KEY>     List labels
+  labels create <name> [flags] Create label
+  labels update <id> [flags]   Update label
+  labels delete <id>           Delete label
+
 Users (alias: u):
   u list [--team <ID>]         List users
   u get <ID>                   Get user details
@@ -149,6 +155,7 @@ Configuration:
 		newCyclesCmd(),
 		newTeamsCmd(),
 		newUsersCmd(),
+		newLabelsCmd(),
 		newNotificationsCmd(),
 
 		// Analysis

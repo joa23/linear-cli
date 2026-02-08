@@ -75,6 +75,14 @@ type UserServiceInterface interface {
 	ResolveByName(name string) (string, error)
 }
 
+// LabelServiceInterface defines the contract for label operations
+type LabelServiceInterface interface {
+	List(teamID string, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	Create(input *core.CreateLabelInput) (string, error)
+	Update(id string, input *core.UpdateLabelInput) (string, error)
+	Delete(id string) (string, error)
+}
+
 // TaskExportServiceInterface defines the contract for task export operations
 type TaskExportServiceInterface interface {
 	Export(identifier string, outputFolder string, dryRun bool) (*ExportResult, error)
@@ -82,11 +90,12 @@ type TaskExportServiceInterface interface {
 
 // Verify implementations satisfy interfaces (compile-time check)
 var (
-	_ IssueServiceInterface     = (*IssueService)(nil)
-	_ CycleServiceInterface     = (*CycleService)(nil)
-	_ ProjectServiceInterface   = (*ProjectService)(nil)
-	_ SearchServiceInterface    = (*SearchService)(nil)
-	_ TeamServiceInterface      = (*TeamService)(nil)
-	_ UserServiceInterface      = (*UserService)(nil)
+	_ IssueServiceInterface      = (*IssueService)(nil)
+	_ CycleServiceInterface      = (*CycleService)(nil)
+	_ ProjectServiceInterface    = (*ProjectService)(nil)
+	_ SearchServiceInterface     = (*SearchService)(nil)
+	_ TeamServiceInterface       = (*TeamService)(nil)
+	_ UserServiceInterface       = (*UserService)(nil)
+	_ LabelServiceInterface      = (*LabelService)(nil)
 	_ TaskExportServiceInterface = (*TaskExportService)(nil)
 )

@@ -18,6 +18,7 @@ type Dependencies struct {
 	Search     service.SearchServiceInterface
 	Teams      service.TeamServiceInterface
 	Users      service.UserServiceInterface
+	Labels     service.LabelServiceInterface
 	TaskExport service.TaskExportServiceInterface
 }
 
@@ -33,6 +34,7 @@ func NewDependencies(client *linear.Client) *Dependencies {
 		Search:     services.Search,
 		Teams:      services.Teams,
 		Users:      services.Users,
+		Labels:     services.Labels,
 		TaskExport: services.TaskExport,
 	}
 }

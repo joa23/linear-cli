@@ -15,6 +15,7 @@ type Services struct {
 	Cycles     *CycleService
 	Teams      *TeamService
 	Users      *UserService
+	Labels     *LabelService
 	Search     *SearchService
 	TaskExport *TaskExportService
 
@@ -31,6 +32,7 @@ func New(client *linear.Client) *Services {
 		Cycles:     NewCycleService(client, formatter),
 		Teams:      NewTeamService(client, formatter),
 		Users:      NewUserService(client, formatter),
+		Labels:     NewLabelService(client, formatter),
 		Search:     NewSearchService(client, formatter),
 		TaskExport: NewTaskExportService(client),
 		client:     client,
