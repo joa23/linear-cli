@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+**Project Name Resolution in Create/Update (GitHub #15, PR #16):**
+- `issues create --project <name>` and `issues update --project <name>` now correctly resolve project names to UUIDs
+- Previously failed with "GraphQL error: Argument Validation Error" when passing a name instead of UUID
+
 ## [1.4.6] - 2026-01-28
 
 ### Fixed
