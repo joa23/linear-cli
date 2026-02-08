@@ -81,6 +81,7 @@ linear auth login
   - [Projects](#projects)
   - [Cycles](#cycles)
   - [Teams](#teams)
+  - [Labels](#labels)
   - [Users](#users)
   - [Claude Code Skills](#claude-code-skills)
 - [Cycle Analytics](#cycle-analytics)
@@ -262,6 +263,7 @@ All commands support both flags:
 - **Cycles**: `list`, `get`, `analyze`
 - **Projects**: `list`, `get`
 - **Teams**: `list`, `get`, `labels`, `states`
+- **Labels**: `list`
 - **Users**: `list`, `get`, `me`
 - **Search**: all search operations
 
@@ -627,6 +629,20 @@ linear teams get ENG
 linear teams labels ENG                      # Team labels
 linear teams states ENG                      # Workflow states
 ```
+
+### Labels
+
+```bash
+linear labels list --team ENG               # List all labels (with IDs)
+linear labels list --team ENG --output json  # JSON output
+
+# Create, update, delete (requires user auth, not agent/app)
+linear labels create "needs-review" --team ENG --color "#ff0000" --description "PR needs review"
+linear labels update LABEL-UUID --name "needs-code-review" --color "#ff6600"
+linear labels delete LABEL-UUID
+```
+
+> **Note:** Label mutations (create/update/delete) require user authentication. OAuth app actors cannot manage labels due to Linear workspace permissions. Use `linear auth login` as a user.
 
 ### Users
 
