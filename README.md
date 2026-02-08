@@ -457,6 +457,11 @@ This pattern enables:
 linear issues list                           # List your assigned issues
 linear issues get ENG-123                    # Get issue details
 
+# Filter by project
+linear issues list --project "Q1 Release"    # Filter by project name or UUID
+linear search "auth" --project "Q1 Release"  # Works with search too
+linear deps --team ENG --project "Q1 Release" # Works with deps too
+
 # Pagination - offset-based for easy navigation
 linear issues list                           # First 10 issues (default)
 linear issues list --start 10 --limit 10     # Items 11-20

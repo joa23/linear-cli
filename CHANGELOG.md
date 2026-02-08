@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-**Project Filter for Issue Listing:**
-- Added `--project` / `-P` flag to `linear issues list` command
-- Filter issues by project name or ID: `linear issues list --project "My Project"`
-- Supports project name resolution (case-insensitive, fuzzy matching) — same as `issues create` and `issues update`
+**`--project` Flag for Issues List, Search, and Deps (GitHub #12, PR #13):**
+- Added `--project` / `-P` flag to `issues list`, `search`, and `deps` commands
+- Accepts project name (case-insensitive) or UUID
+- Server-side GraphQL filtering for `list` and `search`; client-side filtering for `deps`
+- Invalid project name shows helpful error with available projects
+- Team-scoped resolution: when `--team` is provided, only that team's projects are searched
 
 ## [1.4.8] - 2026-02-09
 
