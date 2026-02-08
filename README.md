@@ -457,6 +457,9 @@ This pattern enables:
 linear issues list                           # List your assigned issues
 linear issues get ENG-123                    # Get issue details
 
+# Filter by state (comma-separated)
+linear issues list --state "Backlog,Todo,In Progress" --team ENG
+
 # Pagination - offset-based for easy navigation
 linear issues list                           # First 10 issues (default)
 linear issues list --start 10 --limit 10     # Items 11-20
