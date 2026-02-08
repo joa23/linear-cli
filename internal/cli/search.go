@@ -184,7 +184,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 
 	// Standard issue filters
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVar(&state, "state", "", "Filter by state")
+	cmd.Flags().StringVar(&state, "state", "", "Filter by state (comma-separated)")
 	cmd.Flags().IntVar(&priority, "priority", 0, "Filter by priority (0=none, 1=urgent, 2=high, 3=normal, 4=low)")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Filter by cycle")
@@ -239,7 +239,7 @@ func searchIssues(deps *Dependencies, opts IssueSearchOptions) error {
 
 	// Apply optional filters
 	if opts.State != "" {
-		filters.StateIDs = []string{opts.State}
+		filters.StateIDs = parseCommaSeparated(opts.State)
 	}
 	if opts.Priority > 0 {
 		filters.Priority = &opts.Priority

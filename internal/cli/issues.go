@@ -138,7 +138,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 
 			// Apply optional filters
 			if state != "" {
-				filters.StateIDs = []string{state}
+				filters.StateIDs = parseCommaSeparated(state)
 			}
 			if priority != "" {
 				p, err := parsePriority(priority)
@@ -171,7 +171,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	}
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVar(&state, "state", "", "Filter by workflow state (e.g., 'In Progress', 'Backlog')")
+	cmd.Flags().StringVar(&state, "state", "", "Filter by workflow state (comma-separated, e.g., 'Backlog,Todo,In Progress')")
 	cmd.Flags().StringVar(&priority, "priority", "", "Filter by priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee (email or 'me')")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Filter by cycle (number, 'current', or 'next')")
