@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+**Stdin Hang in Non-TTY Contexts (GitHub #10, PR #11):**
+- Commands no longer hang when chained with `&&` or run in CI/automation
+- Root cause: speculative stdin reading when a non-TTY pipe was detected, even without `-d -`
+- Fix: stdin is only read when the flag value is explicitly `"-"` (e.g., `-d -`, `--body -`), matching `git`/`gh`/`curl` convention
+- Breaking: users who relied on implicit stdin piping must now add `-d -`
+
 ## [1.4.6] - 2026-01-28
 
 ### Fixed
