@@ -20,15 +20,6 @@ const (
 	MaxLimit = 250
 )
 
-// hasStdinPipe detects if content is piped to stdin
-func hasStdinPipe() bool {
-	stat, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	return (stat.Mode() & os.ModeCharDevice) == 0
-}
-
 // readStdin reads all piped content from stdin
 func readStdin() (string, error) {
 	reader := bufio.NewReader(os.Stdin)
@@ -69,17 +60,13 @@ func parseCommaSeparated(s string) []string {
 }
 
 // getDescriptionFromFlagOrStdin returns description from flag or stdin
-// Flag takes precedence over stdin
+// Use "-" as flagValue to explicitly read from stdin (e.g., -d -)
 func getDescriptionFromFlagOrStdin(flagValue string) (string, error) {
-	if flagValue != "" {
-		return flagValue, nil
-	}
-
-	if hasStdinPipe() {
+	if flagValue == "-" {
 		return readStdin()
 	}
 
-	return "", nil
+	return flagValue, nil
 }
 
 // uploadAndAppendAttachments uploads files and appends markdown image links to body

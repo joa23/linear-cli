@@ -55,10 +55,9 @@ Reusable flag descriptions are centralized in flags.go:
 ## Helpers
 
 Common utilities in helpers.go:
-  - [hasStdinPipe]                    - Detect piped input
   - [readStdin]                       - Read from stdin
   - [parseCommaSeparated]             - Parse comma-separated values
-  - [getDescriptionFromFlagOrStdin]   - Get text from flag or pipe
+  - [getDescriptionFromFlagOrStdin]   - Get text from flag or stdin (use "-" for stdin)
   - [uploadAndAppendAttachments]      - Upload files and generate markdown
   - [validateAndNormalizeLimit]       - Validate --limit flags
   - [looksLikeCycleNumber]            - Detect numeric cycle IDs

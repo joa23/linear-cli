@@ -274,12 +274,11 @@ func newProjectsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			// Check if any updates provided (stdin counts as description update)
-			hasStdin := hasStdinPipe()
+			// Check if any updates provided (description="-" means stdin)
 			hasFlags := name != "" || description != "" || state != "" ||
 				lead != "" || startDate != "" || endDate != ""
 
-			if !hasFlags && !hasStdin {
+			if !hasFlags {
 				return fmt.Errorf("no updates specified. Use flags like --state, --lead, etc")
 			}
 

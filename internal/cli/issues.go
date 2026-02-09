@@ -457,15 +457,14 @@ func newIssuesUpdateCmd() *cobra.Command {
 			}
 			// Note: team can still be "" if no .linear.yaml, will fallback to issue identifier
 
-			// Check if any updates provided (stdin counts as description update)
-			hasStdin := hasStdinPipe()
+			// Check if any updates provided (description="-" means stdin)
 			hasFlags := title != "" || description != "" || state != "" ||
 				priority != "" || estimate != "" || labels != "" ||
 				cycle != "" || project != "" || assignee != "" ||
 				dueDate != "" || parent != "" || dependsOn != "" || blockedBy != "" ||
 				len(attachFiles) > 0
 
-			if !hasFlags && !hasStdin {
+			if !hasFlags {
 				return fmt.Errorf("no updates specified. Use flags like --state, --priority, etc")
 			}
 

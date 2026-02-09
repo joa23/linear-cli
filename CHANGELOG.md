@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.8] - 2026-02-09
+
+### Fixed
+
+**Update Command Hangs in Piped/Agent Contexts:**
+- Fixed `linear issues update` (and `projects update`) hanging indefinitely when stdin is a pipe
+- Root cause: `getDescriptionFromFlagOrStdin` auto-detected pipes via `os.Stdin.Stat()` and called `readStdin()` even when no description was requested, blocking forever on EOF
+- Affected all non-terminal contexts: Claude Code, scripts, cron jobs, CI pipelines
+- Fix: Stdin is now only read when explicitly requested via `-d -` flag (standard Unix convention)
+- `hasStdinPipe()` removed — pipe auto-detection was the source of the bug
+
 ## [1.4.7] - 2026-02-08
 
 ### Fixed
