@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/joa23/linear-cli/internal/format"
+	paginationutil "github.com/joa23/linear-cli/internal/linear/pagination"
 	"github.com/joa23/linear-cli/internal/service"
 	"github.com/spf13/cobra"
 )
@@ -44,6 +45,8 @@ func newIssuesListCmd() *cobra.Command {
 		cycle      string
 		project    string
 		labels     string
+		excludeLabels string
+		sortBy     string
 		limit      int
 		formatStr  string
 		outputType string
@@ -159,6 +162,12 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 			if labels != "" {
 				filters.LabelIDs = parseCommaSeparated(labels)
 			}
+			if excludeLabels != "" {
+				filters.ExcludeLabelIDs = parseCommaSeparated(excludeLabels)
+			}
+			if sortBy != "" {
+				filters.OrderBy = paginationutil.MapSortField(sortBy)
+			}
 
 			result, err := deps.Issues.SearchWithOutput(filters, verbosity, output)
 			if err != nil {
@@ -177,6 +186,8 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Filter by cycle (number, 'current', or 'next')")
 	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project name or ID")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Filter by labels (comma-separated)")
+	cmd.Flags().StringVarP(&excludeLabels, "exclude-labels", "L", "", "Exclude issues with these labels (comma-separated)")
+	cmd.Flags().StringVarP(&sortBy, "sort", "s", "", "Sort by: created, updated")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of items (max 250)")
 	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity level: minimal|compact|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json")

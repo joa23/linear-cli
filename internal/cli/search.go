@@ -18,6 +18,7 @@ type IssueSearchOptions struct {
 	Assignee    string
 	Cycle       string
 	Labels      string
+	ExcludeLabels string
 	BlockedBy   string
 	Blocks      string
 	HasBlockers bool
@@ -41,6 +42,7 @@ func newSearchCmd() *cobra.Command {
 		assignee string
 		cycle    string
 		labels   string
+		excludeLabels string
 
 		// Dependency filters (NEW)
 		blockedBy     string
@@ -155,6 +157,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 					Assignee:    assignee,
 					Cycle:       cycle,
 					Labels:      labels,
+					ExcludeLabels: excludeLabels,
 					BlockedBy:   blockedBy,
 					Blocks:      blocks,
 					HasBlockers: hasBlockers,
@@ -189,6 +192,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Filter by cycle")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Filter by labels (comma-separated)")
+	cmd.Flags().StringVarP(&excludeLabels, "exclude-labels", "L", "", "Exclude issues with these labels (comma-separated)")
 
 	// Dependency filters (NEW)
 	cmd.Flags().StringVar(&blockedBy, "blocked-by", "", "Issues blocked by this issue ID")
@@ -246,6 +250,9 @@ func searchIssues(deps *Dependencies, opts IssueSearchOptions) error {
 	}
 	if opts.Labels != "" {
 		filters.LabelIDs = parseCommaSeparated(opts.Labels)
+	}
+	if opts.ExcludeLabels != "" {
+		filters.ExcludeLabelIDs = parseCommaSeparated(opts.ExcludeLabels)
 	}
 
 	// For dependency filters, use the Search service

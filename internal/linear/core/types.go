@@ -638,6 +638,7 @@ type IssueFilter struct {
 	StateIDs   []string `json:"stateIds,omitempty"`   // Filter by workflow state IDs
 	AssigneeID string   `json:"assigneeId,omitempty"` // Filter by assignee user ID
 	LabelIDs   []string `json:"labelIds,omitempty"`   // Filter by label IDs
+	ExcludeLabelIDs []string `json:"excludeLabelIds,omitempty"` // Exclude issues with these label IDs
 	ProjectID  string   `json:"projectId,omitempty"`  // Filter by project ID
 	TeamID     string   `json:"teamId,omitempty"`     // Filter by team ID
 
@@ -720,6 +721,7 @@ type IssueSearchFilters struct {
 
 	// Label filters
 	LabelIDs []string `json:"labelIds,omitempty"`
+	ExcludeLabelIDs []string `json:"excludeLabelIds,omitempty"`
 
 	// Assignee filter
 	AssigneeID string `json:"assigneeId,omitempty"`
@@ -744,6 +746,9 @@ type IssueSearchFilters struct {
 	CreatedBefore string `json:"createdBefore,omitempty"`
 	UpdatedAfter  string `json:"updatedAfter,omitempty"`
 	UpdatedBefore string `json:"updatedBefore,omitempty"`
+
+	// Sorting
+	OrderBy string `json:"orderBy,omitempty"` // Sort field: "createdAt", "updatedAt"
 
 	// Pagination
 	Limit int    `json:"limit"`
