@@ -29,6 +29,7 @@ type SearchFilters struct {
 	TeamID     string
 	AssigneeID string
 	CycleID    string
+	ProjectID  string
 	StateIDs   []string
 	LabelIDs   []string
 	Priority   *int
@@ -221,6 +222,15 @@ func (s *IssueService) SearchWithOutput(filters *SearchFilters, verbosity format
 			return "", err
 		}
 		linearFilters.LabelIDs = resolvedLabels
+	}
+
+	// Resolve project identifier if provided
+	if filters.ProjectID != "" {
+		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
+		}
+		linearFilters.ProjectID = projectID
 	}
 
 	// Copy remaining filters

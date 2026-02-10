@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.9] - 2026-02-10
+
+### Added
+
+**Project Filter for Issue Listing:**
+- Added `--project` / `-P` flag to `linear issues list` command
+- Filter issues by project name or ID: `linear issues list --project "My Project"`
+- Supports project name resolution (case-insensitive, fuzzy matching) — same as `issues create` and `issues update`
+
 ## [1.4.8] - 2026-02-09
 
 ### Fixed

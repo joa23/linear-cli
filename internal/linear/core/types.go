@@ -727,6 +727,9 @@ type IssueSearchFilters struct {
 	// Cycle filter
 	CycleID string `json:"cycleId,omitempty"`
 
+	// Project filter
+	ProjectID string `json:"projectId,omitempty"`
+
 	// Priority filter (0-4, where 0 is no priority, 1 is urgent, 4 is low)
 	Priority *int `json:"priority,omitempty"`
 

@@ -846,6 +846,15 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 		}
 	}
 
+	// Project filter
+	if filters.ProjectID != "" {
+		filter["project"] = map[string]interface{}{
+			"id": map[string]interface{}{
+				"eq": filters.ProjectID,
+			},
+		}
+	}
+
 	// Cycle filter
 	if filters.CycleID != "" {
 		filter["cycle"] = map[string]interface{}{
