@@ -464,6 +464,9 @@ linear issues list --project "Q1 Release"    # Filter by project name or UUID
 linear search "auth" --project "Q1 Release"  # Works with search too
 linear deps --team ENG --project "Q1 Release" # Works with deps too
 
+# Filter by state (comma-separated)
+linear issues list --state "Backlog,Todo,In Progress" --team ENG
+
 # Pagination - offset-based for easy navigation
 linear issues list                           # First 10 issues (default)
 linear issues list --start 10 --limit 10     # Items 11-20
