@@ -602,3 +602,161 @@ func (tc *Client) ListLabels(teamID string) ([]core.Label, error) {
 	
 	return response.Team.Labels.Nodes, nil
 }
+
+// CreateLabel creates a new label for a team
+func (tc *Client) CreateLabel(input *core.CreateLabelInput) (*core.Label, error) {
+	if input.Name == "" {
+		return nil, fmt.Errorf("label name is required")
+	}
+	if input.TeamID == "" {
+		return nil, fmt.Errorf("team ID is required")
+	}
+
+	const mutation = `
+		mutation CreateLabel($input: IssueLabelCreateInput!) {
+			issueLabelCreate(input: $input) {
+				success
+				issueLabel {
+					id
+					name
+					color
+					description
+				}
+			}
+		}
+	`
+
+	inputMap := map[string]interface{}{
+		"name":   input.Name,
+		"teamId": input.TeamID,
+	}
+	if input.Color != "" {
+		inputMap["color"] = input.Color
+	}
+	if input.Description != "" {
+		inputMap["description"] = input.Description
+	}
+	if input.ParentID != "" {
+		inputMap["parentId"] = input.ParentID
+	}
+
+	variables := map[string]interface{}{
+		"input": inputMap,
+	}
+
+	var response struct {
+		IssueLabelCreate struct {
+			Success    bool       `json:"success"`
+			IssueLabel core.Label `json:"issueLabel"`
+		} `json:"issueLabelCreate"`
+	}
+
+	err := tc.base.ExecuteRequest(mutation, variables, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create label: %w", err)
+	}
+
+	if !response.IssueLabelCreate.Success {
+		return nil, fmt.Errorf("label creation was not successful")
+	}
+
+	return &response.IssueLabelCreate.IssueLabel, nil
+}
+
+// UpdateLabel updates an existing label
+func (tc *Client) UpdateLabel(labelID string, input *core.UpdateLabelInput) (*core.Label, error) {
+	if labelID == "" {
+		return nil, fmt.Errorf("label ID is required")
+	}
+
+	const mutation = `
+		mutation UpdateLabel($id: String!, $input: IssueLabelUpdateInput!) {
+			issueLabelUpdate(id: $id, input: $input) {
+				success
+				issueLabel {
+					id
+					name
+					color
+					description
+				}
+			}
+		}
+	`
+
+	inputMap := make(map[string]interface{})
+	if input.Name != nil {
+		inputMap["name"] = *input.Name
+	}
+	if input.Color != nil {
+		inputMap["color"] = *input.Color
+	}
+	if input.Description != nil {
+		inputMap["description"] = *input.Description
+	}
+	if input.ParentID != nil {
+		inputMap["parentId"] = *input.ParentID
+	}
+
+	if len(inputMap) == 0 {
+		return nil, fmt.Errorf("at least one field must be provided for update")
+	}
+
+	variables := map[string]interface{}{
+		"id":    labelID,
+		"input": inputMap,
+	}
+
+	var response struct {
+		IssueLabelUpdate struct {
+			Success    bool       `json:"success"`
+			IssueLabel core.Label `json:"issueLabel"`
+		} `json:"issueLabelUpdate"`
+	}
+
+	err := tc.base.ExecuteRequest(mutation, variables, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update label: %w", err)
+	}
+
+	if !response.IssueLabelUpdate.Success {
+		return nil, fmt.Errorf("label update was not successful")
+	}
+
+	return &response.IssueLabelUpdate.IssueLabel, nil
+}
+
+// DeleteLabel deletes a label by ID
+func (tc *Client) DeleteLabel(labelID string) error {
+	if labelID == "" {
+		return fmt.Errorf("label ID is required")
+	}
+
+	const mutation = `
+		mutation DeleteLabel($id: String!) {
+			issueLabelDelete(id: $id) {
+				success
+			}
+		}
+	`
+
+	variables := map[string]interface{}{
+		"id": labelID,
+	}
+
+	var response struct {
+		IssueLabelDelete struct {
+			Success bool `json:"success"`
+		} `json:"issueLabelDelete"`
+	}
+
+	err := tc.base.ExecuteRequest(mutation, variables, &response)
+	if err != nil {
+		return fmt.Errorf("failed to delete label: %w", err)
+	}
+
+	if !response.IssueLabelDelete.Success {
+		return fmt.Errorf("label deletion was not successful")
+	}
+
+	return nil
+}

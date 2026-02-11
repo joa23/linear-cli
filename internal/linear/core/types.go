@@ -683,6 +683,23 @@ type Label struct {
 	Description string `json:"description"`
 }
 
+// CreateLabelInput represents the input for creating a label
+type CreateLabelInput struct {
+	Name        string
+	Color       string
+	Description string
+	TeamID      string // required — labels are team-scoped
+	ParentID    string // optional — for sub-labels (groups)
+}
+
+// UpdateLabelInput represents the input for updating a label
+type UpdateLabelInput struct {
+	Name        *string
+	Color       *string
+	Description *string
+	ParentID    *string
+}
+
 // LabelConnection represents a connection to labels
 type LabelConnection struct {
 	Nodes []Label `json:"nodes"`
