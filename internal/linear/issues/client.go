@@ -728,8 +728,8 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 	}
 	
 	const query = `
-		query SearchIssuesEnhanced($filter: IssueFilter, $first: Int, $after: String, $includeArchived: Boolean) {
-			issues(filter: $filter, first: $first, after: $after, includeArchived: $includeArchived) {
+		query SearchIssuesEnhanced($filter: IssueFilter, $first: Int, $after: String, $includeArchived: Boolean, $orderBy: PaginationOrderBy) {
+			issues(filter: $filter, first: $first, after: $after, includeArchived: $includeArchived, orderBy: $orderBy) {
 				nodes {
 					id
 					identifier
@@ -828,13 +828,37 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 		}
 	}
 	
-	// Label filters
-	if len(filters.LabelIDs) > 0 {
+	// Label filters (include and/or exclude)
+	hasIncludeLabels := len(filters.LabelIDs) > 0
+	hasExcludeLabels := len(filters.ExcludeLabelIDs) > 0
+	if hasIncludeLabels && hasExcludeLabels {
+		// Both include and exclude: use "and" since both target the "labels" key
+		filter["and"] = []interface{}{
+			map[string]interface{}{
+				"labels": map[string]interface{}{
+					"some": map[string]interface{}{
+						"id": map[string]interface{}{"in": filters.LabelIDs},
+					},
+				},
+			},
+			map[string]interface{}{
+				"labels": map[string]interface{}{
+					"every": map[string]interface{}{
+						"id": map[string]interface{}{"nin": filters.ExcludeLabelIDs},
+					},
+				},
+			},
+		}
+	} else if hasIncludeLabels {
 		filter["labels"] = map[string]interface{}{
 			"some": map[string]interface{}{
-				"id": map[string]interface{}{
-					"in": filters.LabelIDs,
-				},
+				"id": map[string]interface{}{"in": filters.LabelIDs},
+			},
+		}
+	} else if hasExcludeLabels {
+		filter["labels"] = map[string]interface{}{
+			"every": map[string]interface{}{
+				"id": map[string]interface{}{"nin": filters.ExcludeLabelIDs},
 			},
 		}
 	}
@@ -923,6 +947,11 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 	// Always include the includeArchived parameter (defaults to false)
 	variables["includeArchived"] = filters.IncludeArchived
 	
+	// Add orderBy if specified
+	if filters.OrderBy != "" {
+		variables["orderBy"] = filters.OrderBy
+	}
+
 	var response struct {
 		Issues struct {
 			Nodes    []core.Issue `json:"nodes"`
@@ -1835,6 +1864,25 @@ func buildFilterObject(filter *core.IssueFilter) map[string]interface{} {
 			"id": map[string]interface{}{
 				"in": filter.LabelIDs,
 			},
+		}
+	}
+
+	// Exclude label filter
+	if len(filter.ExcludeLabelIDs) > 0 {
+		excludeFilter := map[string]interface{}{
+			"every": map[string]interface{}{
+				"id": map[string]interface{}{"nin": filter.ExcludeLabelIDs},
+			},
+		}
+		if existing, ok := filterObj["labels"]; ok {
+			// Combine with existing include filter using "and"
+			delete(filterObj, "labels")
+			filterObj["and"] = []interface{}{
+				map[string]interface{}{"labels": existing},
+				map[string]interface{}{"labels": excludeFilter},
+			}
+		} else {
+			filterObj["labels"] = excludeFilter
 		}
 	}
 

@@ -32,8 +32,10 @@ type SearchFilters struct {
 	CycleID    string
 	StateIDs   []string
 	LabelIDs   []string
+	ExcludeLabelIDs []string
 	Priority   *int
 	SearchTerm string
+	OrderBy    string
 	Limit      int
 	After      string
 	Format     format.Format
@@ -143,9 +145,22 @@ func (s *IssueService) Search(filters *SearchFilters) (string, error) {
 		linearFilters.LabelIDs = resolvedLabels
 	}
 
+	// Resolve exclude-label names to IDs (requires team)
+	if len(filters.ExcludeLabelIDs) > 0 {
+		if linearFilters.TeamID == "" {
+			return "", fmt.Errorf("--team is required when filtering by labels")
+		}
+		resolvedLabels, err := s.resolveLabelIDs(filters.ExcludeLabelIDs, linearFilters.TeamID)
+		if err != nil {
+			return "", err
+		}
+		linearFilters.ExcludeLabelIDs = resolvedLabels
+	}
+
 	// Copy remaining filters
 	linearFilters.Priority = filters.Priority
 	linearFilters.SearchTerm = filters.SearchTerm
+	linearFilters.OrderBy = filters.OrderBy
 
 	// Execute search
 	result, err := s.client.SearchIssues(linearFilters)
@@ -244,16 +259,36 @@ func (s *IssueService) SearchWithOutput(filters *SearchFilters, verbosity format
 
 	// Resolve project identifier if provided
 	if filters.ProjectID != "" {
-		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID, linearFilters.TeamID)
+		teamID := linearFilters.TeamID
+		if teamID == "" {
+			// Try to resolve team for project lookup
+			if resolvedTeam, err := s.client.ResolveTeamIdentifier(filters.TeamID); err == nil {
+				teamID = resolvedTeam
+			}
+		}
+		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID, teamID)
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
 		}
 		linearFilters.ProjectID = projectID
 	}
 
+	// Resolve exclude-label names to IDs (requires team)
+	if len(filters.ExcludeLabelIDs) > 0 {
+		if linearFilters.TeamID == "" {
+			return "", fmt.Errorf("--team is required when filtering by labels")
+		}
+		resolvedLabels, err := s.resolveLabelIDs(filters.ExcludeLabelIDs, linearFilters.TeamID)
+		if err != nil {
+			return "", err
+		}
+		linearFilters.ExcludeLabelIDs = resolvedLabels
+	}
+
 	// Copy remaining filters
 	linearFilters.Priority = filters.Priority
 	linearFilters.SearchTerm = filters.SearchTerm
+	linearFilters.OrderBy = filters.OrderBy
 
 	// Execute search
 	result, err := s.client.SearchIssues(linearFilters)
