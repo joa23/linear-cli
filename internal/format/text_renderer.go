@@ -722,6 +722,51 @@ func (r *TextRenderer) commentFull(comment *core.Comment) string {
 	return b.String()
 }
 
+// --- Attachment Rendering ---
+
+func (r *TextRenderer) RenderAttachment(att *core.Attachment, verbosity Verbosity) string {
+	var b strings.Builder
+
+	sourceTag := att.SourceType
+	if sourceTag == "" {
+		sourceTag = "link"
+	}
+
+	b.WriteString(fmtSprintf("[%s] %s\n", sourceTag, att.Title))
+
+	if verbosity >= VerbosityCompact {
+		b.WriteString(fmtSprintf("  URL: %s\n", att.URL))
+		if att.Subtitle != "" {
+			b.WriteString(fmtSprintf("  Subtitle: %s\n", att.Subtitle))
+		}
+	}
+
+	if verbosity >= VerbosityFull {
+		b.WriteString(fmtSprintf("  ID: %s\n", att.ID))
+		b.WriteString(fmtSprintf("  Created: %s\n", formatDate(att.CreatedAt)))
+	}
+
+	return b.String()
+}
+
+func (r *TextRenderer) RenderAttachmentList(atts []core.Attachment, verbosity Verbosity) string {
+	if len(atts) == 0 {
+		return "No attachments found.\n"
+	}
+
+	var b strings.Builder
+	b.WriteString(fmtSprintf("Attachments (%d)\n", len(atts)))
+	b.WriteString(line(40))
+	b.WriteString("\n")
+
+	for _, att := range atts {
+		b.WriteString(r.RenderAttachment(&att, verbosity))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
 func (r *TextRenderer) commentCompact(comment *core.Comment) string {
 	var b strings.Builder
 

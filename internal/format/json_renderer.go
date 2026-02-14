@@ -197,6 +197,23 @@ func (r *JSONRenderer) RenderCommentList(comments []core.Comment, verbosity Verb
 	return r.marshal(dtos)
 }
 
+// --- Attachment Rendering ---
+
+func (r *JSONRenderer) RenderAttachment(att *core.Attachment, verbosity Verbosity) string {
+	dto := AttachmentToDTO(att)
+	data, _ := json.MarshalIndent(dto, "", "  ")
+	return string(data)
+}
+
+func (r *JSONRenderer) RenderAttachmentList(atts []core.Attachment, verbosity Verbosity) string {
+	dtos := make([]AttachmentDTO, len(atts))
+	for i, att := range atts {
+		dtos[i] = AttachmentToDTO(&att)
+	}
+	data, _ := json.MarshalIndent(dtos, "", "  ")
+	return string(data)
+}
+
 // --- Helper methods ---
 
 // marshal converts an object to pretty-printed JSON
