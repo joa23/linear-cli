@@ -27,28 +27,47 @@ type IssueCompactDTO struct {
 	UpdatedAt  string   `json:"updatedAt"`
 }
 
+// issueBaseFields contains the shared fields between IssueDetailedDTO and IssueFullDTO.
+type issueBaseFields struct {
+	Identifier  string          `json:"identifier"`
+	Title       string          `json:"title"`
+	Description string          `json:"description"`
+	State       *StateDTO       `json:"state"`
+	Priority    *int            `json:"priority"`
+	Assignee    *UserDTO        `json:"assignee"`
+	Delegate    *UserDTO        `json:"delegate,omitempty"`
+	Creator     *UserDTO        `json:"creator"`
+	Estimate    *float64        `json:"estimate"`
+	DueDate     *string         `json:"dueDate"`
+	Labels      []LabelDTO      `json:"labels"`
+	Project     *ProjectRefDTO  `json:"project"`
+	Cycle       *CycleRefDTO    `json:"cycle"`
+	Parent      *IssueRefDTO    `json:"parent"`
+	Children    []IssueRefDTO   `json:"children"`
+	Attachments []AttachmentDTO `json:"attachments"`
+	CreatedAt   string          `json:"createdAt"`
+	UpdatedAt   string          `json:"updatedAt"`
+	URL         string          `json:"url"`
+}
+
 // IssueFullDTO contains complete issue details (~500 tokens)
 type IssueFullDTO struct {
-	Identifier  string               `json:"identifier"`
-	Title       string               `json:"title"`
-	Description string               `json:"description"`
-	State       *StateDTO            `json:"state"`
-	Priority    *int                 `json:"priority"`
-	Assignee    *UserDTO             `json:"assignee"`
-	Delegate    *UserDTO             `json:"delegate,omitempty"` // OAuth app delegate
-	Creator     *UserDTO             `json:"creator"`
-	Estimate    *float64             `json:"estimate"`
-	DueDate     *string              `json:"dueDate"`
-	Labels      []LabelDTO           `json:"labels"`
-	Project     *ProjectRefDTO       `json:"project"`
-	Cycle       *CycleRefDTO         `json:"cycle"`
-	Parent      *IssueRefDTO         `json:"parent"`
-	Children    []IssueRefDTO        `json:"children"`
-	Attachments []AttachmentDTO      `json:"attachments"`
-	Comments    []CommentDTO         `json:"comments"`
-	CreatedAt   string               `json:"createdAt"`
-	UpdatedAt   string               `json:"updatedAt"`
-	URL         string               `json:"url"`
+	issueBaseFields
+	Comments []CommentDTO `json:"comments"`
+}
+
+// IssueDetailedDTO contains complete issue details with truncated comments (~500 tokens)
+type IssueDetailedDTO struct {
+	issueBaseFields
+	Comments []CommentSummaryDTO `json:"comments"`
+}
+
+// CommentSummaryDTO is a comment with a truncated body for the detailed view
+type CommentSummaryDTO struct {
+	ID        string   `json:"id"`
+	Body      string   `json:"body"`
+	User      *UserDTO `json:"user"`
+	CreatedAt string   `json:"createdAt"`
 }
 
 // --- Cycle DTOs ---
@@ -249,9 +268,9 @@ func IssueToCompactDTO(issue *core.Issue) IssueCompactDTO {
 	return dto
 }
 
-// IssueToFullDTO converts an issue to full DTO
-func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
-	dto := IssueFullDTO{
+// populateIssueBase populates the shared base fields from a core.Issue.
+func populateIssueBase(issue *core.Issue) issueBaseFields {
+	base := issueBaseFields{
 		Identifier:  issue.Identifier,
 		Title:       issue.Title,
 		Description: issue.Description,
@@ -268,7 +287,7 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 	}
 
 	if issue.Assignee != nil {
-		dto.Assignee = &UserDTO{
+		base.Assignee = &UserDTO{
 			ID:    issue.Assignee.ID,
 			Name:  issue.Assignee.Name,
 			Email: issue.Assignee.Email,
@@ -276,7 +295,7 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 	}
 
 	if issue.Delegate != nil {
-		dto.Delegate = &UserDTO{
+		base.Delegate = &UserDTO{
 			ID:    issue.Delegate.ID,
 			Name:  issue.Delegate.Name,
 			Email: issue.Delegate.Email,
@@ -284,55 +303,50 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 	}
 
 	if issue.Creator != nil {
-		dto.Creator = &UserDTO{
+		base.Creator = &UserDTO{
 			ID:    issue.Creator.ID,
 			Name:  issue.Creator.Name,
 			Email: issue.Creator.Email,
 		}
 	}
 
-	// Labels
 	if issue.Labels != nil && len(issue.Labels.Nodes) > 0 {
-		dto.Labels = make([]LabelDTO, len(issue.Labels.Nodes))
+		base.Labels = make([]LabelDTO, len(issue.Labels.Nodes))
 		for i, label := range issue.Labels.Nodes {
-			dto.Labels[i] = LabelDTO{
+			base.Labels[i] = LabelDTO{
 				ID:   label.ID,
 				Name: label.Name,
 			}
 		}
 	}
 
-	// Project
 	if issue.Project != nil {
-		dto.Project = &ProjectRefDTO{
+		base.Project = &ProjectRefDTO{
 			ID:   issue.Project.ID,
 			Name: issue.Project.Name,
 		}
 	}
 
-	// Cycle
 	if issue.Cycle != nil {
-		dto.Cycle = &CycleRefDTO{
+		base.Cycle = &CycleRefDTO{
 			ID:     issue.Cycle.ID,
 			Number: issue.Cycle.Number,
 			Name:   issue.Cycle.Name,
 		}
 	}
 
-	// Parent
 	if issue.Parent != nil {
-		dto.Parent = &IssueRefDTO{
+		base.Parent = &IssueRefDTO{
 			Identifier: issue.Parent.Identifier,
 			Title:      issue.Parent.Title,
 			State:      issue.Parent.State.Name,
 		}
 	}
 
-	// Children
 	if issue.Children.Nodes != nil && len(issue.Children.Nodes) > 0 {
-		dto.Children = make([]IssueRefDTO, len(issue.Children.Nodes))
+		base.Children = make([]IssueRefDTO, len(issue.Children.Nodes))
 		for i, child := range issue.Children.Nodes {
-			dto.Children[i] = IssueRefDTO{
+			base.Children[i] = IssueRefDTO{
 				Identifier: child.Identifier,
 				Title:      child.Title,
 				State:      child.State.Name,
@@ -340,11 +354,10 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 		}
 	}
 
-	// Attachments
 	if issue.Attachments != nil && len(issue.Attachments.Nodes) > 0 {
-		dto.Attachments = make([]AttachmentDTO, len(issue.Attachments.Nodes))
+		base.Attachments = make([]AttachmentDTO, len(issue.Attachments.Nodes))
 		for i, att := range issue.Attachments.Nodes {
-			dto.Attachments[i] = AttachmentDTO{
+			base.Attachments[i] = AttachmentDTO{
 				ID:         att.ID,
 				Title:      att.Title,
 				URL:        att.URL,
@@ -353,13 +366,41 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 		}
 	}
 
-	// Comments
+	return base
+}
+
+// IssueToFullDTO converts an issue to full DTO
+func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
+	dto := IssueFullDTO{issueBaseFields: populateIssueBase(issue)}
+
 	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
 		dto.Comments = make([]CommentDTO, len(issue.Comments.Nodes))
 		for i, comment := range issue.Comments.Nodes {
 			dto.Comments[i] = CommentDTO{
 				ID:   comment.ID,
 				Body: comment.Body,
+				User: &UserDTO{
+					ID:   comment.User.ID,
+					Name: comment.User.Name,
+				},
+				CreatedAt: comment.CreatedAt,
+			}
+		}
+	}
+
+	return dto
+}
+
+// IssueToDetailedDTO converts an issue to detailed DTO (truncated comments)
+func IssueToDetailedDTO(issue *core.Issue) IssueDetailedDTO {
+	dto := IssueDetailedDTO{issueBaseFields: populateIssueBase(issue)}
+
+	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
+		dto.Comments = make([]CommentSummaryDTO, len(issue.Comments.Nodes))
+		for i, comment := range issue.Comments.Nodes {
+			dto.Comments[i] = CommentSummaryDTO{
+				ID:        comment.ID,
+				Body:      truncate(cleanDescription(comment.Body), 200),
 				User: &UserDTO{
 					ID:   comment.User.ID,
 					Name: comment.User.Name,

@@ -186,7 +186,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	cmd.Flags().StringVarP(&excludeLabels, "exclude-labels", "L", "", "Exclude issues with these labels (comma-separated)")
 	cmd.Flags().StringVarP(&sortBy, "sort", "s", "", "Sort by: created, updated")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of items (max 250)")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity level: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity level: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json")
 
 	return cmd
@@ -240,7 +240,7 @@ func newIssuesGetCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity level: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "detailed", "Verbosity level: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json")
 
 	return cmd

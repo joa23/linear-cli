@@ -100,7 +100,7 @@ func newProjectsListCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&mine, "mine", false, "Only show projects you're involved in (ignores team)")
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().IntVarP(&limit, "limit", "n", 25, "Number of projects to return")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -147,7 +147,7 @@ func newProjectsGetCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd

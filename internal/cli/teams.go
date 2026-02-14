@@ -63,7 +63,7 @@ func newTeamsListCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -110,7 +110,7 @@ func newTeamsGetCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -157,7 +157,7 @@ func newTeamsLabelsCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -204,7 +204,7 @@ func newTeamsStatesCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd

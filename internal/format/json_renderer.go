@@ -23,10 +23,12 @@ func (r *JSONRenderer) RenderIssue(issue *core.Issue, verbosity Verbosity) strin
 	switch verbosity {
 	case VerbosityMinimal:
 		dto = IssueToMinimalDTO(issue)
-	case VerbosityFull:
-		dto = IssueToFullDTO(issue)
 	case VerbosityCompact:
 		dto = IssueToCompactDTO(issue)
+	case VerbosityDetailed:
+		dto = IssueToDetailedDTO(issue)
+	case VerbosityFull:
+		dto = IssueToFullDTO(issue)
 	default:
 		dto = IssueToCompactDTO(issue)
 	}
@@ -44,10 +46,12 @@ func (r *JSONRenderer) RenderIssueList(issues []core.Issue, verbosity Verbosity,
 		switch verbosity {
 		case VerbosityMinimal:
 			dtos[i] = IssueToMinimalDTO(&issue)
-		case VerbosityFull:
-			dtos[i] = IssueToFullDTO(&issue)
 		case VerbosityCompact:
 			dtos[i] = IssueToCompactDTO(&issue)
+		case VerbosityDetailed:
+			dtos[i] = IssueToDetailedDTO(&issue)
+		case VerbosityFull:
+			dtos[i] = IssueToFullDTO(&issue)
 		default:
 			dtos[i] = IssueToCompactDTO(&issue)
 		}
@@ -68,7 +72,7 @@ func (r *JSONRenderer) RenderCycle(cycle *core.Cycle, verbosity Verbosity) strin
 	switch verbosity {
 	case VerbosityMinimal:
 		dto = CycleToMinimalDTO(cycle)
-	case VerbosityFull:
+	case VerbosityDetailed, VerbosityFull:
 		dto = CycleToFullDTO(cycle)
 	case VerbosityCompact:
 		dto = CycleToCompactDTO(cycle)
@@ -89,7 +93,7 @@ func (r *JSONRenderer) RenderCycleList(cycles []core.Cycle, verbosity Verbosity,
 		switch verbosity {
 		case VerbosityMinimal:
 			dtos[i] = CycleToMinimalDTO(&cycle)
-		case VerbosityFull:
+		case VerbosityDetailed, VerbosityFull:
 			dtos[i] = CycleToFullDTO(&cycle)
 		case VerbosityCompact:
 			dtos[i] = CycleToCompactDTO(&cycle)

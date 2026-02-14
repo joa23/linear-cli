@@ -14,7 +14,9 @@ const (
 	VerbosityMinimal Verbosity = iota
 	// VerbosityCompact returns commonly needed fields (~150 tokens per issue)
 	VerbosityCompact
-	// VerbosityFull returns all fields (~500 tokens per issue)
+	// VerbosityDetailed returns all fields with truncated comments (~500 tokens per issue)
+	VerbosityDetailed
+	// VerbosityFull returns all fields with untruncated comments
 	VerbosityFull
 )
 
@@ -30,10 +32,12 @@ func ParseVerbosity(s string) (Verbosity, error) {
 		return VerbosityMinimal, nil
 	case "compact", "default":
 		return VerbosityCompact, nil
-	case "full", "detailed":
+	case "detailed":
+		return VerbosityDetailed, nil
+	case "full":
 		return VerbosityFull, nil
 	default:
-		return VerbosityCompact, fmt.Errorf("invalid verbosity '%s': must be 'minimal', 'compact', or 'full'", s)
+		return VerbosityCompact, fmt.Errorf("invalid verbosity '%s': must be 'minimal', 'compact', 'detailed', or 'full'", s)
 	}
 }
 
@@ -44,6 +48,8 @@ func (v Verbosity) String() string {
 		return "minimal"
 	case VerbosityCompact:
 		return "compact"
+	case VerbosityDetailed:
+		return "detailed"
 	case VerbosityFull:
 		return "full"
 	default:
@@ -57,10 +63,12 @@ func FormatToVerbosity(format Format) Verbosity {
 	switch format {
 	case Minimal:
 		return VerbosityMinimal
-	case Full:
-		return VerbosityFull
 	case Compact:
 		return VerbosityCompact
+	case Detailed:
+		return VerbosityDetailed
+	case Full:
+		return VerbosityFull
 	default:
 		return VerbosityCompact
 	}
@@ -72,10 +80,12 @@ func VerbosityToFormat(verbosity Verbosity) Format {
 	switch verbosity {
 	case VerbosityMinimal:
 		return Minimal
-	case VerbosityFull:
-		return Full
 	case VerbosityCompact:
 		return Compact
+	case VerbosityDetailed:
+		return Detailed
+	case VerbosityFull:
+		return Full
 	default:
 		return Compact
 	}
