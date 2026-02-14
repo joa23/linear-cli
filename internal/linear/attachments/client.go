@@ -270,6 +270,152 @@ func (ac *Client) ListAttachments(issueID string) ([]core.Attachment, error) {
 	return response.Issue.Attachments.Nodes, nil
 }
 
+// AttachmentCreateInput holds parameters for creating a Linear attachment object.
+type AttachmentCreateInput struct {
+	IssueID  string // Required — UUID of the issue
+	URL      string // Required — attachment URL (also unique key per issue)
+	Title    string // Required — display title
+	Subtitle string // Optional — display subtitle
+}
+
+// AttachmentUpdateInput holds parameters for updating an attachment.
+type AttachmentUpdateInput struct {
+	Title    string // Required by API
+	Subtitle string // Optional
+}
+
+// CreateAttachment creates a new Linear attachment object on an issue.
+func (ac *Client) CreateAttachment(input *AttachmentCreateInput) (*core.Attachment, error) {
+	const mutation = `
+		mutation AttachmentCreate($input: AttachmentCreateInput!) {
+			attachmentCreate(input: $input) {
+				success
+				attachment {
+					id
+					url
+					title
+					subtitle
+					sourceType
+					createdAt
+					updatedAt
+				}
+			}
+		}
+	`
+
+	inputMap := map[string]interface{}{
+		"issueId": input.IssueID,
+		"url":     input.URL,
+		"title":   input.Title,
+	}
+	if input.Subtitle != "" {
+		inputMap["subtitle"] = input.Subtitle
+	}
+
+	variables := map[string]interface{}{
+		"input": inputMap,
+	}
+
+	var response struct {
+		AttachmentCreate struct {
+			Success    bool            `json:"success"`
+			Attachment core.Attachment `json:"attachment"`
+		} `json:"attachmentCreate"`
+	}
+
+	err := ac.base.ExecuteRequest(mutation, variables, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create attachment: %w", err)
+	}
+
+	if !response.AttachmentCreate.Success {
+		return nil, fmt.Errorf("attachmentCreate returned success=false")
+	}
+
+	return &response.AttachmentCreate.Attachment, nil
+}
+
+// UpdateAttachment updates an existing attachment's title and subtitle.
+func (ac *Client) UpdateAttachment(id string, input *AttachmentUpdateInput) (*core.Attachment, error) {
+	const mutation = `
+		mutation AttachmentUpdate($id: String!, $input: AttachmentUpdateInput!) {
+			attachmentUpdate(id: $id, input: $input) {
+				success
+				attachment {
+					id
+					url
+					title
+					subtitle
+					sourceType
+					updatedAt
+				}
+			}
+		}
+	`
+
+	inputMap := map[string]interface{}{
+		"title": input.Title,
+	}
+	if input.Subtitle != "" {
+		inputMap["subtitle"] = input.Subtitle
+	}
+
+	variables := map[string]interface{}{
+		"id":    id,
+		"input": inputMap,
+	}
+
+	var response struct {
+		AttachmentUpdate struct {
+			Success    bool            `json:"success"`
+			Attachment core.Attachment `json:"attachment"`
+		} `json:"attachmentUpdate"`
+	}
+
+	err := ac.base.ExecuteRequest(mutation, variables, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update attachment: %w", err)
+	}
+
+	if !response.AttachmentUpdate.Success {
+		return nil, fmt.Errorf("attachmentUpdate returned success=false")
+	}
+
+	return &response.AttachmentUpdate.Attachment, nil
+}
+
+// DeleteAttachment deletes an attachment by UUID.
+func (ac *Client) DeleteAttachment(id string) error {
+	const mutation = `
+		mutation AttachmentDelete($id: String!) {
+			attachmentDelete(id: $id) {
+				success
+			}
+		}
+	`
+
+	variables := map[string]interface{}{
+		"id": id,
+	}
+
+	var response struct {
+		AttachmentDelete struct {
+			Success bool `json:"success"`
+		} `json:"attachmentDelete"`
+	}
+
+	err := ac.base.ExecuteRequest(mutation, variables, &response)
+	if err != nil {
+		return fmt.Errorf("failed to delete attachment: %w", err)
+	}
+
+	if !response.AttachmentDelete.Success {
+		return fmt.Errorf("attachmentDelete returned success=false")
+	}
+
+	return nil
+}
+
 // downloadAttachment downloads the actual attachment content with retry logic and robust error handling
 func (ac *Client) downloadAttachment(url string) ([]byte, string, int64, error) {
 	return ac.downloadAttachmentWithRetry(url, 3)

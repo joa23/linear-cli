@@ -66,3 +66,69 @@ func TestListAttachments_Deserialization(t *testing.T) {
 		t.Errorf("att[1].SourceType = %q, want %q", atts[1].SourceType, "slack")
 	}
 }
+
+func TestCreateAttachment_ResponseDeserialization(t *testing.T) {
+	graphqlResponse := `{
+		"attachmentCreate": {
+			"success": true,
+			"attachment": {
+				"id": "att-new",
+				"url": "https://github.com/org/repo/pull/42",
+				"title": "PR #42",
+				"subtitle": "Fix auth bug",
+				"sourceType": "github",
+				"createdAt": "2026-02-14T10:00:00Z",
+				"updatedAt": "2026-02-14T10:00:00Z"
+			}
+		}
+	}`
+
+	var response struct {
+		AttachmentCreate struct {
+			Success    bool            `json:"success"`
+			Attachment core.Attachment `json:"attachment"`
+		} `json:"attachmentCreate"`
+	}
+
+	err := json.Unmarshal([]byte(graphqlResponse), &response)
+	if err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if !response.AttachmentCreate.Success {
+		t.Error("expected success=true")
+	}
+	att := response.AttachmentCreate.Attachment
+	if att.ID != "att-new" {
+		t.Errorf("ID = %q, want %q", att.ID, "att-new")
+	}
+	if att.Title != "PR #42" {
+		t.Errorf("Title = %q, want %q", att.Title, "PR #42")
+	}
+	if att.Subtitle != "Fix auth bug" {
+		t.Errorf("Subtitle = %q, want %q", att.Subtitle, "Fix auth bug")
+	}
+}
+
+func TestDeleteAttachment_ResponseDeserialization(t *testing.T) {
+	graphqlResponse := `{
+		"attachmentDelete": {
+			"success": true
+		}
+	}`
+
+	var response struct {
+		AttachmentDelete struct {
+			Success bool `json:"success"`
+		} `json:"attachmentDelete"`
+	}
+
+	err := json.Unmarshal([]byte(graphqlResponse), &response)
+	if err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if !response.AttachmentDelete.Success {
+		t.Error("expected success=true")
+	}
+}
