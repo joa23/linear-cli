@@ -17,7 +17,8 @@ import (
 
 // ProjectConfig represents the .linear.yaml config file
 type ProjectConfig struct {
-	Team string `yaml:"team"`
+	Team    string `yaml:"team"`
+	Project string `yaml:"project,omitempty"`
 }
 
 const configFileName = ".linear.yaml"
@@ -258,4 +259,13 @@ func GetDefaultTeam() string {
 		return ""
 	}
 	return config.Team
+}
+
+// GetDefaultProject returns the default project from config, or empty string
+func GetDefaultProject() string {
+	config, err := LoadProjectConfig()
+	if err != nil || config == nil {
+		return ""
+	}
+	return config.Project
 }

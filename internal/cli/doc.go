@@ -31,6 +31,15 @@ Commands that require team context follow a consistent resolution order:
 
 Use [GetDefaultTeam] to retrieve the configured default team.
 
+## Project Resolution
+
+Commands that accept a --project flag follow a consistent resolution order:
+  1. Explicit --project flag
+  2. Default project from .linear.yaml (manually configured)
+  3. No project filter (all projects shown)
+
+Use [GetDefaultProject] to retrieve the configured default project.
+
 ## Limit Validation
 
 All list commands support --limit flags with consistent validation:
@@ -103,7 +112,7 @@ The CLI is stateless between invocations. Each command:
 
 State persisted between runs:
   - OAuth tokens (via token.Storage in ~/.linear/)
-  - Team defaults (via ConfigManager in .linear.yaml)
+  - Team and project defaults (via ConfigManager in .linear.yaml)
 
 # Configuration
 

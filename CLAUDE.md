@@ -38,6 +38,17 @@ linear auth status   # Verify: should show "Mode: Agent"
 linear init          # Select default team - creates .linear.yaml
 ```
 
+**Step 3 (optional): Set default project**
+
+Edit `.linear.yaml` to add a default project:
+```yaml
+# .linear.yaml
+team: CEN
+project: my-project  # optional — used when --project flag is omitted
+```
+
+When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `search`, `deps`) will use this default. Explicit `--project` flags always override it.
+
 ### Authentication Modes
 
 - **User mode**: `--assignee me` assigns to the human's Linear account

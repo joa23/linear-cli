@@ -52,6 +52,11 @@ Use --project to filter to a specific project's issues.`,
 				return err
 			}
 
+			// Use default project if not specified
+			if project == "" {
+				project = GetDefaultProject()
+			}
+
 			if len(args) > 0 {
 				// Single issue mode
 				return showIssueDeps(deps, args[0])
@@ -67,7 +72,7 @@ Use --project to filter to a specific project's issues.`,
 	}
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 
 	return cmd
 }
