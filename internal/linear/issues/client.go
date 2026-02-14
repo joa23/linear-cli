@@ -483,6 +483,10 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 				createdAt
 				updatedAt
 				url
+				project {
+					id
+					name
+				}
 				parent {
 					id
 					identifier
@@ -507,15 +511,15 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"id": issueID,
 	}
-	
+
 	var response struct {
 		Issue core.Issue `json:"issue"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue with parent context: %w", err)
