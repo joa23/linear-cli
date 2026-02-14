@@ -64,7 +64,13 @@ linear issues get CEN-123 --output json
 **Verbosity Levels** (`--format` flag):
 - `minimal` - Essential fields only (~50 tokens)
 - `compact` - Key metadata (~150 tokens, default)
-- `full` - Complete details (~500 tokens)
+- `full` - Complete details (~500 tokens). Comments are truncated — use `linear issues comments <id>` for full text.
+
+**Reading Comments:**
+```bash
+linear issues comments CEN-123          # Full comment bodies
+linear issues comments CEN-123 --last 5 # Last 5 only
+```
 
 **When to use JSON:**
 - Parsing data programmatically

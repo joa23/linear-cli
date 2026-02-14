@@ -605,7 +605,8 @@ ENG-100 User Authentication Epic
 ```bash
 linear issues comment ENG-123 --body "Fixed!"
 linear issues comment ENG-123 --body "Screenshot attached:" --attach /tmp/fix.png
-linear issues comments ENG-123               # List comments
+linear issues comments ENG-123               # List comments (full text)
+linear issues comments ENG-123 --last 5      # Last 5 comments only
 linear issues reply ENG-123 <id> --body "Thanks!"
 linear issues react ENG-123 👍               # Add reaction
 ```

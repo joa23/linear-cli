@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+**Comment Display (PR #30):**
+- `linear issues comments <id>` now shows full comment bodies instead of truncating to 200 characters
+- Added `--last N` flag to `issues comments` to show only the N most recent comments
+- `issues get --format full` now includes a hint: `COMMENTS (5) — run 'linear issues comments CEN-123' for full text`
+
 **Native Issue Relations (GitHub #6):**
 - `--blocked-by` and `--depends-on` flags now use native Linear relations (`issueRelationCreate`) instead of metadata storage
 - Fixed "no fields to update" error when using `--blocked-by` or `--depends-on` without other flags on `issues update`
