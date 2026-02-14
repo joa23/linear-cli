@@ -131,207 +131,15 @@ func (r *TextRenderer) issueCompact(issue *core.Issue) string {
 
 func (r *TextRenderer) issueDetailed(issue *core.Issue) string {
 	var b strings.Builder
-
-	// Header
-	b.WriteString(fmtSprintf("%s: %s\n", issue.Identifier, issue.Title))
-	b.WriteString(line(60))
-	b.WriteString("\n")
-
-	// Status section
-	b.WriteString(fmtSprintf("Status: %s\n", issue.State.Name))
-
-	if issue.Assignee != nil {
-		b.WriteString(fmtSprintf("Assignee: %s <%s>\n", issue.Assignee.Name, issue.Assignee.Email))
-	} else if issue.Delegate != nil {
-		b.WriteString(fmtSprintf("Delegate: %s <%s>\n", issue.Delegate.Name, issue.Delegate.Email))
-	} else {
-		b.WriteString("Assignee: Unassigned\n")
-	}
-
-	if pLabel := priorityLabel(issue.Priority); pLabel != "" {
-		b.WriteString(fmtSprintf("Priority: %s\n", pLabel))
-	}
-
-	if issue.Estimate != nil {
-		b.WriteString(fmtSprintf("Estimate: %.0f points\n", *issue.Estimate))
-	}
-
-	if issue.DueDate != nil {
-		b.WriteString(fmtSprintf("Due Date: %s\n", formatDate(*issue.DueDate)))
-	}
-
-	if issue.Project != nil {
-		b.WriteString(fmtSprintf("Project: %s\n", issue.Project.Name))
-	}
-
-	if issue.Cycle != nil {
-		b.WriteString(fmtSprintf("Cycle: %s (#%d)\n", issue.Cycle.Name, issue.Cycle.Number))
-	}
-
-	// Labels
-	if issue.Labels != nil && len(issue.Labels.Nodes) > 0 {
-		var labelNames []string
-		for _, label := range issue.Labels.Nodes {
-			labelNames = append(labelNames, label.Name)
-		}
-		b.WriteString(fmtSprintf("Labels: %s\n", strings.Join(labelNames, ", ")))
-	}
-
-	// Timestamps
-	b.WriteString(fmtSprintf("Created: %s\n", formatDateTime(issue.CreatedAt)))
-	b.WriteString(fmtSprintf("Updated: %s\n", formatDateTime(issue.UpdatedAt)))
-	b.WriteString(fmtSprintf("URL: %s\n", issue.URL))
-
-	// Description
-	if issue.Description != "" {
-		b.WriteString("\nDESCRIPTION\n")
-		b.WriteString(line(60))
-		b.WriteString("\n")
-		b.WriteString(cleanDescription(issue.Description))
-		b.WriteString("\n")
-	}
-
-	// Parent/Children
-	if issue.Parent != nil {
-		b.WriteString(fmtSprintf("\nParent: %s - %s\n", issue.Parent.Identifier, issue.Parent.Title))
-	}
-
-	if issue.Children.Nodes != nil && len(issue.Children.Nodes) > 0 {
-		b.WriteString(fmtSprintf("\nSUB-ISSUES (%d)\n", len(issue.Children.Nodes)))
-		b.WriteString(line(40))
-		b.WriteString("\n")
-		for _, child := range issue.Children.Nodes {
-			b.WriteString(fmtSprintf("  %s [%s] %s\n", child.Identifier, child.State.Name, child.Title))
-		}
-	}
-
-	// Attachments
-	if issue.Attachments != nil && len(issue.Attachments.Nodes) > 0 {
-		b.WriteString(fmtSprintf("\nATTACHMENTS (%d)\n", len(issue.Attachments.Nodes)))
-		b.WriteString(line(40))
-		b.WriteString("\n")
-		for _, att := range issue.Attachments.Nodes {
-			b.WriteString(fmtSprintf("  [%s] %s\n", att.SourceType, att.Title))
-			b.WriteString(fmtSprintf("    URL: %s\n", att.URL))
-		}
-	}
-
-	// Comments (truncated with hint)
-	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
-		b.WriteString(fmtSprintf("\nCOMMENTS (%d) — run 'linear issues comments %s' for full text\n", len(issue.Comments.Nodes), issue.Identifier))
-		b.WriteString(line(40))
-		b.WriteString("\n")
-		for _, comment := range issue.Comments.Nodes {
-			b.WriteString(fmtSprintf("@%s (%s):\n", comment.User.Name, formatDate(comment.CreatedAt)))
-			b.WriteString(fmtSprintf("  %s\n\n", truncate(cleanDescription(comment.Body), 200)))
-		}
-	}
-
+	writeIssueBody(&b, issue)
+	writeCommentsDetailed(&b, issue)
 	return b.String()
 }
 
 func (r *TextRenderer) issueFull(issue *core.Issue) string {
 	var b strings.Builder
-
-	// Header
-	b.WriteString(fmtSprintf("%s: %s\n", issue.Identifier, issue.Title))
-	b.WriteString(line(60))
-	b.WriteString("\n")
-
-	// Status section
-	b.WriteString(fmtSprintf("Status: %s\n", issue.State.Name))
-
-	if issue.Assignee != nil {
-		b.WriteString(fmtSprintf("Assignee: %s <%s>\n", issue.Assignee.Name, issue.Assignee.Email))
-	} else if issue.Delegate != nil {
-		b.WriteString(fmtSprintf("Delegate: %s <%s>\n", issue.Delegate.Name, issue.Delegate.Email))
-	} else {
-		b.WriteString("Assignee: Unassigned\n")
-	}
-
-	if pLabel := priorityLabel(issue.Priority); pLabel != "" {
-		b.WriteString(fmtSprintf("Priority: %s\n", pLabel))
-	}
-
-	if issue.Estimate != nil {
-		b.WriteString(fmtSprintf("Estimate: %.0f points\n", *issue.Estimate))
-	}
-
-	if issue.DueDate != nil {
-		b.WriteString(fmtSprintf("Due Date: %s\n", formatDate(*issue.DueDate)))
-	}
-
-	if issue.Project != nil {
-		b.WriteString(fmtSprintf("Project: %s\n", issue.Project.Name))
-	}
-
-	if issue.Cycle != nil {
-		b.WriteString(fmtSprintf("Cycle: %s (#%d)\n", issue.Cycle.Name, issue.Cycle.Number))
-	}
-
-	// Labels
-	if issue.Labels != nil && len(issue.Labels.Nodes) > 0 {
-		var labelNames []string
-		for _, label := range issue.Labels.Nodes {
-			labelNames = append(labelNames, label.Name)
-		}
-		b.WriteString(fmtSprintf("Labels: %s\n", strings.Join(labelNames, ", ")))
-	}
-
-	// Timestamps
-	b.WriteString(fmtSprintf("Created: %s\n", formatDateTime(issue.CreatedAt)))
-	b.WriteString(fmtSprintf("Updated: %s\n", formatDateTime(issue.UpdatedAt)))
-	b.WriteString(fmtSprintf("URL: %s\n", issue.URL))
-
-	// Description
-	if issue.Description != "" {
-		b.WriteString("\nDESCRIPTION\n")
-		b.WriteString(line(60))
-		b.WriteString("\n")
-		b.WriteString(cleanDescription(issue.Description))
-		b.WriteString("\n")
-	}
-
-	// Parent/Children
-	if issue.Parent != nil {
-		b.WriteString(fmtSprintf("\nParent: %s - %s\n", issue.Parent.Identifier, issue.Parent.Title))
-	}
-
-	if issue.Children.Nodes != nil && len(issue.Children.Nodes) > 0 {
-		b.WriteString(fmtSprintf("\nSUB-ISSUES (%d)\n", len(issue.Children.Nodes)))
-		b.WriteString(line(40))
-		b.WriteString("\n")
-		for _, child := range issue.Children.Nodes {
-			b.WriteString(fmtSprintf("  %s [%s] %s\n", child.Identifier, child.State.Name, child.Title))
-		}
-	}
-
-	// Attachments
-	if issue.Attachments != nil && len(issue.Attachments.Nodes) > 0 {
-		b.WriteString(fmtSprintf("\nATTACHMENTS (%d)\n", len(issue.Attachments.Nodes)))
-		b.WriteString(line(40))
-		b.WriteString("\n")
-		for _, att := range issue.Attachments.Nodes {
-			b.WriteString(fmtSprintf("  [%s] %s\n", att.SourceType, att.Title))
-			b.WriteString(fmtSprintf("    URL: %s\n", att.URL))
-		}
-	}
-
-	// Comments (untruncated)
-	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
-		b.WriteString(fmtSprintf("\nCOMMENTS (%d)\n", len(issue.Comments.Nodes)))
-		b.WriteString(line(40))
-		b.WriteString("\n")
-		for _, comment := range issue.Comments.Nodes {
-			b.WriteString(fmtSprintf("@%s (%s):\n", comment.User.Name, formatDate(comment.CreatedAt)))
-			body := cleanDescription(comment.Body)
-			for _, bodyLine := range strings.Split(body, "\n") {
-				b.WriteString(fmtSprintf("  %s\n", bodyLine))
-			}
-			b.WriteString("\n")
-		}
-	}
-
+	writeIssueBody(&b, issue)
+	writeCommentsFull(&b, issue)
 	return b.String()
 }
 
@@ -345,7 +153,7 @@ func (r *TextRenderer) RenderCycle(cycle *core.Cycle, verbosity Verbosity) strin
 	switch verbosity {
 	case VerbosityMinimal:
 		return r.cycleMinimal(cycle)
-	case VerbosityFull:
+	case VerbosityDetailed, VerbosityFull:
 		return r.cycleFull(cycle)
 	case VerbosityCompact:
 		return r.cycleCompact(cycle)

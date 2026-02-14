@@ -660,12 +660,31 @@ func TestFormatter_Issue_Full_WithAllFields(t *testing.T) {
 func TestFormatter_Issue_Detailed_CommentsHint(t *testing.T) {
 	f := New()
 
-	longBody := strings.Repeat("x", 300)
+	// Realistic markdown comment body that exercises cleanDescription
+	longBody := "## Investigation Notes\n\nI've looked into this issue and found the root cause.\n\n---\n\n" +
+		"The problem is in the `authenticateUser()` function where we're not handling the **token refresh** correctly.\n\n" +
+		"```go\nfunc authenticateUser(token string) error {\n    // This doesn't check expiry\n    return validate(token)\n}\n```\n\n" +
+		"We need to add an expiry check before validation. See [RFC 7519](https://tools.ietf.org/html/rfc7519) for details on JWT claims.\n\n" +
+		"Steps to reproduce:\n1. Login with valid credentials\n2. Wait for token to expire\n3. Try to access protected route\n\n" +
+		"The fix should be straightforward — just add a time check."
+
+	priority := 2
+	estimate := 3.0
+	dueDate := "2025-02-01"
+
 	issue := &core.Issue{
 		ID:         "uuid-hint",
 		Identifier: "CEN-456",
 		Title:      "Issue with comments",
+		URL:        "https://linear.app/test/issue/CEN-456",
 		State:      struct{ ID string `json:"id"`; Name string `json:"name"` }{Name: "Todo"},
+		Assignee:   &core.User{Name: "Alice", Email: "alice@test.com"},
+		Priority:   &priority,
+		Estimate:   &estimate,
+		DueDate:    &dueDate,
+		Project:    &core.Project{Name: "Auth Rewrite"},
+		Cycle:      &core.CycleReference{Number: 12, Name: "Sprint 12"},
+		Labels:     &core.LabelConnection{Nodes: []core.Label{{Name: "bug"}, {Name: "auth"}}},
 		CreatedAt:  "2025-01-10T10:00:00Z",
 		UpdatedAt:  "2025-01-15T15:30:00Z",
 		Comments: &core.CommentConnection{
@@ -680,6 +699,28 @@ func TestFormatter_Issue_Detailed_CommentsHint(t *testing.T) {
 		},
 	}
 
+	// Verify detailed format renders all metadata fields
+	t.Run("detailed format includes metadata", func(t *testing.T) {
+		result := f.Issue(issue, Detailed)
+		checks := map[string]string{
+			"header":   "CEN-456: Issue with comments",
+			"status":   "Status: Todo",
+			"assignee": "Assignee: Alice <alice@test.com>",
+			"priority": "Priority: P2:High",
+			"estimate": "Estimate: 3 points",
+			"dueDate":  "Due Date: 2025-02-01",
+			"project":  "Project: Auth Rewrite",
+			"cycle":    "Cycle: Sprint 12 (#12)",
+			"labels":   "Labels: bug, auth",
+			"url":      "https://linear.app/test/issue/CEN-456",
+		}
+		for field, expected := range checks {
+			if !strings.Contains(result, expected) {
+				t.Errorf("detailed format should contain %s (%q)", field, expected)
+			}
+		}
+	})
+
 	t.Run("old formatter detailed includes hint", func(t *testing.T) {
 		result := f.Issue(issue, Detailed)
 		if !strings.Contains(result, "COMMENTS (1)") {
@@ -692,17 +733,20 @@ func TestFormatter_Issue_Detailed_CommentsHint(t *testing.T) {
 
 	t.Run("old formatter detailed truncates comment body", func(t *testing.T) {
 		result := f.Issue(issue, Detailed)
-		if strings.Contains(result, longBody) {
+		if strings.Contains(result, "The fix should be straightforward") {
 			t.Error("detailed format should truncate long comment bodies")
 		}
 		if !strings.Contains(result, "...") {
 			t.Error("truncated comment should end with ellipsis")
 		}
+		if !strings.Contains(result, "Investigation Notes") {
+			t.Error("truncated comment should contain beginning of cleaned body")
+		}
 	})
 
 	t.Run("old formatter full does NOT truncate", func(t *testing.T) {
 		result := f.Issue(issue, Full)
-		if !strings.Contains(result, longBody) {
+		if !strings.Contains(result, "The fix should be straightforward") {
 			t.Error("full format should show untruncated comment bodies")
 		}
 		if strings.Contains(result, "linear issues comments") {
@@ -719,14 +763,14 @@ func TestFormatter_Issue_Detailed_CommentsHint(t *testing.T) {
 
 	t.Run("new renderer detailed truncates comment body", func(t *testing.T) {
 		result := f.RenderIssue(issue, VerbosityDetailed, OutputText)
-		if strings.Contains(result, longBody) {
+		if strings.Contains(result, "The fix should be straightforward") {
 			t.Error("text renderer detailed should truncate long comment bodies")
 		}
 	})
 
 	t.Run("new renderer full does NOT truncate", func(t *testing.T) {
 		result := f.RenderIssue(issue, VerbosityFull, OutputText)
-		if !strings.Contains(result, longBody) {
+		if !strings.Contains(result, "The fix should be straightforward") {
 			t.Error("text renderer full should show untruncated comment bodies")
 		}
 		if strings.Contains(result, "linear issues comments") {
@@ -736,7 +780,7 @@ func TestFormatter_Issue_Detailed_CommentsHint(t *testing.T) {
 
 	t.Run("JSON detailed truncates comment body", func(t *testing.T) {
 		result := f.RenderIssue(issue, VerbosityDetailed, OutputJSON)
-		if strings.Contains(result, longBody) {
+		if strings.Contains(result, "The fix should be straightforward") {
 			t.Error("JSON detailed should truncate comment bodies")
 		}
 		if !strings.Contains(result, "...") {
@@ -746,7 +790,7 @@ func TestFormatter_Issue_Detailed_CommentsHint(t *testing.T) {
 
 	t.Run("JSON full does NOT truncate comment body", func(t *testing.T) {
 		result := f.RenderIssue(issue, VerbosityFull, OutputJSON)
-		if !strings.Contains(result, longBody) {
+		if !strings.Contains(result, "The fix should be straightforward") {
 			t.Error("JSON full should show untruncated comment bodies")
 		}
 	})
