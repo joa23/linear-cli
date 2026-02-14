@@ -656,6 +656,48 @@ func TestFormatter_Issue_Full_WithAllFields(t *testing.T) {
 	}
 }
 
+func TestFormatter_Issue_Full_CommentsNotTruncated(t *testing.T) {
+	f := New()
+
+	// Create a comment body longer than 200 characters
+	longBody := "This is a detailed comment that explains the reasoning behind the implementation. " +
+		"It includes multiple sentences to ensure we exceed the previous 200-character truncation limit. " +
+		"The full text should be visible when using the full format output without any truncation applied."
+
+	issue := &core.Issue{
+		Identifier: "CEN-500",
+		Title:      "Issue with long comment",
+		State:      struct{ ID string `json:"id"`; Name string `json:"name"` }{Name: "Todo"},
+		Comments: &core.CommentConnection{
+			Nodes: []core.Comment{
+				{
+					Body:      longBody,
+					CreatedAt: "2025-01-15T10:00:00Z",
+					User:      core.User{Name: "Stefan"},
+				},
+			},
+		},
+	}
+
+	result := f.Issue(issue, Full)
+
+	// The full comment body should be present, not truncated
+	cleaned := cleanDescription(longBody)
+	if !strings.Contains(result, cleaned) {
+		t.Errorf("full format should display complete comment body without truncation.\nExpected to contain: %s\nGot: %s", cleaned, result)
+	}
+
+	// Verify the comment section header is present
+	if !strings.Contains(result, "COMMENTS (1)") {
+		t.Error("should contain comments section header")
+	}
+
+	// Verify the author is present
+	if !strings.Contains(result, "@Stefan") {
+		t.Error("should contain comment author")
+	}
+}
+
 func TestFormatter_Cycle_Full(t *testing.T) {
 	f := New()
 
