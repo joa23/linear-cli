@@ -176,6 +176,21 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 					name
 					email
 				}
+				priority
+				estimate
+				dueDate
+				labels {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				cycle {
+					id
+					number
+					name
+				}
 				createdAt
 				updatedAt
 				url
