@@ -51,6 +51,38 @@ type IssueFullDTO struct {
 	URL         string               `json:"url"`
 }
 
+// IssueDetailedDTO contains complete issue details with truncated comments (~500 tokens)
+type IssueDetailedDTO struct {
+	Identifier  string               `json:"identifier"`
+	Title       string               `json:"title"`
+	Description string               `json:"description"`
+	State       *StateDTO            `json:"state"`
+	Priority    *int                 `json:"priority"`
+	Assignee    *UserDTO             `json:"assignee"`
+	Delegate    *UserDTO             `json:"delegate,omitempty"`
+	Creator     *UserDTO             `json:"creator"`
+	Estimate    *float64             `json:"estimate"`
+	DueDate     *string              `json:"dueDate"`
+	Labels      []LabelDTO           `json:"labels"`
+	Project     *ProjectRefDTO       `json:"project"`
+	Cycle       *CycleRefDTO         `json:"cycle"`
+	Parent      *IssueRefDTO         `json:"parent"`
+	Children    []IssueRefDTO        `json:"children"`
+	Attachments []AttachmentDTO      `json:"attachments"`
+	Comments    []CommentSummaryDTO  `json:"comments"`
+	CreatedAt   string               `json:"createdAt"`
+	UpdatedAt   string               `json:"updatedAt"`
+	URL         string               `json:"url"`
+}
+
+// CommentSummaryDTO is a comment with a truncated body for the detailed view
+type CommentSummaryDTO struct {
+	ID        string   `json:"id"`
+	Body      string   `json:"body"`
+	User      *UserDTO `json:"user"`
+	CreatedAt string   `json:"createdAt"`
+}
+
 // --- Cycle DTOs ---
 
 // CycleMinimalDTO contains only essential cycle fields
@@ -360,6 +392,123 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 			dto.Comments[i] = CommentDTO{
 				ID:   comment.ID,
 				Body: comment.Body,
+				User: &UserDTO{
+					ID:   comment.User.ID,
+					Name: comment.User.Name,
+				},
+				CreatedAt: comment.CreatedAt,
+			}
+		}
+	}
+
+	return dto
+}
+
+// IssueToDetailedDTO converts an issue to detailed DTO (truncated comments)
+func IssueToDetailedDTO(issue *core.Issue) IssueDetailedDTO {
+	dto := IssueDetailedDTO{
+		Identifier:  issue.Identifier,
+		Title:       issue.Title,
+		Description: issue.Description,
+		State: &StateDTO{
+			ID:   issue.State.ID,
+			Name: issue.State.Name,
+		},
+		Priority:  issue.Priority,
+		Estimate:  issue.Estimate,
+		DueDate:   issue.DueDate,
+		CreatedAt: issue.CreatedAt,
+		UpdatedAt: issue.UpdatedAt,
+		URL:       issue.URL,
+	}
+
+	if issue.Assignee != nil {
+		dto.Assignee = &UserDTO{
+			ID:    issue.Assignee.ID,
+			Name:  issue.Assignee.Name,
+			Email: issue.Assignee.Email,
+		}
+	}
+
+	if issue.Delegate != nil {
+		dto.Delegate = &UserDTO{
+			ID:    issue.Delegate.ID,
+			Name:  issue.Delegate.Name,
+			Email: issue.Delegate.Email,
+		}
+	}
+
+	if issue.Creator != nil {
+		dto.Creator = &UserDTO{
+			ID:    issue.Creator.ID,
+			Name:  issue.Creator.Name,
+			Email: issue.Creator.Email,
+		}
+	}
+
+	if issue.Labels != nil && len(issue.Labels.Nodes) > 0 {
+		dto.Labels = make([]LabelDTO, len(issue.Labels.Nodes))
+		for i, label := range issue.Labels.Nodes {
+			dto.Labels[i] = LabelDTO{
+				ID:   label.ID,
+				Name: label.Name,
+			}
+		}
+	}
+
+	if issue.Project != nil {
+		dto.Project = &ProjectRefDTO{
+			ID:   issue.Project.ID,
+			Name: issue.Project.Name,
+		}
+	}
+
+	if issue.Cycle != nil {
+		dto.Cycle = &CycleRefDTO{
+			ID:     issue.Cycle.ID,
+			Number: issue.Cycle.Number,
+			Name:   issue.Cycle.Name,
+		}
+	}
+
+	if issue.Parent != nil {
+		dto.Parent = &IssueRefDTO{
+			Identifier: issue.Parent.Identifier,
+			Title:      issue.Parent.Title,
+			State:      issue.Parent.State.Name,
+		}
+	}
+
+	if issue.Children.Nodes != nil && len(issue.Children.Nodes) > 0 {
+		dto.Children = make([]IssueRefDTO, len(issue.Children.Nodes))
+		for i, child := range issue.Children.Nodes {
+			dto.Children[i] = IssueRefDTO{
+				Identifier: child.Identifier,
+				Title:      child.Title,
+				State:      child.State.Name,
+			}
+		}
+	}
+
+	if issue.Attachments != nil && len(issue.Attachments.Nodes) > 0 {
+		dto.Attachments = make([]AttachmentDTO, len(issue.Attachments.Nodes))
+		for i, att := range issue.Attachments.Nodes {
+			dto.Attachments[i] = AttachmentDTO{
+				ID:         att.ID,
+				Title:      att.Title,
+				URL:        att.URL,
+				SourceType: att.SourceType,
+			}
+		}
+	}
+
+	// Comments with truncated bodies
+	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
+		dto.Comments = make([]CommentSummaryDTO, len(issue.Comments.Nodes))
+		for i, comment := range issue.Comments.Nodes {
+			dto.Comments[i] = CommentSummaryDTO{
+				ID:        comment.ID,
+				Body:      truncate(comment.Body, 200),
 				User: &UserDTO{
 					ID:   comment.User.ID,
 					Name: comment.User.Name,

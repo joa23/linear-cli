@@ -208,7 +208,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 
 	// Output
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of results")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd

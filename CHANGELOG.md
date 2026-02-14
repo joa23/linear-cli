@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+**New `--format detailed` Verbosity Level:**
+- Added `detailed` format between `compact` and `full`: `minimal → compact → detailed → full`
+- `detailed` shows truncated comments + a hint to use `linear issues comments <id>` for full text
+- `full` now shows truly untruncated comment bodies (adopting PR #24's semantic)
+- `issues get` default changed from `full` to `detailed` to preserve existing behavior
+
+**Comment Display:**
+- `linear issues comments <id>` now shows full comment bodies instead of truncating to 200 characters
+- Added `--last N` flag to `issues comments` to show only the N most recent comments
+
 ### Fixed
 
 **Native Issue Relations (GitHub #6):**

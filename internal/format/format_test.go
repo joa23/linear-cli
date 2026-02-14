@@ -18,6 +18,7 @@ func TestParseFormat(t *testing.T) {
 		{"empty returns compact", "", Compact, false},
 		{"minimal", "minimal", Minimal, false},
 		{"compact", "compact", Compact, false},
+		{"detailed", "detailed", Detailed, false},
 		{"full", "full", Full, false},
 		{"invalid", "invalid", "", true},
 	}
@@ -656,6 +657,101 @@ func TestFormatter_Issue_Full_WithAllFields(t *testing.T) {
 	}
 }
 
+func TestFormatter_Issue_Detailed_CommentsHint(t *testing.T) {
+	f := New()
+
+	longBody := strings.Repeat("x", 300)
+	issue := &core.Issue{
+		ID:         "uuid-hint",
+		Identifier: "CEN-456",
+		Title:      "Issue with comments",
+		State:      struct{ ID string `json:"id"`; Name string `json:"name"` }{Name: "Todo"},
+		CreatedAt:  "2025-01-10T10:00:00Z",
+		UpdatedAt:  "2025-01-15T15:30:00Z",
+		Comments: &core.CommentConnection{
+			Nodes: []core.Comment{
+				{
+					ID:        "c1",
+					Body:      longBody,
+					CreatedAt: "2025-01-15T10:00:00Z",
+					User:      core.User{Name: "Alice"},
+				},
+			},
+		},
+	}
+
+	t.Run("old formatter detailed includes hint", func(t *testing.T) {
+		result := f.Issue(issue, Detailed)
+		if !strings.Contains(result, "COMMENTS (1)") {
+			t.Error("should contain comment count")
+		}
+		if !strings.Contains(result, "linear issues comments CEN-456") {
+			t.Error("should contain hint with issue identifier")
+		}
+	})
+
+	t.Run("old formatter detailed truncates comment body", func(t *testing.T) {
+		result := f.Issue(issue, Detailed)
+		if strings.Contains(result, longBody) {
+			t.Error("detailed format should truncate long comment bodies")
+		}
+		if !strings.Contains(result, "...") {
+			t.Error("truncated comment should end with ellipsis")
+		}
+	})
+
+	t.Run("old formatter full does NOT truncate", func(t *testing.T) {
+		result := f.Issue(issue, Full)
+		if !strings.Contains(result, longBody) {
+			t.Error("full format should show untruncated comment bodies")
+		}
+		if strings.Contains(result, "linear issues comments") {
+			t.Error("full format should not contain hint")
+		}
+	})
+
+	t.Run("new renderer detailed includes hint", func(t *testing.T) {
+		result := f.RenderIssue(issue, VerbosityDetailed, OutputText)
+		if !strings.Contains(result, "linear issues comments CEN-456") {
+			t.Error("text renderer detailed should contain hint")
+		}
+	})
+
+	t.Run("new renderer detailed truncates comment body", func(t *testing.T) {
+		result := f.RenderIssue(issue, VerbosityDetailed, OutputText)
+		if strings.Contains(result, longBody) {
+			t.Error("text renderer detailed should truncate long comment bodies")
+		}
+	})
+
+	t.Run("new renderer full does NOT truncate", func(t *testing.T) {
+		result := f.RenderIssue(issue, VerbosityFull, OutputText)
+		if !strings.Contains(result, longBody) {
+			t.Error("text renderer full should show untruncated comment bodies")
+		}
+		if strings.Contains(result, "linear issues comments") {
+			t.Error("text renderer full should not contain hint")
+		}
+	})
+
+	t.Run("JSON detailed truncates comment body", func(t *testing.T) {
+		result := f.RenderIssue(issue, VerbosityDetailed, OutputJSON)
+		if strings.Contains(result, longBody) {
+			t.Error("JSON detailed should truncate comment bodies")
+		}
+		if !strings.Contains(result, "...") {
+			t.Error("JSON detailed truncated comment should end with ellipsis")
+		}
+	})
+
+	t.Run("JSON full does NOT truncate comment body", func(t *testing.T) {
+		result := f.RenderIssue(issue, VerbosityFull, OutputJSON)
+		if !strings.Contains(result, longBody) {
+			t.Error("JSON full should show untruncated comment bodies")
+		}
+	})
+}
+
 func TestFormatter_Cycle_Full(t *testing.T) {
 	f := New()
 
@@ -757,7 +853,7 @@ func TestParseVerbosity(t *testing.T) {
 		{"full", "full", VerbosityFull, false},
 		{"min alias", "min", VerbosityMinimal, false},
 		{"default alias", "default", VerbosityCompact, false},
-		{"detailed alias", "detailed", VerbosityFull, false},
+		{"detailed", "detailed", VerbosityDetailed, false},
 		{"invalid", "invalid", VerbosityCompact, true},
 	}
 
@@ -812,6 +908,9 @@ func TestVerbosityConversion(t *testing.T) {
 		if FormatToVerbosity(Compact) != VerbosityCompact {
 			t.Error("Compact should convert to VerbosityCompact")
 		}
+		if FormatToVerbosity(Detailed) != VerbosityDetailed {
+			t.Error("Detailed should convert to VerbosityDetailed")
+		}
 		if FormatToVerbosity(Full) != VerbosityFull {
 			t.Error("Full should convert to VerbosityFull")
 		}
@@ -823,6 +922,9 @@ func TestVerbosityConversion(t *testing.T) {
 		}
 		if VerbosityToFormat(VerbosityCompact) != Compact {
 			t.Error("VerbosityCompact should convert to Compact")
+		}
+		if VerbosityToFormat(VerbosityDetailed) != Detailed {
+			t.Error("VerbosityDetailed should convert to Detailed")
 		}
 		if VerbosityToFormat(VerbosityFull) != Full {
 			t.Error("VerbosityFull should convert to Full")
