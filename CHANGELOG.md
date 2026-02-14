@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+**Attachment Commands (GitHub #36):**
+- Added `linear attachments list <issue-id>` to list attachment objects on an issue
+- Added `linear attachments create <issue-id>` with `--url` for external links and `--file` for file uploads
+- Added `linear attachments update <id>` to update attachment title/subtitle
+- Added `linear attachments delete <id>` to remove attachments
+- File uploads (`--file`) upload to Linear CDN then create real attachment objects (not inline markdown)
+- Supports `--output json` for automation
+- Existing `--attach` flag on `issues create/update/comment` is unchanged (inline markdown embeds)
+
 ### Fixed
 
 **Native Issue Relations (GitHub #6):**

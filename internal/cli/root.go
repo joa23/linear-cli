@@ -109,6 +109,14 @@ Labels:
   labels update <id> [flags]   Update label
   labels delete <id>           Delete label
 
+Attachments (alias: att):
+  att list <ID>                List attachments on issue
+  att create <ID> [flags]      Create attachment (URL or file)
+  att update <ID> [flags]      Update attachment title/subtitle
+  att delete <ID>              Delete attachment
+
+  Create flags: --url, --file, --title, --subtitle
+
 Users (alias: u):
   u list [--team <ID>]         List users
   u get <ID>                   Get user details
@@ -157,6 +165,7 @@ Configuration:
 		newUsersCmd(),
 		newLabelsCmd(),
 		newNotificationsCmd(),
+		newAttachmentsCmd(),
 
 		// Analysis
 		newDepsCmd(),

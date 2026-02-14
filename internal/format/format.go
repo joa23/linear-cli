@@ -133,6 +133,18 @@ func (f *Formatter) RenderCommentList(comments []core.Comment, verbosity Verbosi
 	return renderer.RenderCommentList(comments, verbosity)
 }
 
+// RenderAttachment renders a single attachment
+func (f *Formatter) RenderAttachment(att *core.Attachment, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderAttachment(att, verbosity)
+}
+
+// RenderAttachmentList renders a list of attachments
+func (f *Formatter) RenderAttachmentList(atts []core.Attachment, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderAttachmentList(atts, verbosity)
+}
+
 // --- Utility functions ---
 
 // line creates a horizontal separator line

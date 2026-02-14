@@ -94,6 +94,7 @@ linear issues get CEN-123 --format minimal --output json
 - `teams list`, `teams get`, `teams labels`, `teams states`
 - `users list`, `users get`, `users me`
 - `search` (all search operations)
+- `attachments list`, `attachments create`, `attachments update`
 
 ### Common Patterns
 
@@ -199,6 +200,24 @@ linear search --has-circular-deps --team CEN
 3. **After creating issues**: Use `/link-deps` skill to establish dependencies
 4. **Sprint planning**: Check `linear deps --team CEN` for work order
 5. **Priority alignment**: Ensure foundation work is prioritized over features it blocks
+
+#### Attachments
+```bash
+# List attachments on an issue
+linear attachments list TEC-123
+
+# Attach a URL (GitHub PR, Slack thread, etc.)
+linear attachments create TEC-123 --url "https://github.com/org/repo/pull/42" --title "PR #42"
+
+# Upload a file as attachment
+linear attachments create TEC-123 --file /tmp/screenshot.png --title "Bug screenshot"
+
+# Update attachment metadata
+linear attachments update <uuid> --title "Updated title"
+
+# Delete attachment
+linear attachments delete <uuid>
+```
 
 ### Skills Usage
 

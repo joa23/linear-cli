@@ -17,7 +17,8 @@ type Services struct {
 	Users      *UserService
 	Labels     *LabelService
 	Search     *SearchService
-	TaskExport *TaskExportService
+	TaskExport  *TaskExportService
+	Attachments *AttachmentService
 
 	client *linear.Client // Store original client for backward compatibility
 }
@@ -34,8 +35,9 @@ func New(client *linear.Client) *Services {
 		Users:      NewUserService(client, formatter),
 		Labels:     NewLabelService(client, formatter),
 		Search:     NewSearchService(client, formatter),
-		TaskExport: NewTaskExportService(client),
-		client:     client,
+		TaskExport:  NewTaskExportService(client),
+		Attachments: NewAttachmentService(client, formatter),
+		client:      client,
 	}
 }
 

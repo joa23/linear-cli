@@ -19,7 +19,8 @@ type Dependencies struct {
 	Teams      service.TeamServiceInterface
 	Users      service.UserServiceInterface
 	Labels     service.LabelServiceInterface
-	TaskExport service.TaskExportServiceInterface
+	TaskExport  service.TaskExportServiceInterface
+	Attachments service.AttachmentServiceInterface
 }
 
 // NewDependencies creates dependencies with real implementations
@@ -35,6 +36,7 @@ func NewDependencies(client *linear.Client) *Dependencies {
 		Teams:      services.Teams,
 		Users:      services.Users,
 		Labels:     services.Labels,
-		TaskExport: services.TaskExport,
+		TaskExport:  services.TaskExport,
+		Attachments: services.Attachments,
 	}
 }
