@@ -334,6 +334,26 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 					name
 					email
 				}
+				delegate {
+					id
+					name
+					email
+				}
+				priority
+				estimate
+				dueDate
+				labels {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				cycle {
+					id
+					number
+					name
+				}
 				createdAt
 				updatedAt
 				url
@@ -439,6 +459,26 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 					id
 					name
 					email
+				}
+				delegate {
+					id
+					name
+					email
+				}
+				priority
+				estimate
+				dueDate
+				labels {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				cycle {
+					id
+					number
+					name
 				}
 				createdAt
 				updatedAt
@@ -1385,6 +1425,26 @@ func (ic *Client) GetIssueSimplified(issueID string) (*core.Issue, error) {
 					id
 					name
 					email
+				}
+				delegate {
+					id
+					name
+					email
+				}
+				priority
+				estimate
+				dueDate
+				labels {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				cycle {
+					id
+					number
+					name
 				}
 				createdAt
 				updatedAt
