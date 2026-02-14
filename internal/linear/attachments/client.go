@@ -229,6 +229,47 @@ func (ac *Client) getAttachmentMetadata(attachmentID string) (*core.Attachment, 
 	}, nil
 }
 
+// ListAttachments queries all attachments for an issue.
+// issueID must be a UUID (resolve identifiers like "TEC-123" before calling).
+func (ac *Client) ListAttachments(issueID string) ([]core.Attachment, error) {
+	const query = `
+		query IssueAttachments($id: String!) {
+			issue(id: $id) {
+				attachments(first: 50) {
+					nodes {
+						id
+						url
+						title
+						subtitle
+						sourceType
+						createdAt
+						updatedAt
+					}
+				}
+			}
+		}
+	`
+
+	variables := map[string]interface{}{
+		"id": issueID,
+	}
+
+	var response struct {
+		Issue struct {
+			Attachments struct {
+				Nodes []core.Attachment `json:"nodes"`
+			} `json:"attachments"`
+		} `json:"issue"`
+	}
+
+	err := ac.base.ExecuteRequest(query, variables, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list attachments: %w", err)
+	}
+
+	return response.Issue.Attachments.Nodes, nil
+}
+
 // downloadAttachment downloads the actual attachment content with retry logic and robust error handling
 func (ac *Client) downloadAttachment(url string) ([]byte, string, int64, error) {
 	return ac.downloadAttachmentWithRetry(url, 3)
