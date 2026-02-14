@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dominikbraun/graph"
+	"github.com/joa23/linear-cli/internal/format"
 	"github.com/spf13/cobra"
 )
 
@@ -50,6 +51,7 @@ type DepsGraphJSON struct {
 func newDepsCmd() *cobra.Command {
 	var teamID string
 	var project string
+	var outputType string
 
 	cmd := &cobra.Command{
 		Use:   "deps [issue-id]",
@@ -76,14 +78,17 @@ Use --project to filter to a specific project's issues.`,
 				return err
 			}
 
+			output, err := format.ParseOutputType(outputType)
+			if err != nil {
+				return err
+			}
+
 			if len(args) > 0 {
-				// Single issue mode
-				return showIssueDeps(deps, args[0])
+				return showIssueDeps(deps, args[0], output)
 			}
 
 			if teamID != "" {
-				// Team mode (with optional project filter)
-				return showTeamDeps(deps, teamID, project)
+				return showTeamDeps(deps, teamID, project, output)
 			}
 
 			return fmt.Errorf("provide an issue ID or use --team to show team dependencies")
@@ -92,11 +97,12 @@ Use --project to filter to a specific project's issues.`,
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
+	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
 }
 
-func showIssueDeps(deps *Dependencies, issueID string) error {
+func showIssueDeps(deps *Dependencies, issueID string, output format.OutputType) error {
 	issue, err := deps.Client.Issues.GetIssueWithRelations(issueID)
 	if err != nil {
 		return fmt.Errorf("failed to get issue: %w", err)
@@ -148,10 +154,14 @@ func showIssueDeps(deps *Dependencies, issueID string) error {
 		}
 	}
 
+	if output.IsJSON() {
+		fmt.Println(renderDepsJSON(issue.Identifier, nodes, edges))
+		return nil
+	}
 	return renderDependencyGraph(issue.Identifier, nodes, edges)
 }
 
-func showTeamDeps(deps *Dependencies, teamID string, project string) error {
+func showTeamDeps(deps *Dependencies, teamID string, project string, output format.OutputType) error {
 	issues, err := deps.Client.Issues.GetTeamIssuesWithRelations(teamID, 250)
 	if err != nil {
 		return fmt.Errorf("failed to get team issues: %w", err)
@@ -207,10 +217,18 @@ func showTeamDeps(deps *Dependencies, teamID string, project string) error {
 	}
 
 	if len(edges) == 0 {
+		if output.IsJSON() {
+			fmt.Println(renderDepsJSON("", nodes, edges))
+			return nil
+		}
 		fmt.Printf("No dependencies found for team %s\n", teamID)
 		return nil
 	}
 
+	if output.IsJSON() {
+		fmt.Println(renderDepsJSON("", nodes, edges))
+		return nil
+	}
 	return renderTeamDependencyGraph(teamID, nodes, edges)
 }
 
