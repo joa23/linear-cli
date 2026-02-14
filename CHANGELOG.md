@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**Default Project Configuration:**
+- `.linear.yaml` now supports an optional `project` field for setting a default project
+- New `GetDefaultProject()` follows the same pattern as `GetDefaultTeam()`
+- Commands with `--project` flag (`issues list`, `issues create`, `issues update`, `search`, `deps`) fall back to the configured default when no explicit `--project` flag is provided
+- Users can manually add `project: my-project` to their `.linear.yaml`
+
 **`--project` Flag Extended to Search and Deps (PR #13):**
 - `--project` / `-P` flag now works on `search` and `deps` commands (v1.4.9 only added it to `issues list`)
 - Server-side GraphQL filtering for `search`; client-side filtering for `deps`
