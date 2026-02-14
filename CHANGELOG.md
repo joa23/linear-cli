@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tokens are now refreshed automatically (proactive before expiry, reactive on 401)
 - Legacy tokens (no refresh token) and `LINEAR_API_TOKEN` env var continue to work unchanged
 
+**GetIssue Missing Fields (GitHub #31):**
+- `issues get` now returns priority, estimate, dueDate, labels, cycle, and delegate across all query paths
+- Fixed `GetIssueWithParentContext` missing the `project` field — issues with parents showed `project: null`
+- Fixed `GetIssueWithProjectContext` and `GetIssueWithParentContext` missing comments and attachments — data was fetched by `GetIssue` then silently replaced by context variants that lacked these fields
+
 ## [1.4.9] - 2026-02-10
 
 ### Added
