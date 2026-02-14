@@ -1,10 +1,13 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/dominikbraun/graph"
+	"github.com/joa23/linear-cli/internal/format"
 	"github.com/spf13/cobra"
 )
 
@@ -23,9 +26,32 @@ type DepEdge struct {
 	Type string
 }
 
+// DepsNodeJSON is the JSON representation of a dependency graph node.
+type DepsNodeJSON struct {
+	Identifier string `json:"identifier"`
+	Title      string `json:"title"`
+	State      string `json:"state"`
+}
+
+// DepsEdgeJSON is the JSON representation of a dependency graph edge.
+type DepsEdgeJSON struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	Type string `json:"type"`
+}
+
+// DepsGraphJSON is the JSON representation of a full dependency graph.
+type DepsGraphJSON struct {
+	RootIssue string         `json:"rootIssue,omitempty"`
+	Nodes     []DepsNodeJSON `json:"nodes"`
+	Edges     []DepsEdgeJSON `json:"edges"`
+	Cycles    [][]string     `json:"cycles"`
+}
+
 func newDepsCmd() *cobra.Command {
 	var teamID string
 	var project string
+	var outputType string
 
 	cmd := &cobra.Command{
 		Use:   "deps [issue-id]",
@@ -52,14 +78,17 @@ Use --project to filter to a specific project's issues.`,
 				return err
 			}
 
+			output, err := format.ParseOutputType(outputType)
+			if err != nil {
+				return err
+			}
+
 			if len(args) > 0 {
-				// Single issue mode
-				return showIssueDeps(deps, args[0])
+				return showIssueDeps(deps, args[0], output)
 			}
 
 			if teamID != "" {
-				// Team mode (with optional project filter)
-				return showTeamDeps(deps, teamID, project)
+				return showTeamDeps(deps, teamID, project, output)
 			}
 
 			return fmt.Errorf("provide an issue ID or use --team to show team dependencies")
@@ -68,11 +97,12 @@ Use --project to filter to a specific project's issues.`,
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
+	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
 }
 
-func showIssueDeps(deps *Dependencies, issueID string) error {
+func showIssueDeps(deps *Dependencies, issueID string, output format.OutputType) error {
 	issue, err := deps.Client.Issues.GetIssueWithRelations(issueID)
 	if err != nil {
 		return fmt.Errorf("failed to get issue: %w", err)
@@ -124,10 +154,14 @@ func showIssueDeps(deps *Dependencies, issueID string) error {
 		}
 	}
 
+	if output.IsJSON() {
+		fmt.Println(renderDepsJSON(issue.Identifier, nodes, edges))
+		return nil
+	}
 	return renderDependencyGraph(issue.Identifier, nodes, edges)
 }
 
-func showTeamDeps(deps *Dependencies, teamID string, project string) error {
+func showTeamDeps(deps *Dependencies, teamID string, project string, output format.OutputType) error {
 	issues, err := deps.Client.Issues.GetTeamIssuesWithRelations(teamID, 250)
 	if err != nil {
 		return fmt.Errorf("failed to get team issues: %w", err)
@@ -183,10 +217,18 @@ func showTeamDeps(deps *Dependencies, teamID string, project string) error {
 	}
 
 	if len(edges) == 0 {
+		if output.IsJSON() {
+			fmt.Println(renderDepsJSON("", nodes, edges))
+			return nil
+		}
 		fmt.Printf("No dependencies found for team %s\n", teamID)
 		return nil
 	}
 
+	if output.IsJSON() {
+		fmt.Println(renderDepsJSON("", nodes, edges))
+		return nil
+	}
 	return renderTeamDependencyGraph(teamID, nodes, edges)
 }
 
@@ -418,6 +460,52 @@ func detectCycles(nodes map[string]*DepNode, edges []DepEdge) [][]string {
 	}
 
 	return result
+}
+
+// renderDepsJSON marshals the dependency graph as JSON.
+// rootIssue is the identifier of the queried issue (empty for team mode).
+func renderDepsJSON(rootIssue string, nodes map[string]*DepNode, edges []DepEdge) string {
+	// Build sorted node list for deterministic output
+	nodeList := make([]DepsNodeJSON, 0, len(nodes))
+	for _, n := range nodes {
+		nodeList = append(nodeList, DepsNodeJSON{
+			Identifier: n.Identifier,
+			Title:      n.Title,
+			State:      n.State,
+		})
+	}
+	sort.Slice(nodeList, func(i, j int) bool {
+		return nodeList[i].Identifier < nodeList[j].Identifier
+	})
+
+	// Build edge list
+	edgeList := make([]DepsEdgeJSON, 0, len(edges))
+	for _, e := range edges {
+		edgeList = append(edgeList, DepsEdgeJSON{
+			From: e.From,
+			To:   e.To,
+			Type: e.Type,
+		})
+	}
+
+	// Detect cycles
+	cycles := detectCycles(nodes, edges)
+	if cycles == nil {
+		cycles = [][]string{}
+	}
+
+	graph := DepsGraphJSON{
+		RootIssue: rootIssue,
+		Nodes:     nodeList,
+		Edges:     edgeList,
+		Cycles:    cycles,
+	}
+
+	jsonBytes, err := json.MarshalIndent(graph, "", "  ")
+	if err != nil {
+		return fmt.Sprintf(`{"error": "failed to marshal JSON: %s"}`, err)
+	}
+	return string(jsonBytes)
 }
 
 func truncateTitle(title string, maxLen int) string {

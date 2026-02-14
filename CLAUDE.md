@@ -94,6 +94,7 @@ linear issues get CEN-123 --format minimal --output json
 - `teams list`, `teams get`, `teams labels`, `teams states`
 - `users list`, `users get`, `users me`
 - `search` (all search operations)
+- `deps` (dependency graph)
 
 ### Common Patterns
 
@@ -217,6 +218,7 @@ After running `linear init`, use these skills:
 ```bash
 linear deps ENG-100          # Show deps for issue
 linear deps --team ENG       # Show all deps for team
+linear deps --team ENG --output json  # JSON for automation
 ```
 
 ### Skills Management
