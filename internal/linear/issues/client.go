@@ -381,18 +381,41 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 						}
 					}
 				}
+				attachments(first: 50) {
+					nodes {
+						id
+						url
+						title
+						subtitle
+						createdAt
+						sourceType
+					}
+				}
+				comments(first: 50) {
+					nodes {
+						id
+						body
+						createdAt
+						updatedAt
+						user {
+							id
+							name
+							email
+						}
+					}
+				}
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"id": issueID,
 	}
-	
+
 	var response struct {
 		Issue core.Issue `json:"issue"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue with project context: %w", err)
@@ -505,6 +528,29 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 						state {
 							id
 							name
+						}
+					}
+				}
+				attachments(first: 50) {
+					nodes {
+						id
+						url
+						title
+						subtitle
+						createdAt
+						sourceType
+					}
+				}
+				comments(first: 50) {
+					nodes {
+						id
+						body
+						createdAt
+						updatedAt
+						user {
+							id
+							name
+							email
 						}
 					}
 				}
