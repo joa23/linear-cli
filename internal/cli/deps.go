@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/dominikbraun/graph"
@@ -21,6 +23,28 @@ type DepEdge struct {
 	From string // blocks
 	To   string // is blocked by
 	Type string
+}
+
+// DepsNodeJSON is the JSON representation of a dependency graph node.
+type DepsNodeJSON struct {
+	Identifier string `json:"identifier"`
+	Title      string `json:"title"`
+	State      string `json:"state"`
+}
+
+// DepsEdgeJSON is the JSON representation of a dependency graph edge.
+type DepsEdgeJSON struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	Type string `json:"type"`
+}
+
+// DepsGraphJSON is the JSON representation of a full dependency graph.
+type DepsGraphJSON struct {
+	RootIssue string         `json:"rootIssue,omitempty"`
+	Nodes     []DepsNodeJSON `json:"nodes"`
+	Edges     []DepsEdgeJSON `json:"edges"`
+	Cycles    [][]string     `json:"cycles"`
 }
 
 func newDepsCmd() *cobra.Command {
@@ -418,6 +442,52 @@ func detectCycles(nodes map[string]*DepNode, edges []DepEdge) [][]string {
 	}
 
 	return result
+}
+
+// renderDepsJSON marshals the dependency graph as JSON.
+// rootIssue is the identifier of the queried issue (empty for team mode).
+func renderDepsJSON(rootIssue string, nodes map[string]*DepNode, edges []DepEdge) string {
+	// Build sorted node list for deterministic output
+	nodeList := make([]DepsNodeJSON, 0, len(nodes))
+	for _, n := range nodes {
+		nodeList = append(nodeList, DepsNodeJSON{
+			Identifier: n.Identifier,
+			Title:      n.Title,
+			State:      n.State,
+		})
+	}
+	sort.Slice(nodeList, func(i, j int) bool {
+		return nodeList[i].Identifier < nodeList[j].Identifier
+	})
+
+	// Build edge list
+	edgeList := make([]DepsEdgeJSON, 0, len(edges))
+	for _, e := range edges {
+		edgeList = append(edgeList, DepsEdgeJSON{
+			From: e.From,
+			To:   e.To,
+			Type: e.Type,
+		})
+	}
+
+	// Detect cycles
+	cycles := detectCycles(nodes, edges)
+	if cycles == nil {
+		cycles = [][]string{}
+	}
+
+	graph := DepsGraphJSON{
+		RootIssue: rootIssue,
+		Nodes:     nodeList,
+		Edges:     edgeList,
+		Cycles:    cycles,
+	}
+
+	jsonBytes, err := json.MarshalIndent(graph, "", "  ")
+	if err != nil {
+		return fmt.Sprintf(`{"error": "failed to marshal JSON: %s"}`, err)
+	}
+	return string(jsonBytes)
 }
 
 func truncateTitle(title string, maxLen int) string {
