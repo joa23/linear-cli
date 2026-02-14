@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tokens are now refreshed automatically (proactive before expiry, reactive on 401)
 - Legacy tokens (no refresh token) and `LINEAR_API_TOKEN` env var continue to work unchanged
 
+**GetIssue Attachment Shadowing (GitHub #34):**
+- Fixed `GetIssue` response struct shadowing `core.Issue.Attachments` via struct embedding
+- Attachments from Linear UI or integrations (Slack, GitHub PRs, Figma) were fetched but silently discarded
+- All `GetIssueWithBestContext` query paths now use `core.Issue` directly — no shadowing
+
 ## [1.4.9] - 2026-02-10
 
 ### Added

@@ -231,16 +231,9 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 	}
 	
 	var response struct {
-		Issue struct {
-			core.Issue
-			Attachments struct {
-				Nodes []struct {
-					ID string `json:"id"`
-				} `json:"nodes"`
-			} `json:"attachments"`
-		} `json:"issue"`
+		Issue core.Issue `json:"issue"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue: %w", err)
@@ -256,22 +249,19 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 	}
 
 	// Extract metadata from description
-	// Why: Metadata is stored in descriptions but should be easily accessible
-	// as a separate field. This extraction ensures consistent metadata access
-	// regardless of how the issue was retrieved.
 	if response.Issue.Description != "" {
 		metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.Issue.Description)
 		response.Issue.Metadata = metadata
 		response.Issue.Description = cleanDesc
 	}
-	
-	// Set attachment fields
-	// Why: AttachmentCount is computed from the nodes length, and HasAttachments
-	// is a computed boolean for easy checking by agents
-	response.Issue.AttachmentCount = len(response.Issue.Attachments.Nodes)
-	response.Issue.HasAttachments = response.Issue.AttachmentCount > 0
-	
-	return &response.Issue.Issue, nil
+
+	// Set computed attachment fields
+	if response.Issue.Attachments != nil {
+		response.Issue.AttachmentCount = len(response.Issue.Attachments.Nodes)
+		response.Issue.HasAttachments = response.Issue.AttachmentCount > 0
+	}
+
+	return &response.Issue, nil
 }
 
 // GetIssueWithProjectContext retrieves an issue with additional project information
