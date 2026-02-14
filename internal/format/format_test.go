@@ -656,6 +656,64 @@ func TestFormatter_Issue_Full_WithAllFields(t *testing.T) {
 	}
 }
 
+func TestFormatter_Issue_Full_CommentsHint(t *testing.T) {
+	f := New()
+
+	longBody := strings.Repeat("x", 300)
+	issue := &core.Issue{
+		ID:         "uuid-hint",
+		Identifier: "CEN-456",
+		Title:      "Issue with comments",
+		State:      struct{ ID string `json:"id"`; Name string `json:"name"` }{Name: "Todo"},
+		CreatedAt:  "2025-01-10T10:00:00Z",
+		UpdatedAt:  "2025-01-15T15:30:00Z",
+		Comments: &core.CommentConnection{
+			Nodes: []core.Comment{
+				{
+					ID:        "c1",
+					Body:      longBody,
+					CreatedAt: "2025-01-15T10:00:00Z",
+					User:      core.User{Name: "Alice"},
+				},
+			},
+		},
+	}
+
+	t.Run("old formatter includes hint with identifier", func(t *testing.T) {
+		result := f.Issue(issue, Full)
+		if !strings.Contains(result, "COMMENTS (1)") {
+			t.Error("should contain comment count")
+		}
+		if !strings.Contains(result, "linear issues comments CEN-456") {
+			t.Error("should contain hint with issue identifier")
+		}
+	})
+
+	t.Run("old formatter still truncates comment body", func(t *testing.T) {
+		result := f.Issue(issue, Full)
+		if strings.Contains(result, longBody) {
+			t.Error("full format should still truncate long comment bodies")
+		}
+		if !strings.Contains(result, "...") {
+			t.Error("truncated comment should end with ellipsis")
+		}
+	})
+
+	t.Run("new renderer includes hint with identifier", func(t *testing.T) {
+		result := f.RenderIssue(issue, VerbosityFull, OutputText)
+		if !strings.Contains(result, "linear issues comments CEN-456") {
+			t.Error("text renderer should contain hint with issue identifier")
+		}
+	})
+
+	t.Run("new renderer still truncates comment body", func(t *testing.T) {
+		result := f.RenderIssue(issue, VerbosityFull, OutputText)
+		if strings.Contains(result, longBody) {
+			t.Error("text renderer should still truncate long comment bodies")
+		}
+	})
+}
+
 func TestFormatter_Cycle_Full(t *testing.T) {
 	f := New()
 

@@ -200,6 +200,12 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
+// CleanDescription removes markdown formatting and normalizes whitespace.
+// Exported for use by CLI commands that render comment bodies directly.
+func CleanDescription(desc string) string {
+	return cleanDescription(desc)
+}
+
 // cleanDescription removes markdown formatting and normalizes whitespace
 func cleanDescription(desc string) string {
 	if desc == "" {

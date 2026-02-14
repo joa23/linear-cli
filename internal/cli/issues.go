@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/joa23/linear-cli/internal/format"
 	paginationutil "github.com/joa23/linear-cli/internal/linear/pagination"
@@ -653,10 +654,12 @@ func newIssuesCommentCmd() *cobra.Command {
 }
 
 func newIssuesCommentsCmd() *cobra.Command {
-	return &cobra.Command{
+	var last int
+
+	cmd := &cobra.Command{
 		Use:   "comments <issue-id>",
 		Short: "List comments on an issue",
-		Long:  "Display all comments on a specific issue.",
+		Long:  "Display all comments on a specific issue with full comment bodies.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
@@ -682,6 +685,11 @@ func newIssuesCommentsCmd() *cobra.Command {
 				return nil
 			}
 
+			// Apply --last N filter (comments are oldest-first, take last N)
+			if last > 0 && last < len(comments) {
+				comments = comments[len(comments)-last:]
+			}
+
 			fmt.Printf("COMMENTS ON %s (%d)\n", issue.Identifier, len(comments))
 			fmt.Println("────────────────────────────────────────")
 			for _, c := range comments {
@@ -690,16 +698,20 @@ func newIssuesCommentsCmd() *cobra.Command {
 					prefix = "  ↳ "
 				}
 				fmt.Printf("%s%s (%s):\n", prefix, c.User.Name, c.CreatedAt[:10])
-				// Truncate long comments
-				body := c.Body
-				if len(body) > 200 {
-					body = body[:200] + "..."
+				body := format.CleanDescription(c.Body)
+				// Indent each line of the body
+				for _, line := range strings.Split(body, "\n") {
+					fmt.Printf("%s  %s\n", prefix, line)
 				}
-				fmt.Printf("%s  %s\n\n", prefix, body)
+				fmt.Println()
 			}
 			return nil
 		},
 	}
+
+	cmd.Flags().IntVar(&last, "last", 0, "Show only the N most recent comments")
+
+	return cmd
 }
 
 func newIssuesReplyCmd() *cobra.Command {

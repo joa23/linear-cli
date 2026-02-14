@@ -230,7 +230,7 @@ func (f *Formatter) issueFull(issue *core.Issue) string {
 
 	// Comments
 	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
-		b.WriteString(fmtSprintf("\nCOMMENTS (%d)\n", len(issue.Comments.Nodes)))
+		b.WriteString(fmtSprintf("\nCOMMENTS (%d) — run 'linear issues comments %s' for full text\n", len(issue.Comments.Nodes), issue.Identifier))
 		b.WriteString(line(40))
 		b.WriteString("\n")
 		for _, comment := range issue.Comments.Nodes {
