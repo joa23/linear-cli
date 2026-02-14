@@ -148,6 +148,10 @@ TIP: Use --format full for detailed output with descriptions.`,
 				team = GetDefaultTeam()
 			}
 
+			if project == "" {
+				project = GetDefaultProject()
+			}
+
 			// Route to appropriate search handler
 			switch entityType {
 			case "issues", "":
@@ -190,7 +194,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 
 	// Standard issue filters
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 	cmd.Flags().StringVar(&state, "state", "", "Filter by state (comma-separated)")
 	cmd.Flags().IntVar(&priority, "priority", 0, "Filter by priority (0=none, 1=urgent, 2=high, 3=normal, 4=low)")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee")
