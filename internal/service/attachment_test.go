@@ -23,9 +23,9 @@ func TestAttachmentCreateParams_Validation(t *testing.T) {
 			wantErr: "--url and --file are mutually exclusive",
 		},
 		{
-			name:    "missing title",
+			name:    "missing title with url",
 			params:  AttachmentCreateParams{IssueID: "TEC-1", URL: "https://x.com"},
-			wantErr: "--title is required",
+			wantErr: "--title is required (or use --file which defaults to the filename)",
 		},
 	}
 

@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `linear attachments create <issue-id>` with `--url` for external links and `--file` for file uploads
 - Added `linear attachments update <id>` to update attachment title/subtitle
 - Added `linear attachments delete <id>` to remove attachments
-- File uploads (`--file`) upload to Linear CDN then create real attachment objects (not inline markdown)
+- File uploads (`--file`) upload to Linear CDN then create real attachment objects (sidebar cards, not inline markdown)
+- `--file` defaults `--title` to the filename when not specified
+- URL is used as an idempotent key — same URL on same issue updates rather than duplicates
 - Supports `--output json` for automation
-- Existing `--attach` flag on `issues create/update/comment` is unchanged (inline markdown embeds)
+- Help text clarifies distinction between `attachments create` (sidebar cards) and `--attach` (inline image embeds)
 
 ### Fixed
 

@@ -418,7 +418,7 @@ TIP: Run 'linear init' first to set default team.`,
 	cmd.Flags().StringVar(&parent, "parent", "", "Parent issue ID (for sub-issues)")
 	cmd.Flags().StringVar(&dependsOn, "depends-on", "", "Comma-separated issue IDs this depends on")
 	cmd.Flags().StringVar(&blockedBy, "blocked-by", "", "Comma-separated issue IDs blocking this")
-	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 
 	return cmd
 }
@@ -574,7 +574,7 @@ func newIssuesUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&parent, "parent", "", "Update parent issue")
 	cmd.Flags().StringVar(&dependsOn, "depends-on", "", "Update dependencies (comma-separated issue IDs)")
 	cmd.Flags().StringVar(&blockedBy, "blocked-by", "", "Update blocked-by (comma-separated issue IDs)")
-	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
 
 	return cmd
@@ -647,7 +647,7 @@ func newIssuesCommentCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&body, "body", "b", "", "Comment body (or pipe to stdin)")
-	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 
 	return cmd
 }
@@ -760,7 +760,7 @@ func newIssuesReplyCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&body, "body", "b", "", "Reply body (or pipe to stdin)")
-	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 
 	return cmd
 }

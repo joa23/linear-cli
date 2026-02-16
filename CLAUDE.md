@@ -201,15 +201,22 @@ linear search --has-circular-deps --team CEN
 4. **Sprint planning**: Check `linear deps --team CEN` for work order
 5. **Priority alignment**: Ensure foundation work is prioritized over features it blocks
 
-#### Attachments
+#### Attachments (sidebar cards)
+
+Attachment objects are structured sidebar cards (GitHub PRs, Slack threads, uploaded files, URLs).
+This is different from `--attach` on `issues create/update/comment/reply`, which embeds files as inline markdown images.
+
 ```bash
-# List attachments on an issue
+# List attachment cards on an issue
 linear attachments list TEC-123
 
-# Attach a URL (GitHub PR, Slack thread, etc.)
+# Attach a URL (sidebar card, auto-detects source type)
 linear attachments create TEC-123 --url "https://github.com/org/repo/pull/42" --title "PR #42"
 
-# Upload a file as attachment
+# Upload a file as attachment card (title defaults to filename)
+linear attachments create TEC-123 --file /tmp/screenshot.png
+
+# Upload with custom title
 linear attachments create TEC-123 --file /tmp/screenshot.png --title "Bug screenshot"
 
 # Update attachment metadata
@@ -217,6 +224,9 @@ linear attachments update <uuid> --title "Updated title"
 
 # Delete attachment
 linear attachments delete <uuid>
+
+# Embed file as inline image in description (NOT a sidebar card)
+linear issues create "Bug" --attach /tmp/screenshot.png
 ```
 
 ### Skills Usage

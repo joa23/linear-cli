@@ -200,9 +200,11 @@ func (r *JSONRenderer) RenderCommentList(comments []core.Comment, verbosity Verb
 // --- Attachment Rendering ---
 
 func (r *JSONRenderer) RenderAttachment(att *core.Attachment, verbosity Verbosity) string {
+	if att == nil {
+		return r.renderError("Attachment is nil")
+	}
 	dto := AttachmentToDTO(att)
-	data, _ := json.MarshalIndent(dto, "", "  ")
-	return string(data)
+	return r.marshal(dto)
 }
 
 func (r *JSONRenderer) RenderAttachmentList(atts []core.Attachment, verbosity Verbosity) string {
@@ -210,8 +212,7 @@ func (r *JSONRenderer) RenderAttachmentList(atts []core.Attachment, verbosity Ve
 	for i, att := range atts {
 		dtos[i] = AttachmentToDTO(&att)
 	}
-	data, _ := json.MarshalIndent(dtos, "", "  ")
-	return string(data)
+	return r.marshal(dtos)
 }
 
 // --- Helper methods ---

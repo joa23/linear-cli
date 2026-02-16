@@ -72,15 +72,17 @@ func TestAttachmentCache(t *testing.T) {
 		// Wait for expiration
 		time.Sleep(100 * time.Millisecond)
 		
-		// Should be expired now
+		// Should be expired now — Get returns nil but doesn't eagerly delete
 		expired := cache.Get("short-lived")
 		if expired != nil {
 			t.Error("Expected cache miss after expiration")
 		}
-		
-		// Cache should be cleaned up
+
+		// Expired entry remains in map until background cleanup runs;
+		// verify removeExpiredEntries cleans it up
+		cache.removeExpiredEntries()
 		if cache.Size() != 0 {
-			t.Errorf("Expected cache to be cleaned up, got size %d", cache.Size())
+			t.Errorf("Expected cache to be cleaned up after removeExpiredEntries, got size %d", cache.Size())
 		}
 	})
 }

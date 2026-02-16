@@ -725,6 +725,10 @@ func (r *TextRenderer) commentFull(comment *core.Comment) string {
 // --- Attachment Rendering ---
 
 func (r *TextRenderer) RenderAttachment(att *core.Attachment, verbosity Verbosity) string {
+	if att == nil {
+		return ""
+	}
+
 	var b strings.Builder
 
 	sourceTag := att.SourceType

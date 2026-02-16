@@ -82,7 +82,7 @@ Issues (alias: i):
   Issue flags: -t team, -d description, -s state, -p priority (0-4),
                -e estimate, -l labels, -c cycle, -P project, -a assignee,
                --parent, --blocked-by, --depends-on, --attach, --due, --title
-  Comment/Reply flags: -b body, --attach <file>
+  Comment/Reply flags: -b body, --attach <file> (inline image embed)
 
 Projects (alias: p):
   p list [--mine]              List projects
@@ -109,13 +109,14 @@ Labels:
   labels update <id> [flags]   Update label
   labels delete <id>           Delete label
 
-Attachments (alias: att):
-  att list <ID>                List attachments on issue
-  att create <ID> [flags]      Create attachment (URL or file)
+Attachments (alias: att) — sidebar cards (GitHub PRs, Slack threads, files, URLs):
+  att list <ID>                List attachment cards on issue
+  att create <ID> [flags]      Create attachment card (URL or file upload)
   att update <ID> [flags]      Update attachment title/subtitle
-  att delete <ID>              Delete attachment
+  att delete <ID>              Delete attachment card
 
   Create flags: --url, --file, --title, --subtitle
+  NOTE: --attach on issues/comments embeds inline images; att create makes sidebar cards
 
 Users (alias: u):
   u list [--team <ID>]         List users

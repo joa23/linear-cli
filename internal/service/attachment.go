@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/internal/linear"
@@ -73,8 +74,12 @@ func (s *AttachmentService) Create(params *AttachmentCreateParams) (string, erro
 	if params.URL != "" && params.FilePath != "" {
 		return "", fmt.Errorf("--url and --file are mutually exclusive")
 	}
+	// Default title to filename when using --file
+	if params.Title == "" && params.FilePath != "" {
+		params.Title = filepath.Base(params.FilePath)
+	}
 	if params.Title == "" {
-		return "", fmt.Errorf("--title is required")
+		return "", fmt.Errorf("--title is required (or use --file which defaults to the filename)")
 	}
 
 	resolvedIssueID, err := s.resolveIssueID(params.IssueID)

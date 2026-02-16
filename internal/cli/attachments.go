@@ -12,8 +12,17 @@ func newAttachmentsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "attachments",
 		Aliases: []string{"attachment", "att"},
-		Short:   "Manage Linear attachments",
-		Long:    "List, create, update, and delete Linear attachment objects on issues.",
+		Short:   "Manage Linear attachment objects (sidebar cards)",
+		Long: `Manage Linear attachment objects on issues.
+
+Attachment objects are structured cards that appear in Linear's sidebar — GitHub PRs,
+Slack threads, Figma designs, uploaded files, or any URL. They have titles, subtitles,
+and source type metadata. Linear auto-detects source type from URLs.
+
+NOTE: This is different from the --attach flag on issues create/update/comment/reply,
+which embeds files as inline markdown images in the issue body. Use --attach for images
+you want visible in the description or comment text. Use 'attachments create' for
+tracked resources you want as sidebar cards.`,
 	}
 
 	cmd.AddCommand(
@@ -63,7 +72,7 @@ func newAttachmentsListCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Print(result)
+			fmt.Println(result)
 			return nil
 		},
 	}
@@ -86,16 +95,24 @@ func newAttachmentsCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <issue-id>",
 		Short: "Create an attachment on an issue",
-		Long: `Create a Linear attachment object on an issue. Two modes:
+		Long: `Create a Linear attachment object (sidebar card) on an issue. Two modes:
 
   --url   Attach an external URL (GitHub PR, Slack thread, Figma design, etc.)
-  --file  Upload a local file and create an attachment pointing to it
+  --file  Upload a local file to Linear's CDN and create an attachment card for it
 
-Linear auto-detects source type from URLs (github, slack, figma, etc.).`,
-		Example: `  # Attach a URL
+Linear auto-detects source type from URLs (github, slack, figma, etc.).
+The URL is used as an idempotent key — creating with the same URL on the same
+issue updates the existing attachment rather than duplicating it.
+
+NOTE: To embed a file as an inline image in the issue description or a comment,
+use 'issues create --attach' or 'issues comment --attach' instead.`,
+		Example: `  # Attach a URL (sidebar card with auto-detected source type)
   linear attachments create TEC-123 --url "https://github.com/org/repo/pull/42" --title "PR #42"
 
-  # Upload a file as attachment
+  # Upload a file (title defaults to filename: "screenshot.png")
+  linear attachments create TEC-123 --file /tmp/screenshot.png
+
+  # Upload a file with custom title
   linear attachments create TEC-123 --file /tmp/screenshot.png --title "Bug screenshot"
 
   # With subtitle
@@ -128,17 +145,16 @@ Linear auto-detects source type from URLs (github, slack, figma, etc.).`,
 				return err
 			}
 
-			fmt.Print(result)
+			fmt.Println(result)
 			return nil
 		},
 	}
 
 	cmd.Flags().StringVar(&url, "url", "", "URL to attach (mutually exclusive with --file)")
 	cmd.Flags().StringVar(&filePath, "file", "", "Local file to upload and attach (mutually exclusive with --url)")
-	cmd.Flags().StringVar(&title, "title", "", "Attachment title (required)")
+	cmd.Flags().StringVar(&title, "title", "", "Attachment title (required for --url; defaults to filename for --file)")
 	cmd.Flags().StringVar(&subtitle, "subtitle", "", "Attachment subtitle")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
-	cmd.MarkFlagRequired("title")
 
 	return cmd
 }
@@ -184,7 +200,7 @@ func newAttachmentsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Print(result)
+			fmt.Println(result)
 			return nil
 		},
 	}

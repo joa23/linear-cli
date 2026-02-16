@@ -657,27 +657,21 @@ func (ac *Client) generateCacheKey(url string, format AttachmentFormat) string {
 
 // Cache management methods
 
-// Get retrieves a cache entry if it exists and hasn't expired
+// Get retrieves a cache entry if it exists and hasn't expired.
+// Expired entries are left for the background cleanup goroutine to remove.
 func (cache *AttachmentCache) Get(key string) *CacheEntry {
 	cache.mu.RLock()
 	defer cache.mu.RUnlock()
-	
+
 	entry, exists := cache.entries[key]
 	if !exists {
 		return nil
 	}
-	
-	// Check if expired
+
 	if time.Now().After(entry.ExpiresAt) {
-		// Clean up expired entry
-		cache.mu.RUnlock()
-		cache.mu.Lock()
-		delete(cache.entries, key)
-		cache.mu.Unlock()
-		cache.mu.RLock()
 		return nil
 	}
-	
+
 	return entry
 }
 
