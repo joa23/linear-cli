@@ -38,6 +38,17 @@ linear auth status   # Verify: should show "Mode: Agent"
 linear init          # Select default team - creates .linear.yaml
 ```
 
+**Step 3 (optional): Set default project**
+
+Edit `.linear.yaml` to add a default project:
+```yaml
+# .linear.yaml
+team: CEN
+project: my-project  # optional — used when --project flag is omitted
+```
+
+When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `search`, `deps`) will use this default. Explicit `--project` flags always override it.
+
 ### Authentication Modes
 
 - **User mode**: `--assignee me` assigns to the human's Linear account
@@ -64,7 +75,14 @@ linear issues get CEN-123 --output json
 **Verbosity Levels** (`--format` flag):
 - `minimal` - Essential fields only (~50 tokens)
 - `compact` - Key metadata (~150 tokens, default)
-- `full` - Complete details (~500 tokens)
+- `detailed` - Complete details, truncated comments (~500 tokens). Use `linear issues comments <id>` for full text.
+- `full` - Complete details, untruncated comments
+
+**Reading Comments:**
+```bash
+linear issues comments CEN-123          # Full comment bodies
+linear issues comments CEN-123 --last 5 # Last 5 only
+```
 
 **When to use JSON:**
 - Parsing data programmatically
@@ -95,6 +113,7 @@ linear issues get CEN-123 --format minimal --output json
 - `users list`, `users get`, `users me`
 - `search` (all search operations)
 - `attachments list`, `attachments create`, `attachments update`
+- `deps` (dependency graph)
 
 ### Common Patterns
 
@@ -246,6 +265,7 @@ After running `linear init`, use these skills:
 ```bash
 linear deps ENG-100          # Show deps for issue
 linear deps --team ENG       # Show all deps for team
+linear deps --team ENG --output json  # JSON for automation
 ```
 
 ### Skills Management
@@ -263,7 +283,7 @@ Available skills: `/linear`, `/prd`, `/triage`, `/cycle-plan`, `/retro`, `/deps`
 - **JSON output** - Machine-readable for automation via `--output json`
 - **Human-readable IDs** - "TEST-123" not UUIDs
 - **Service layer** - Validation and formatting abstraction
-- **Verbosity levels** - Control detail with `--format minimal|compact|full`
+- **Verbosity levels** - Control detail with `--format minimal|compact|detailed|full`
 
 ## Testing
 

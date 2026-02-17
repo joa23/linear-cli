@@ -700,13 +700,32 @@ Output includes:
 
 ## Configuration
 
-All configuration is stored in `~/.config/linear/`:
+### Global (OAuth credentials)
+
+Stored in `~/.config/linear/`:
 
 ```
 ~/.config/linear/
 ├── config.yaml    # OAuth credentials
 └── token          # Access token
 ```
+
+### Per-project (`.linear.yaml`)
+
+Created by `linear init` in your project root. Sets defaults so you don't need `--team` and `--project` on every command:
+
+```yaml
+# .linear.yaml
+team: CEN              # required — set by 'linear init'
+project: my-project    # optional — default for --project flag
+```
+
+Resolution order for both `--team` and `--project`:
+1. Explicit flag (`--team CEN`, `--project "My Project"`)
+2. Default from `.linear.yaml`
+3. Error (team) or no filter (project)
+
+The file is searched up the directory tree, so it works from subdirectories.
 
 ---
 

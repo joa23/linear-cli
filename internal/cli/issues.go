@@ -107,6 +107,11 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 				return errors.New(ErrTeamRequired)
 			}
 
+			// Use default project if not specified
+			if project == "" {
+				project = GetDefaultProject()
+			}
+
 			// Validate limit
 			limit, err := validateAndNormalizeLimit(limit)
 			if err != nil {
@@ -177,7 +182,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	}
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 	cmd.Flags().StringVar(&state, "state", "", "Filter by workflow state (comma-separated, e.g., 'Backlog,Todo,In Progress')")
 	cmd.Flags().StringVar(&priority, "priority", "", "Filter by priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee (email or 'me')")
@@ -186,7 +191,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	cmd.Flags().StringVarP(&excludeLabels, "exclude-labels", "L", "", "Exclude issues with these labels (comma-separated)")
 	cmd.Flags().StringVarP(&sortBy, "sort", "s", "", "Sort by: created, updated")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of items (max 250)")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity level: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity level: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json")
 
 	return cmd
@@ -240,7 +245,7 @@ func newIssuesGetCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity level: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "detailed", "Verbosity level: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json")
 
 	return cmd
@@ -375,6 +380,9 @@ TIP: Run 'linear init' first to set default team.`,
 			if cycle != "" {
 				input.CycleID = cycle
 			}
+			if project == "" {
+				project = GetDefaultProject()
+			}
 			if project != "" {
 				input.ProjectID = project
 			}
@@ -412,7 +420,7 @@ TIP: Run 'linear init' first to set default team.`,
 	cmd.Flags().Float64VarP(&estimate, "estimate", "e", 0, "Story points estimate")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Comma-separated label names/IDs")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Cycle number or name (e.g., 'current', 'next')")
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Project name or ID")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Assignee name or email (use 'me' for yourself)")
 	cmd.Flags().StringVar(&dueDate, "due", "", "Due date YYYY-MM-DD")
 	cmd.Flags().StringVar(&parent, "parent", "", "Parent issue ID (for sub-issues)")
@@ -528,6 +536,9 @@ func newIssuesUpdateCmd() *cobra.Command {
 			if cycle != "" {
 				input.CycleID = &cycle
 			}
+			if project == "" {
+				project = GetDefaultProject()
+			}
 			if project != "" {
 				input.ProjectID = &project
 			}
@@ -568,7 +579,7 @@ func newIssuesUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "Update story points estimate")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Update labels (comma-separated)")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Update cycle number or name")
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Update project name or ID")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Update assignee name or email (use 'me' for yourself)")
 	cmd.Flags().StringVar(&dueDate, "due", "", "Update due date YYYY-MM-DD")
 	cmd.Flags().StringVar(&parent, "parent", "", "Update parent issue")
