@@ -9,12 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**New `--format detailed` Verbosity Level:**
+- Added `detailed` format between `compact` and `full`: `minimal → compact → detailed → full`
+- `detailed` shows truncated comments + a hint to use `linear issues comments <id>` for full text
+- `full` now shows truly untruncated comment bodies (adopting PR #24's semantic)
+- `issues get` default changed from `full` to `detailed` to preserve existing behavior
+
+**Comment Display:**
+- `linear issues comments <id>` now shows full comment bodies instead of truncating to 200 characters
+- Added `--last N` flag to `issues comments` to show only the N most recent comments
+
 **Default Project Configuration:**
 - `.linear.yaml` now supports an optional `project` field for setting a default project
 - New `GetDefaultProject()` follows the same pattern as `GetDefaultTeam()`
 - Commands with `--project` flag (`issues list`, `issues create`, `issues update`, `search`, `deps`) fall back to the configured default when no explicit `--project` flag is provided
 - Users can manually add `project: my-project` to their `.linear.yaml`
-
 
 **`--project` Flag Extended to Search and Deps (PR #13):**
 - `--project` / `-P` flag now works on `search` and `deps` commands (v1.4.9 only added it to `issues list`)

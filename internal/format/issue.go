@@ -18,6 +18,8 @@ func (f *Formatter) Issue(issue *core.Issue, fmt Format) string {
 		return f.issueMinimal(issue)
 	case Compact:
 		return f.issueCompact(issue)
+	case Detailed:
+		return f.issueDetailed(issue)
 	case Full:
 		return f.issueFull(issue)
 	default:
@@ -141,9 +143,23 @@ func (f *Formatter) issueCompact(issue *core.Issue) string {
 	return b.String()
 }
 
+func (f *Formatter) issueDetailed(issue *core.Issue) string {
+	var b strings.Builder
+	writeIssueBody(&b, issue)
+	writeCommentsDetailed(&b, issue)
+	return b.String()
+}
+
 func (f *Formatter) issueFull(issue *core.Issue) string {
 	var b strings.Builder
+	writeIssueBody(&b, issue)
+	writeCommentsFull(&b, issue)
+	return b.String()
+}
 
+// writeIssueBody writes the shared body content (header through attachments)
+// for both detailed and full issue formats.
+func writeIssueBody(b *strings.Builder, issue *core.Issue) {
 	// Header
 	b.WriteString(fmtSprintf("%s: %s\n", issue.Identifier, issue.Title))
 	b.WriteString(line(60))
@@ -227,8 +243,27 @@ func (f *Formatter) issueFull(issue *core.Issue) string {
 			b.WriteString(fmtSprintf("    URL: %s\n", att.URL))
 		}
 	}
+}
 
-	// Comments
+// writeCommentsDetailed writes truncated comments with a hint to use the comments command.
+func writeCommentsDetailed(b *strings.Builder, issue *core.Issue) {
+	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
+		b.WriteString(fmtSprintf("\nCOMMENTS (%d) — run 'linear issues comments %s' for full text\n", len(issue.Comments.Nodes), issue.Identifier))
+		b.WriteString(line(40))
+		b.WriteString("\n")
+		for _, comment := range issue.Comments.Nodes {
+			b.WriteString(fmtSprintf("@%s (%s):\n", comment.User.Name, formatDate(comment.CreatedAt)))
+			body := truncate(cleanDescription(comment.Body), 200)
+			for _, line := range strings.Split(body, "\n") {
+				b.WriteString(fmtSprintf("  %s\n", line))
+			}
+			b.WriteString("\n")
+		}
+	}
+}
+
+// writeCommentsFull writes untruncated comments with line-by-line indentation.
+func writeCommentsFull(b *strings.Builder, issue *core.Issue) {
 	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
 		b.WriteString(fmtSprintf("\nCOMMENTS (%d)\n", len(issue.Comments.Nodes)))
 		b.WriteString(line(40))
@@ -236,14 +271,12 @@ func (f *Formatter) issueFull(issue *core.Issue) string {
 		for _, comment := range issue.Comments.Nodes {
 			b.WriteString(fmtSprintf("@%s (%s):\n", comment.User.Name, formatDate(comment.CreatedAt)))
 			body := cleanDescription(comment.Body)
-			for _, line := range strings.Split(body, "\n") {
-				b.WriteString(fmtSprintf("  %s\n", line))
+			for _, bodyLine := range strings.Split(body, "\n") {
+				b.WriteString(fmtSprintf("  %s\n", bodyLine))
 			}
 			b.WriteString("\n")
 		}
 	}
-
-	return b.String()
 }
 
 // fmtSprintf is an alias for fmt.Sprintf to avoid conflict with format.Format

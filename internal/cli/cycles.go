@@ -43,7 +43,7 @@ REQUIRED:
 OPTIONAL:
 - --active: Filter to only active cycles
 - --limit: Number of cycles to return (default: 25)
-- --format: Verbosity level (minimal|compact|full)
+- --format: Verbosity level (minimal|compact|detailed|full)
 - --output: Output format (text|json)
 
 TIP: Run 'linear init' to set default team.`,
@@ -119,7 +119,7 @@ TIP: Run 'linear init' to set default team.`,
 	cmd.Flags().StringVar(&teamID, "team", "", TeamFlagDescription)
 	cmd.Flags().BoolVar(&activeOnly, "active", false, "Only show active cycles")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 25, "Number of cycles to return (default 25)")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -144,7 +144,7 @@ REQUIRED:
 - Team context (from 'linear init' or --team flag) if using numbers/names
 
 OPTIONAL:
-- --format: Verbosity level (minimal|compact|full)
+- --format: Verbosity level (minimal|compact|detailed|full)
 - --output: Output format (text|json)
 
 TIP: Run 'linear init' once to set default team, then use cycle numbers directly.`,
@@ -207,7 +207,7 @@ TIP: Run 'linear init' once to set default team, then use cycle numbers directly
 	}
 
 	cmd.Flags().StringVar(&teamID, "team", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -236,7 +236,7 @@ REQUIRED:
 OPTIONAL:
 - --count: Number of past cycles to analyze (default: 10)
 - --assignee: Filter by specific assignee
-- --format: Verbosity level (minimal|compact|full)
+- --format: Verbosity level (minimal|compact|detailed|full)
 - --output: Output format (text|json)
 
 USE THIS BEFORE PLANNING: Always run analyze before planning cycles to understand capacity.`,
@@ -302,7 +302,7 @@ USE THIS BEFORE PLANNING: Always run analyze before planning cycles to understan
 	cmd.Flags().StringVar(&teamID, "team", "", TeamFlagDescription)
 	cmd.Flags().IntVar(&cycleCount, "count", 10, "Number of cycles to analyze")
 	cmd.Flags().StringVar(&assigneeID, "assignee", "", "Filter by assignee ID")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
