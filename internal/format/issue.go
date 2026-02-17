@@ -253,7 +253,11 @@ func writeCommentsDetailed(b *strings.Builder, issue *core.Issue) {
 		b.WriteString("\n")
 		for _, comment := range issue.Comments.Nodes {
 			b.WriteString(fmtSprintf("@%s (%s):\n", comment.User.Name, formatDate(comment.CreatedAt)))
-			b.WriteString(fmtSprintf("  %s\n\n", truncate(cleanDescription(comment.Body), 200)))
+			body := truncate(cleanDescription(comment.Body), 200)
+			for _, line := range strings.Split(body, "\n") {
+				b.WriteString(fmtSprintf("  %s\n", line))
+			}
+			b.WriteString("\n")
 		}
 	}
 }

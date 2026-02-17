@@ -38,6 +38,17 @@ linear auth status   # Verify: should show "Mode: Agent"
 linear init          # Select default team - creates .linear.yaml
 ```
 
+**Step 3 (optional): Set default project**
+
+Edit `.linear.yaml` to add a default project:
+```yaml
+# .linear.yaml
+team: CEN
+project: my-project  # optional — used when --project flag is omitted
+```
+
+When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `search`, `deps`) will use this default. Explicit `--project` flags always override it.
+
 ### Authentication Modes
 
 - **User mode**: `--assignee me` assigns to the human's Linear account
@@ -101,6 +112,7 @@ linear issues get CEN-123 --format minimal --output json
 - `teams list`, `teams get`, `teams labels`, `teams states`
 - `users list`, `users get`, `users me`
 - `search` (all search operations)
+- `deps` (dependency graph)
 
 ### Common Patterns
 
@@ -224,6 +236,7 @@ After running `linear init`, use these skills:
 ```bash
 linear deps ENG-100          # Show deps for issue
 linear deps --team ENG       # Show all deps for team
+linear deps --team ENG --output json  # JSON for automation
 ```
 
 ### Skills Management

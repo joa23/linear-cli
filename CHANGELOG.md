@@ -19,31 +19,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `linear issues comments <id>` now shows full comment bodies instead of truncating to 200 characters
 - Added `--last N` flag to `issues comments` to show only the N most recent comments
 
+**Default Project Configuration:**
+- `.linear.yaml` now supports an optional `project` field for setting a default project
+- New `GetDefaultProject()` follows the same pattern as `GetDefaultTeam()`
+- Commands with `--project` flag (`issues list`, `issues create`, `issues update`, `search`, `deps`) fall back to the configured default when no explicit `--project` flag is provided
+- Users can manually add `project: my-project` to their `.linear.yaml`
+
+**`--project` Flag Extended to Search and Deps (PR #13):**
+- `--project` / `-P` flag now works on `search` and `deps` commands (v1.4.9 only added it to `issues list`)
+- Server-side GraphQL filtering for `search`; client-side filtering for `deps`
+- Team-scoped resolution: when `--team` is provided, only that team's projects are searched
+
+**Labels CRUD Commands (PR #20):**
+- New `linear labels list` - List labels for a team
+- New `linear labels create` - Create a new label
+- New `linear labels update` - Update an existing label
+- New `linear labels delete` - Delete a label
+- Labels are team-scoped; uses native Linear GraphQL mutations
+- Agent-mode gate: clear error when OAuth app lacks label management permissions
+
+**`--exclude-labels` and `--sort` Flags (PR #22):**
+- Added `--exclude-labels` / `-L` to `issues list` and `search` to filter out issues with specific labels
+- Added `--sort` / `-s` flag to `issues list` (`created`, `updated`)
+- Server-side filtering via GraphQL `every.id.nin`
+
+**Comma-Separated `--state` Values (PR #18):**
+- `--state` now accepts comma-separated workflow states on `issues list` and `search`
+- Example: `--state "Backlog,Todo,In Progress"`
+- Matches existing `--labels` comma-separated behavior
+
 ### Fixed
 
-**Native Issue Relations (GitHub #6):**
+**Native Issue Relations (PR #9, GitHub #6):**
 - `--blocked-by` and `--depends-on` flags now use native Linear relations (`issueRelationCreate`) instead of metadata storage
 - Fixed "no fields to update" error when using `--blocked-by` or `--depends-on` without other flags on `issues update`
 - Fixed silent no-op when `--blocked-by` or `--depends-on` were combined with other flags (e.g. `--labels`)
 - Relations created with these flags are now visible in Linear's UI immediately
 
-**OAuth Token Refresh (GitHub #7):**
+**OAuth Token Refresh (PR #8, GitHub #7):**
 - Fixed OAuth token expiring daily and requiring re-authentication
 - Root cause: `initializeClient()` used a static token provider (`NewClientWithAuthMode`) instead of the existing refresh-capable provider (`NewClientWithTokenPath`)
 - Secondary fix: `NewClientWithTokenPath` now preserves `authMode` on the client struct, maintaining user/agent distinction
 - Tokens are now refreshed automatically (proactive before expiry, reactive on 401)
 - Legacy tokens (no refresh token) and `LINEAR_API_TOKEN` env var continue to work unchanged
 
+**GetIssue Missing Fields (GitHub #31):**
+- `issues get` now returns priority, estimate, dueDate, labels, cycle, and delegate across all query paths
+- Fixed `GetIssueWithParentContext` missing the `project` field — issues with parents showed `project: null`
+- Fixed `GetIssueWithProjectContext` and `GetIssueWithParentContext` missing comments and attachments — data was fetched by `GetIssue` then silently replaced by context variants that lacked these fields
+
 ## [1.4.9] - 2026-02-10
 
 ### Added
 
-**`--project` Flag for Issues List, Search, and Deps (GitHub #12, PR #13):**
-- Added `--project` / `-P` flag to `issues list`, `search`, and `deps` commands
+**`--project` Flag for Issues List (GitHub #12):**
+- Added `--project` / `-P` flag to `issues list` command
 - Accepts project name (case-insensitive) or UUID
-- Server-side GraphQL filtering for `list` and `search`; client-side filtering for `deps`
+- Server-side GraphQL filtering via `project.id.eq`
 - Invalid project name shows helpful error with available projects
-- Team-scoped resolution: when `--team` is provided, only that team's projects are searched
 
 ## [1.4.8] - 2026-02-09
 
@@ -262,7 +295,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Example-driven with powerful filter combinations and real-world workflows
   - Highlights semantic search capabilities and dependency management
   - Output format guidance (minimal/compact/full) for token efficiency
-  - Prominent skills installation prompt with ⚠️ warning
+  - Prominent skills installation prompt
   - Replaces internal `/release` skill (moved to `.claude/skills/` for maintainer use)
 
 ### Changed
@@ -357,6 +390,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Invalid Authorization header issues
 - Missing flags on various commands
 
+## [1.1.1] - 2026-01-22
+
+### Changed
+
+- Documented all issue flags and file attachment capabilities (--attach, --due, --title)
+
+## [1.1.0] - 2026-01-22
+
+### Added
+
+**Automatic OAuth Token Refresh:**
+- Proactive refresh: Tokens automatically refresh 5 minutes before expiration
+- Reactive refresh: Automatic retry with fresh token on 401 errors
+- Thread-safe: Double-checked locking prevents concurrent refresh storms
+- Backward compatible: Legacy tokens (pre-October 2025) continue to work unchanged
+
+### Fixed
+
+- Force re-authorization for agent mode OAuth
+- Added troubleshooting documentation for agent mode re-authentication
+
+## [1.0.2] - 2026-01-22
+
+### Added
+
+- Initial CHANGELOG.md following Keep a Changelog format
+- Documentation-only release (binaries identical to v1.0.1)
+
 ## [1.0.1] - 2026-01-21
 
 ### Added
@@ -408,6 +469,10 @@ A token-efficient CLI for Linear.
 - Linux (64-bit)
 - Windows (64-bit)
 
+[Unreleased]: https://github.com/joa23/linear-cli/compare/v1.4.9...HEAD
+[1.4.9]: https://github.com/joa23/linear-cli/compare/v1.4.8...v1.4.9
+[1.4.8]: https://github.com/joa23/linear-cli/compare/v1.4.7...v1.4.8
+[1.4.7]: https://github.com/joa23/linear-cli/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/joa23/linear-cli/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/joa23/linear-cli/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/joa23/linear-cli/compare/v1.4.3...v1.4.4
@@ -419,6 +484,9 @@ A token-efficient CLI for Linear.
 [1.2.3]: https://github.com/joa23/linear-cli/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/joa23/linear-cli/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/joa23/linear-cli/compare/v1.2.0...v1.2.1
-[1.2.0]: https://github.com/joa23/linear-cli/compare/v1.0.1...v1.2.0
+[1.2.0]: https://github.com/joa23/linear-cli/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/joa23/linear-cli/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/joa23/linear-cli/compare/v1.0.2...v1.1.0
+[1.0.2]: https://github.com/joa23/linear-cli/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/joa23/linear-cli/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/joa23/linear-cli/releases/tag/v1.0.0
