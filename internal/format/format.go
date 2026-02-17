@@ -18,7 +18,9 @@ const (
 	Minimal Format = "minimal"
 	// Compact returns commonly needed fields (~150 tokens per issue)
 	Compact Format = "compact"
-	// Full returns all fields (~500 tokens per issue)
+	// Detailed returns all fields with truncated comments (~500 tokens per issue)
+	Detailed Format = "detailed"
+	// Full returns all fields with untruncated comments
 	Full Format = "full"
 )
 
@@ -29,10 +31,10 @@ func ParseFormat(s string) (Format, error) {
 	}
 	format := Format(s)
 	switch format {
-	case Minimal, Compact, Full:
+	case Minimal, Compact, Detailed, Full:
 		return format, nil
 	default:
-		return "", fmt.Errorf("invalid format '%s': must be 'minimal', 'compact', or 'full'", s)
+		return "", fmt.Errorf("invalid format '%s': must be 'minimal', 'compact', 'detailed', or 'full'", s)
 	}
 }
 
