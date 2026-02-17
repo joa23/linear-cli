@@ -78,6 +78,11 @@ Use --project to filter to a specific project's issues.`,
 				return err
 			}
 
+			// Use default project if not specified
+			if project == "" {
+				project = GetDefaultProject()
+			}
+
 			output, err := format.ParseOutputType(outputType)
 			if err != nil {
 				return err
@@ -96,7 +101,7 @@ Use --project to filter to a specific project's issues.`,
 	}
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Filter by project (name or UUID)")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
