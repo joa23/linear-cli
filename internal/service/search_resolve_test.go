@@ -25,7 +25,7 @@ type mockIssueClient struct {
 	workflowClient       *workflows.Client
 }
 
-func (m *mockIssueClient) CreateIssue(title, desc, team string) (*core.Issue, error) {
+func (m *mockIssueClient) CreateIssue(input *core.IssueCreateInput) (*core.Issue, error) {
 	return nil, nil
 }
 func (m *mockIssueClient) GetIssue(id string) (*core.Issue, error) { return nil, nil }

@@ -16,7 +16,7 @@ import (
 // enabling mock implementations for unit testing.
 type IssueClientOperations interface {
 	// Smart resolver-aware methods (kept in Phase 2)
-	CreateIssue(title, description, teamKeyOrName string) (*core.Issue, error)
+	CreateIssue(input *core.IssueCreateInput) (*core.Issue, error)
 	GetIssue(identifierOrID string) (*core.Issue, error)
 	UpdateIssue(identifierOrID string, input core.UpdateIssueInput) (*core.Issue, error)
 	UpdateIssueState(identifierOrID, stateID string) error

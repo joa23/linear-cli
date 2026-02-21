@@ -38,7 +38,7 @@ func (m *mockIssueClientForDelegate) UpdateIssue(issueID string, input core.Upda
 }
 
 // Unused interface methods - return nil/empty
-func (m *mockIssueClientForDelegate) CreateIssue(title, desc, team string) (*core.Issue, error) {
+func (m *mockIssueClientForDelegate) CreateIssue(input *core.IssueCreateInput) (*core.Issue, error) {
 	return nil, nil
 }
 func (m *mockIssueClientForDelegate) UpdateIssueState(id, state string) error { return nil }

@@ -23,18 +23,16 @@ func NewClient(base *core.BaseClient) *Client {
 	return &Client{base: base}
 }
 
-// CreateIssue creates a new issue in Linear
-// Why: This is a core function for creating work items in Linear. It requires
-// a team assignment and supports optional descriptions for detailed context.
-func (ic *Client) CreateIssue(title, description, teamID string) (*core.Issue, error) {
+// CreateIssue creates a new issue in Linear atomically.
+// All optional fields are included in the single mutation to avoid orphaned issues
+// when a post-creation update would fail.
+func (ic *Client) CreateIssue(input *core.IssueCreateInput) (*core.Issue, error) {
 	// Validate required inputs
-	// Why: Title and teamID are mandatory fields in Linear. Empty values would
-	// cause the API to reject the request, so we validate early for better errors.
-	if title == "" {
+	if input.Title == "" {
 		return nil, guidance.ValidationErrorWithExample("title", "cannot be empty",
 			`linear_create_issue("Fix login bug", "Bug in authentication flow", "team-123")`)
 	}
-	if teamID == "" {
+	if input.TeamID == "" {
 		return nil, guidance.ValidationErrorWithExample("teamID", "cannot be empty",
 			`// First, get available teams
 teams = linear_get_teams()
@@ -43,16 +41,15 @@ linear_create_issue("Task title", "Description", teams[0].id)`)
 	}
 
 	// Validate length limits
-	// Why: Linear enforces limits on title and description lengths
-	if err := validation.ValidateStringLength(title, "title", validation.MaxTitleLength); err != nil {
+	if err := validation.ValidateStringLength(input.Title, "title", validation.MaxTitleLength); err != nil {
 		return nil, err
 	}
-	if description != "" {
-		if err := validation.ValidateStringLength(description, "description", validation.MaxDescriptionLength); err != nil {
+	if input.Description != "" {
+		if err := validation.ValidateStringLength(input.Description, "description", validation.MaxDescriptionLength); err != nil {
 			return nil, err
 		}
 	}
-	
+
 	const mutation = `
 		mutation CreateIssue($input: IssueCreateInput!) {
 			issueCreate(input: $input) {
@@ -98,21 +95,45 @@ linear_create_issue("Task title", "Description", teams[0].id)`)
 			}
 		}
 	`
-	
-	// Build the input object
-	// Why: Linear's API expects an input object with specific fields.
-	// We conditionally include description only if provided to avoid
-	// sending empty strings which might override defaults.
-	input := map[string]interface{}{
-		"title":  title,
-		"teamId": teamID,
+
+	// Build the GraphQL input object, including only non-empty optional fields.
+	gqlInput := map[string]interface{}{
+		"title":  input.Title,
+		"teamId": input.TeamID,
 	}
-	if description != "" {
-		input["description"] = description
+	if input.Description != "" {
+		gqlInput["description"] = input.Description
 	}
-	
+	if input.StateID != "" {
+		gqlInput["stateId"] = input.StateID
+	}
+	if input.AssigneeID != "" {
+		gqlInput["assigneeId"] = input.AssigneeID
+	}
+	if input.ProjectID != "" {
+		gqlInput["projectId"] = input.ProjectID
+	}
+	if input.ParentID != "" {
+		gqlInput["parentId"] = input.ParentID
+	}
+	if input.CycleID != "" {
+		gqlInput["cycleId"] = input.CycleID
+	}
+	if input.Priority != nil {
+		gqlInput["priority"] = *input.Priority
+	}
+	if input.Estimate != nil {
+		gqlInput["estimate"] = *input.Estimate
+	}
+	if input.DueDate != "" {
+		gqlInput["dueDate"] = input.DueDate
+	}
+	if len(input.LabelIDs) > 0 {
+		gqlInput["labelIds"] = input.LabelIDs
+	}
+
 	variables := map[string]interface{}{
-		"input": input,
+		"input": gqlInput,
 	}
 	
 	var response struct {

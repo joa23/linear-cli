@@ -399,70 +399,46 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		return "", fmt.Errorf("failed to resolve team '%s': %w", input.TeamID, err)
 	}
 
-	// Create the issue
-	issue, err := s.client.CreateIssue(input.Title, input.Description, teamID)
-	if err != nil {
-		return "", fmt.Errorf("failed to create issue: %w", err)
+	// Build the atomic create input — resolve all identifiers before the API call
+	// so that a failure leaves no orphaned issue.
+	createInput := core.IssueCreateInput{
+		Title:       input.Title,
+		Description: input.Description,
+		TeamID:      teamID,
+		Priority:    input.Priority,
+		Estimate:    input.Estimate,
+		DueDate:     input.DueDate,
+		ParentID:    input.ParentID,
+		ProjectID:   input.ProjectID,
 	}
 
-	// Update with additional fields if provided
-	updateInput := core.UpdateIssueInput{}
-	needsUpdate := false
-
 	if input.StateID != "" {
-		// Resolve state name to ID if needed
 		stateID, err := s.resolveStateID(input.StateID, teamID)
 		if err != nil {
 			return "", fmt.Errorf("could not resolve state '%s': %w\n\nRun 'linear onboard' to see valid states for your teams", input.StateID, err)
 		}
-		updateInput.StateID = &stateID
-		needsUpdate = true
+		createInput.StateID = stateID
 	}
+
 	if input.AssigneeID != "" {
-		// Resolve user identifier
 		resolved, err := s.client.ResolveUserIdentifier(input.AssigneeID)
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve user '%s': %w", input.AssigneeID, err)
 		}
-		// Use delegateId for OAuth applications, assigneeId for human users
-		if resolved.IsApplication {
-			updateInput.DelegateID = &resolved.ID
-		} else {
-			updateInput.AssigneeID = &resolved.ID
-		}
-		needsUpdate = true
+		// Linear's issueCreate only supports assigneeId (not delegateId),
+		// so we use the resolved user ID for both human users and OAuth apps.
+		createInput.AssigneeID = resolved.ID
 	}
-	if input.Priority != nil {
-		updateInput.Priority = input.Priority
-		needsUpdate = true
-	}
-	if input.Estimate != nil {
-		updateInput.Estimate = input.Estimate
-		needsUpdate = true
-	}
-	if input.DueDate != "" {
-		updateInput.DueDate = &input.DueDate
-		needsUpdate = true
-	}
-	if input.ParentID != "" {
-		updateInput.ParentID = &input.ParentID
-		needsUpdate = true
-	}
-	if input.ProjectID != "" {
-		updateInput.ProjectID = &input.ProjectID
-		needsUpdate = true
-	}
+
 	if input.CycleID != "" {
-		// Resolve cycle identifier
 		cycleID, err := s.client.ResolveCycleIdentifier(input.CycleID, teamID)
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve cycle '%s': %w", input.CycleID, err)
 		}
-		updateInput.CycleID = &cycleID
-		needsUpdate = true
+		createInput.CycleID = cycleID
 	}
+
 	if len(input.LabelIDs) > 0 {
-		// Resolve label names to IDs
 		resolvedLabelIDs := make([]string, 0, len(input.LabelIDs))
 		for _, labelName := range input.LabelIDs {
 			labelID, err := s.client.ResolveLabelIdentifier(labelName, teamID)
@@ -471,18 +447,16 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 			}
 			resolvedLabelIDs = append(resolvedLabelIDs, labelID)
 		}
-		updateInput.LabelIDs = resolvedLabelIDs
-		needsUpdate = true
+		createInput.LabelIDs = resolvedLabelIDs
 	}
 
-	if needsUpdate {
-		issue, err = s.client.UpdateIssue(issue.ID, updateInput)
-		if err != nil {
-			return "", fmt.Errorf("failed to update issue after creation: %w", err)
-		}
+	// Single atomic API call — if this fails, no orphaned issue is created.
+	issue, err := s.client.CreateIssue(&createInput)
+	if err != nil {
+		return "", fmt.Errorf("failed to create issue: %w", err)
 	}
 
-	// Store dependencies in metadata if provided
+	// Store dependencies in metadata if provided (separate metadata API).
 	if len(input.DependsOn) > 0 {
 		if err := s.client.UpdateIssueMetadataKey(issue.ID, "dependencies", input.DependsOn); err != nil {
 			return "", fmt.Errorf("failed to set dependencies metadata: %w", err)

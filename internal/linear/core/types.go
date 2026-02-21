@@ -610,6 +610,24 @@ type NotificationComment struct {
 	Body string `json:"body"`
 }
 
+// IssueCreateInput represents the input for creating an issue atomically.
+// All optional fields are resolved to UUIDs by the service layer before populating this struct.
+type IssueCreateInput struct {
+	Title       string
+	Description string
+	TeamID      string
+	AssigneeID  string
+	CycleID     string
+	DelegateID  string
+	DueDate     string
+	Estimate    *float64
+	LabelIDs    []string
+	ParentID    string
+	Priority    *int
+	ProjectID   string
+	StateID     string
+}
+
 // UpdateIssueInput represents the input for updating an issue
 // All fields are optional to support partial updates
 type UpdateIssueInput struct {

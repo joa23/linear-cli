@@ -236,18 +236,8 @@ func (c *Client) TeamClient() *teams.Client {
 // These methods maintain the existing API surface while delegating to sub-clients
 
 // Issue operations
-func (c *Client) CreateIssue(title, description, teamKeyOrName string) (*core.Issue, error) {
-	// Resolve team name/key to UUID if needed
-	teamID := teamKeyOrName
-	if !identifiers.IsUUID(teamKeyOrName) {
-		resolvedID, err := c.resolver.ResolveTeam(teamKeyOrName)
-		if err != nil {
-			return nil, err
-		}
-		teamID = resolvedID
-	}
-
-	return c.Issues.CreateIssue(title, description, teamID)
+func (c *Client) CreateIssue(input *core.IssueCreateInput) (*core.Issue, error) {
+	return c.Issues.CreateIssue(input)
 }
 
 // GetIssue retrieves an issue with the best context automatically determined
