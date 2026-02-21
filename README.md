@@ -21,7 +21,7 @@ Linear becomes the coordination layer—tracking what's planned, what's in progr
 Install with Homebrew:
 
 ```bash
-brew tap joa23/linear-cli
+brew tap joa23/linear-cli https://github.com/joa23/linear-cli
 brew install linear-cli
 ```
 
@@ -81,6 +81,7 @@ linear auth login
   - [Projects](#projects)
   - [Cycles](#cycles)
   - [Teams](#teams)
+  - [Labels](#labels)
   - [Users](#users)
   - [Claude Code Skills](#claude-code-skills)
 - [Cycle Analytics](#cycle-analytics)
@@ -262,6 +263,7 @@ All commands support both flags:
 - **Cycles**: `list`, `get`, `analyze`
 - **Projects**: `list`, `get`
 - **Teams**: `list`, `get`, `labels`, `states`
+- **Labels**: `list`
 - **Users**: `list`, `get`, `me`
 - **Search**: all search operations
 
@@ -457,6 +459,14 @@ This pattern enables:
 linear issues list                           # List your assigned issues
 linear issues get ENG-123                    # Get issue details
 
+# Filter by project
+linear issues list --project "Q1 Release"    # Filter by project name or UUID
+linear search "auth" --project "Q1 Release"  # Works with search too
+linear deps --team ENG --project "Q1 Release" # Works with deps too
+
+# Filter by state (comma-separated)
+linear issues list --state "Backlog,Todo,In Progress" --team ENG
+
 # Pagination - offset-based for easy navigation
 linear issues list                           # First 10 issues (default)
 linear issues list --start 10 --limit 10     # Items 11-20
@@ -628,6 +638,20 @@ linear teams labels ENG                      # Team labels
 linear teams states ENG                      # Workflow states
 ```
 
+### Labels
+
+```bash
+linear labels list --team ENG               # List all labels (with IDs)
+linear labels list --team ENG --output json  # JSON output
+
+# Create, update, delete (requires user auth, not agent/app)
+linear labels create "needs-review" --team ENG --color "#ff0000" --description "PR needs review"
+linear labels update LABEL-UUID --name "needs-code-review" --color "#ff6600"
+linear labels delete LABEL-UUID
+```
+
+> **Note:** Label mutations (create/update/delete) require user authentication. OAuth app actors cannot manage labels due to Linear workspace permissions. Use `linear auth login` as a user.
+
 ### Users
 
 ```bash
@@ -676,13 +700,32 @@ Output includes:
 
 ## Configuration
 
-All configuration is stored in `~/.config/linear/`:
+### Global (OAuth credentials)
+
+Stored in `~/.config/linear/`:
 
 ```
 ~/.config/linear/
 ├── config.yaml    # OAuth credentials
 └── token          # Access token
 ```
+
+### Per-project (`.linear.yaml`)
+
+Created by `linear init` in your project root. Sets defaults so you don't need `--team` and `--project` on every command:
+
+```yaml
+# .linear.yaml
+team: CEN              # required — set by 'linear init'
+project: my-project    # optional — default for --project flag
+```
+
+Resolution order for both `--team` and `--project`:
+1. Explicit flag (`--team CEN`, `--project "My Project"`)
+2. Default from `.linear.yaml`
+3. Error (team) or no filter (project)
+
+The file is searched up the directory tree, so it works from subdirectories.
 
 ---
 

@@ -82,7 +82,7 @@ Issues (alias: i):
   Issue flags: -t team, -d description, -s state, -p priority (0-4),
                -e estimate, -l labels, -c cycle, -P project, -a assignee,
                --parent, --blocked-by, --depends-on, --attach, --due, --title
-  Comment/Reply flags: -b body, --attach <file>
+  Comment/Reply flags: -b body, --attach <file> (inline image embed)
 
 Projects (alias: p):
   p list [--mine]              List projects
@@ -102,6 +102,21 @@ Teams (alias: t):
   t get <ID>                   Get team details
   t labels <ID>                List team labels
   t states <ID>                List workflow states
+
+Labels:
+  labels list --team <KEY>     List labels
+  labels create <name> [flags] Create label
+  labels update <id> [flags]   Update label
+  labels delete <id>           Delete label
+
+Attachments (alias: att) — sidebar cards (GitHub PRs, Slack threads, files, URLs):
+  att list <ID>                List attachment cards on issue
+  att create <ID> [flags]      Create attachment card (URL or file upload)
+  att update <ID> [flags]      Update attachment title/subtitle
+  att delete <ID>              Delete attachment card
+
+  Create flags: --url, --file, --title, --subtitle
+  NOTE: --attach on issues/comments embeds inline images; att create makes sidebar cards
 
 Users (alias: u):
   u list [--team <ID>]         List users
@@ -149,7 +164,9 @@ Configuration:
 		newCyclesCmd(),
 		newTeamsCmd(),
 		newUsersCmd(),
+		newLabelsCmd(),
 		newNotificationsCmd(),
+		newAttachmentsCmd(),
 
 		// Analysis
 		newDepsCmd(),
@@ -222,20 +239,27 @@ func isAuthCommand() bool {
 }
 
 // initializeClient creates and configures the Linear client
-// Loads token from disk and returns an authenticated client
+// Loads token from disk and returns an authenticated client with refresh capability
 func initializeClient() (*linear.Client, error) {
-	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
+	return initializeClientWithTokenPath(token.GetDefaultTokenPath())
+}
+
+// initializeClientWithTokenPath creates a Linear client from the given token path.
+// Extracted for testability — initializeClient delegates to this with the default path.
+func initializeClientWithTokenPath(tokenPath string) (*linear.Client, error) {
+	// Check token existence first for a friendly error message
+	tokenStorage := token.NewStorage(tokenPath)
 	exists, _ := tokenStorage.TokenExistsWithError()
 	if !exists {
 		return nil, fmt.Errorf("not authenticated. Run 'linear auth login' to authenticate")
 	}
 
-	tokenData, err := tokenStorage.LoadTokenData()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load token: %w", err)
+	// Use the refresh-capable provider which automatically selects between
+	// static and refreshing token providers based on available credentials
+	client := linear.NewClientWithTokenPath(tokenPath)
+	if client == nil {
+		return nil, fmt.Errorf("failed to initialize client. Run 'linear auth login' to re-authenticate")
 	}
 
-	// Create client with access token and auth mode
-	// Auth mode determines how "me" is resolved (user vs agent/delegate)
-	return linear.NewClientWithAuthMode(tokenData.AccessToken, tokenData.AuthMode), nil
+	return client, nil
 }

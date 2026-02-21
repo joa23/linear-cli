@@ -197,6 +197,21 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 					name
 					email
 				}
+				priority
+				estimate
+				dueDate
+				labels {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				cycle {
+					id
+					number
+					name
+				}
 				createdAt
 				updatedAt
 				url
@@ -252,16 +267,9 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 	}
 	
 	var response struct {
-		Issue struct {
-			core.Issue
-			Attachments struct {
-				Nodes []struct {
-					ID string `json:"id"`
-				} `json:"nodes"`
-			} `json:"attachments"`
-		} `json:"issue"`
+		Issue core.Issue `json:"issue"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue: %w", err)
@@ -277,22 +285,19 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 	}
 
 	// Extract metadata from description
-	// Why: Metadata is stored in descriptions but should be easily accessible
-	// as a separate field. This extraction ensures consistent metadata access
-	// regardless of how the issue was retrieved.
 	if response.Issue.Description != "" {
 		metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.Issue.Description)
 		response.Issue.Metadata = metadata
 		response.Issue.Description = cleanDesc
 	}
-	
-	// Set attachment fields
-	// Why: AttachmentCount is computed from the nodes length, and HasAttachments
-	// is a computed boolean for easy checking by agents
-	response.Issue.AttachmentCount = len(response.Issue.Attachments.Nodes)
-	response.Issue.HasAttachments = response.Issue.AttachmentCount > 0
-	
-	return &response.Issue.Issue, nil
+
+	// Set computed attachment fields
+	if response.Issue.Attachments != nil {
+		response.Issue.AttachmentCount = len(response.Issue.Attachments.Nodes)
+		response.Issue.HasAttachments = response.Issue.AttachmentCount > 0
+	}
+
+	return &response.Issue, nil
 }
 
 // GetIssueWithProjectContext retrieves an issue with additional project information
@@ -340,6 +345,26 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 					name
 					email
 				}
+				delegate {
+					id
+					name
+					email
+				}
+				priority
+				estimate
+				dueDate
+				labels {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				cycle {
+					id
+					number
+					name
+				}
 				createdAt
 				updatedAt
 				url
@@ -367,18 +392,41 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 						}
 					}
 				}
+				attachments(first: 50) {
+					nodes {
+						id
+						url
+						title
+						subtitle
+						createdAt
+						sourceType
+					}
+				}
+				comments(first: 50) {
+					nodes {
+						id
+						body
+						createdAt
+						updatedAt
+						user {
+							id
+							name
+							email
+						}
+					}
+				}
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"id": issueID,
 	}
-	
+
 	var response struct {
 		Issue core.Issue `json:"issue"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue with project context: %w", err)
@@ -446,9 +494,33 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 					name
 					email
 				}
+				delegate {
+					id
+					name
+					email
+				}
+				priority
+				estimate
+				dueDate
+				labels {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				cycle {
+					id
+					number
+					name
+				}
 				createdAt
 				updatedAt
 				url
+				project {
+					id
+					name
+				}
 				parent {
 					id
 					identifier
@@ -470,18 +542,41 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 						}
 					}
 				}
+				attachments(first: 50) {
+					nodes {
+						id
+						url
+						title
+						subtitle
+						createdAt
+						sourceType
+					}
+				}
+				comments(first: 50) {
+					nodes {
+						id
+						body
+						createdAt
+						updatedAt
+						user {
+							id
+							name
+							email
+						}
+					}
+				}
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"id": issueID,
 	}
-	
+
 	var response struct {
 		Issue core.Issue `json:"issue"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue with parent context: %w", err)
@@ -749,8 +844,8 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 	}
 	
 	const query = `
-		query SearchIssuesEnhanced($filter: IssueFilter, $first: Int, $after: String, $includeArchived: Boolean) {
-			issues(filter: $filter, first: $first, after: $after, includeArchived: $includeArchived) {
+		query SearchIssuesEnhanced($filter: IssueFilter, $first: Int, $after: String, $includeArchived: Boolean, $orderBy: PaginationOrderBy) {
+			issues(filter: $filter, first: $first, after: $after, includeArchived: $includeArchived, orderBy: $orderBy) {
 				nodes {
 					id
 					identifier
@@ -823,6 +918,15 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 		}
 	}
 
+	// Project filter
+	if filters.ProjectID != "" {
+		filter["project"] = map[string]interface{}{
+			"id": map[string]interface{}{
+				"eq": filters.ProjectID,
+			},
+		}
+	}
+
 	// Identifier filter (e.g., "CEN-123")
 	// Note: Use "identifier" field for issue identifiers, not "id"
 	if filters.Identifier != "" {
@@ -840,13 +944,37 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 		}
 	}
 	
-	// Label filters
-	if len(filters.LabelIDs) > 0 {
+	// Label filters (include and/or exclude)
+	hasIncludeLabels := len(filters.LabelIDs) > 0
+	hasExcludeLabels := len(filters.ExcludeLabelIDs) > 0
+	if hasIncludeLabels && hasExcludeLabels {
+		// Both include and exclude: use "and" since both target the "labels" key
+		filter["and"] = []interface{}{
+			map[string]interface{}{
+				"labels": map[string]interface{}{
+					"some": map[string]interface{}{
+						"id": map[string]interface{}{"in": filters.LabelIDs},
+					},
+				},
+			},
+			map[string]interface{}{
+				"labels": map[string]interface{}{
+					"every": map[string]interface{}{
+						"id": map[string]interface{}{"nin": filters.ExcludeLabelIDs},
+					},
+				},
+			},
+		}
+	} else if hasIncludeLabels {
 		filter["labels"] = map[string]interface{}{
 			"some": map[string]interface{}{
-				"id": map[string]interface{}{
-					"in": filters.LabelIDs,
-				},
+				"id": map[string]interface{}{"in": filters.LabelIDs},
+			},
+		}
+	} else if hasExcludeLabels {
+		filter["labels"] = map[string]interface{}{
+			"every": map[string]interface{}{
+				"id": map[string]interface{}{"nin": filters.ExcludeLabelIDs},
 			},
 		}
 	}
@@ -864,6 +992,15 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 	if filters.Priority != nil {
 		filter["priority"] = map[string]interface{}{
 			"eq": *filters.Priority,
+		}
+	}
+
+	// Project filter
+	if filters.ProjectID != "" {
+		filter["project"] = map[string]interface{}{
+			"id": map[string]interface{}{
+				"eq": filters.ProjectID,
+			},
 		}
 	}
 
@@ -926,6 +1063,11 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 	// Always include the includeArchived parameter (defaults to false)
 	variables["includeArchived"] = filters.IncludeArchived
 	
+	// Add orderBy if specified
+	if filters.OrderBy != "" {
+		variables["orderBy"] = filters.OrderBy
+	}
+
 	var response struct {
 		Issues struct {
 			Nodes    []core.Issue `json:"nodes"`
@@ -1344,6 +1486,26 @@ func (ic *Client) GetIssueSimplified(issueID string) (*core.Issue, error) {
 					id
 					name
 					email
+				}
+				delegate {
+					id
+					name
+					email
+				}
+				priority
+				estimate
+				dueDate
+				labels {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				cycle {
+					id
+					number
+					name
 				}
 				createdAt
 				updatedAt
@@ -1841,6 +2003,25 @@ func buildFilterObject(filter *core.IssueFilter) map[string]interface{} {
 		}
 	}
 
+	// Exclude label filter
+	if len(filter.ExcludeLabelIDs) > 0 {
+		excludeFilter := map[string]interface{}{
+			"every": map[string]interface{}{
+				"id": map[string]interface{}{"nin": filter.ExcludeLabelIDs},
+			},
+		}
+		if existing, ok := filterObj["labels"]; ok {
+			// Combine with existing include filter using "and"
+			delete(filterObj, "labels")
+			filterObj["and"] = []interface{}{
+				map[string]interface{}{"labels": existing},
+				map[string]interface{}{"labels": excludeFilter},
+			}
+		} else {
+			filterObj["labels"] = excludeFilter
+		}
+	}
+
 	// Project filter
 	if filter.ProjectID != "" {
 		filterObj["project"] = map[string]interface{}{
@@ -2024,6 +2205,53 @@ func (ic *Client) GetIssueWithRelations(issueID string) (*core.IssueWithRelation
 	return &response.Issue, nil
 }
 
+// CreateRelation creates a relation between two issues using Linear's native issueRelationCreate mutation.
+// For "blocks" relations: issueID is the blocker, relatedIssueID is the issue being blocked.
+// Both parameters accept Linear identifiers (e.g., "CEN-123") directly.
+func (ic *Client) CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error {
+	if issueID == "" {
+		return &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
+	}
+	if relatedIssueID == "" {
+		return &core.ValidationError{Field: "relatedIssueID", Message: "relatedIssueID cannot be empty"}
+	}
+
+	const mutation = `
+		mutation CreateIssueRelation($issueId: String!, $relatedIssueId: String!, $type: IssueRelationType!) {
+			issueRelationCreate(input: {
+				issueId: $issueId,
+				relatedIssueId: $relatedIssueId,
+				type: $type
+			}) {
+				success
+			}
+		}
+	`
+
+	variables := map[string]interface{}{
+		"issueId":        issueID,
+		"relatedIssueId": relatedIssueID,
+		"type":           string(relationType),
+	}
+
+	var response struct {
+		IssueRelationCreate struct {
+			Success bool `json:"success"`
+		} `json:"issueRelationCreate"`
+	}
+
+	err := ic.base.ExecuteRequest(mutation, variables, &response)
+	if err != nil {
+		return fmt.Errorf("failed to create issue relation: %w", err)
+	}
+
+	if !response.IssueRelationCreate.Success {
+		return fmt.Errorf("issue relation creation was not successful")
+	}
+
+	return nil
+}
+
 // GetTeamIssuesWithRelations retrieves all issues for a team with their relations
 // for building a complete dependency graph.
 func (ic *Client) GetTeamIssuesWithRelations(teamID string, limit int) ([]core.IssueWithRelations, error) {
@@ -2042,6 +2270,10 @@ func (ic *Client) GetTeamIssuesWithRelations(teamID string, limit int) ([]core.I
 					identifier
 					title
 					state {
+						id
+						name
+					}
+					project {
 						id
 						name
 					}

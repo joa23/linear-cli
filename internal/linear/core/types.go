@@ -655,6 +655,7 @@ type IssueFilter struct {
 	StateIDs   []string `json:"stateIds,omitempty"`   // Filter by workflow state IDs
 	AssigneeID string   `json:"assigneeId,omitempty"` // Filter by assignee user ID
 	LabelIDs   []string `json:"labelIds,omitempty"`   // Filter by label IDs
+	ExcludeLabelIDs []string `json:"excludeLabelIds,omitempty"` // Exclude issues with these label IDs
 	ProjectID  string   `json:"projectId,omitempty"`  // Filter by project ID
 	TeamID     string   `json:"teamId,omitempty"`     // Filter by team ID
 
@@ -699,6 +700,23 @@ type Label struct {
 	Description string `json:"description"`
 }
 
+// CreateLabelInput represents the input for creating a label
+type CreateLabelInput struct {
+	Name        string
+	Color       string
+	Description string
+	TeamID      string // required — labels are team-scoped
+	ParentID    string // optional — for sub-labels (groups)
+}
+
+// UpdateLabelInput represents the input for updating a label
+type UpdateLabelInput struct {
+	Name        *string
+	Color       *string
+	Description *string
+	ParentID    *string
+}
+
 // LabelConnection represents a connection to labels
 type LabelConnection struct {
 	Nodes []Label `json:"nodes"`
@@ -729,6 +747,9 @@ type IssueSearchFilters struct {
 	// Team filter
 	TeamID string `json:"teamId,omitempty"`
 
+	// Project filter
+	ProjectID string `json:"projectId,omitempty"`
+
 	// Identifier filter (e.g., "CEN-123")
 	Identifier string `json:"identifier,omitempty"`
 
@@ -737,6 +758,7 @@ type IssueSearchFilters struct {
 
 	// Label filters
 	LabelIDs []string `json:"labelIds,omitempty"`
+	ExcludeLabelIDs []string `json:"excludeLabelIds,omitempty"`
 
 	// Assignee filter
 	AssigneeID string `json:"assigneeId,omitempty"`
@@ -758,6 +780,9 @@ type IssueSearchFilters struct {
 	CreatedBefore string `json:"createdBefore,omitempty"`
 	UpdatedAfter  string `json:"updatedAfter,omitempty"`
 	UpdatedBefore string `json:"updatedBefore,omitempty"`
+
+	// Sorting
+	OrderBy string `json:"orderBy,omitempty"` // Sort field: "createdAt", "updatedAt"
 
 	// Pagination
 	Limit int    `json:"limit"`
@@ -825,6 +850,10 @@ type IssueWithRelations struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"state"`
+	Project          *struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"project"`
 	Relations        IssueRelationConnection `json:"relations"`
 	InverseRelations IssueRelationConnection `json:"inverseRelations"`
 }

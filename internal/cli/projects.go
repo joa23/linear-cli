@@ -100,7 +100,7 @@ func newProjectsListCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&mine, "mine", false, "Only show projects you're involved in (ignores team)")
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().IntVarP(&limit, "limit", "n", 25, "Number of projects to return")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -147,7 +147,7 @@ func newProjectsGetCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -274,12 +274,11 @@ func newProjectsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			// Check if any updates provided (stdin counts as description update)
-			hasStdin := hasStdinPipe()
+			// Check if any updates provided (description="-" means stdin)
 			hasFlags := name != "" || description != "" || state != "" ||
 				lead != "" || startDate != "" || endDate != ""
 
-			if !hasFlags && !hasStdin {
+			if !hasFlags {
 				return fmt.Errorf("no updates specified. Use flags like --state, --lead, etc")
 			}
 

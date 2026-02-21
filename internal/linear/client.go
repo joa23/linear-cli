@@ -89,12 +89,14 @@ func NewClientWithTokenPath(tokenPath string) *Client {
 	storage := token.NewStorage(tokenPath)
 	var provider token.TokenProvider
 	var apiToken string // For backward compatibility
+	var authMode string // Preserve auth mode from token data
 
 	// Try to load from stored token first
 	if storage.TokenExists() {
 		tokenData, err := storage.LoadTokenData()
 		if err == nil {
 			apiToken = tokenData.AccessToken
+			authMode = tokenData.AuthMode
 
 			// Check if OAuth credentials available for refresh
 			cfgManager := config.NewManager("")
@@ -149,6 +151,7 @@ func NewClientWithTokenPath(tokenPath string) *Client {
 		Attachments:   attachments.NewClient(base),
 		Cycles:        cycles.NewClient(base),
 		apiToken:      apiToken,
+		authMode:      authMode,
 	}
 
 	// Initialize resolver with the client
@@ -344,6 +347,10 @@ func (c *Client) UpdateIssueDescription(issueID, newDescription string) error {
 
 func (c *Client) UpdateIssueMetadataKey(issueID, key string, value interface{}) error {
 	return c.Issues.UpdateIssueMetadataKey(issueID, key, value)
+}
+
+func (c *Client) CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error {
+	return c.Issues.CreateRelation(issueID, relatedIssueID, relationType)
 }
 
 func (c *Client) RemoveIssueMetadataKey(issueID, key string) error {
@@ -657,6 +664,10 @@ func (c *Client) ResolveCycleIdentifier(numberOrNameOrID string, teamID string) 
 
 func (c *Client) ResolveLabelIdentifier(labelName string, teamID string) (string, error) {
 	return c.resolver.ResolveLabel(labelName, teamID)
+}
+
+func (c *Client) ResolveProjectIdentifier(nameOrID string, teamID string) (string, error) {
+	return c.resolver.ResolveProject(nameOrID, teamID)
 }
 
 // Issue search operations

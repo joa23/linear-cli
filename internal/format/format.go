@@ -18,7 +18,9 @@ const (
 	Minimal Format = "minimal"
 	// Compact returns commonly needed fields (~150 tokens per issue)
 	Compact Format = "compact"
-	// Full returns all fields (~500 tokens per issue)
+	// Detailed returns all fields with truncated comments (~500 tokens per issue)
+	Detailed Format = "detailed"
+	// Full returns all fields with untruncated comments
 	Full Format = "full"
 )
 
@@ -29,10 +31,10 @@ func ParseFormat(s string) (Format, error) {
 	}
 	format := Format(s)
 	switch format {
-	case Minimal, Compact, Full:
+	case Minimal, Compact, Detailed, Full:
 		return format, nil
 	default:
-		return "", fmt.Errorf("invalid format '%s': must be 'minimal', 'compact', or 'full'", s)
+		return "", fmt.Errorf("invalid format '%s': must be 'minimal', 'compact', 'detailed', or 'full'", s)
 	}
 }
 
@@ -131,6 +133,18 @@ func (f *Formatter) RenderComment(comment *core.Comment, verbosity Verbosity, ou
 func (f *Formatter) RenderCommentList(comments []core.Comment, verbosity Verbosity, outputType OutputType) string {
 	renderer := f.factory.GetRenderer(outputType)
 	return renderer.RenderCommentList(comments, verbosity)
+}
+
+// RenderAttachment renders a single attachment
+func (f *Formatter) RenderAttachment(att *core.Attachment, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderAttachment(att, verbosity)
+}
+
+// RenderAttachmentList renders a list of attachments
+func (f *Formatter) RenderAttachmentList(atts []core.Attachment, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderAttachmentList(atts, verbosity)
 }
 
 // --- Utility functions ---

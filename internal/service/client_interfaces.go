@@ -29,6 +29,10 @@ type IssueClientOperations interface {
 	ResolveUserIdentifier(nameOrEmail string) (*linear.ResolvedUser, error)
 	ResolveCycleIdentifier(numberOrNameOrID, teamID string) (string, error)
 	ResolveLabelIdentifier(labelName, teamID string) (string, error)
+	ResolveProjectIdentifier(nameOrID, teamID string) (string, error)
+
+	// Relation operations
+	CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error
 
 	// Metadata operations (kept in Phase 2)
 	UpdateIssueMetadataKey(issueID, key string, value interface{}) error
@@ -94,6 +98,7 @@ type SearchClientOperations interface {
 	ResolveUserIdentifier(nameOrEmail string) (*linear.ResolvedUser, error)
 	ResolveCycleIdentifier(numberOrNameOrID, teamID string) (string, error)
 	ResolveLabelIdentifier(labelName, teamID string) (string, error)
+	ResolveProjectIdentifier(nameOrID, teamID string) (string, error)
 
 	// Sub-client access (Phase 2 - use sub-clients directly)
 	IssueClient() *issues.Client

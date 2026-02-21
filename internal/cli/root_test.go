@@ -1,8 +1,12 @@
 package cli
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/joa23/linear-cli/internal/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -106,4 +110,67 @@ func TestOnboardCommand(t *testing.T) {
 	require.NotNil(t, onboardCmd)
 	assert.Equal(t, "onboard", onboardCmd.Name())
 	assert.Contains(t, onboardCmd.Short, "setup status")
+}
+
+func TestInitializeClientWithTokenPath_NoTokenFile(t *testing.T) {
+	tempDir := t.TempDir()
+	tokenPath := filepath.Join(tempDir, "nonexistent_token")
+
+	client, err := initializeClientWithTokenPath(tokenPath)
+	assert.Nil(t, client)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not authenticated")
+}
+
+func TestInitializeClientWithTokenPath_StaticToken(t *testing.T) {
+	tempDir := t.TempDir()
+	tokenPath := filepath.Join(tempDir, "token")
+
+	// Write a token without refresh token — should use static provider
+	tokenData := token.TokenData{
+		AccessToken: "lin_api_test_static_token",
+		TokenType:   "Bearer",
+		AuthMode:    "user",
+	}
+	data, err := json.Marshal(tokenData)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(tokenPath, data, 0600))
+
+	client, err := initializeClientWithTokenPath(tokenPath)
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	assert.Equal(t, "user", client.GetAuthMode())
+}
+
+func TestInitializeClientWithTokenPath_AgentMode(t *testing.T) {
+	tempDir := t.TempDir()
+	tokenPath := filepath.Join(tempDir, "token")
+
+	tokenData := token.TokenData{
+		AccessToken: "lin_api_test_agent_token",
+		TokenType:   "Bearer",
+		AuthMode:    "agent",
+	}
+	data, err := json.Marshal(tokenData)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(tokenPath, data, 0600))
+
+	client, err := initializeClientWithTokenPath(tokenPath)
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	assert.Equal(t, "agent", client.GetAuthMode())
+	assert.True(t, client.IsAgentMode())
+}
+
+func TestInitializeClientWithTokenPath_LegacyPlainToken(t *testing.T) {
+	tempDir := t.TempDir()
+	tokenPath := filepath.Join(tempDir, "token")
+
+	// Write a legacy plain string token (not JSON)
+	require.NoError(t, os.WriteFile(tokenPath, []byte("lin_api_legacy_token_123"), 0600))
+
+	client, err := initializeClientWithTokenPath(tokenPath)
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	assert.Equal(t, "", client.GetAuthMode()) // Legacy tokens have no auth mode
 }

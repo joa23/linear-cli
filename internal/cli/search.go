@@ -13,11 +13,13 @@ import (
 type IssueSearchOptions struct {
 	TextQuery   string
 	Team        string
+	Project     string
 	State       string
 	Priority    int
 	Assignee    string
 	Cycle       string
 	Labels      string
+	ExcludeLabels string
 	BlockedBy   string
 	Blocks      string
 	HasBlockers bool
@@ -36,11 +38,13 @@ func newSearchCmd() *cobra.Command {
 
 		// Standard issue filters
 		team     string
+		project  string
 		state    string
 		priority int
 		assignee string
 		cycle    string
 		labels   string
+		excludeLabels string
 
 		// Dependency filters (NEW)
 		blockedBy     string
@@ -144,17 +148,23 @@ TIP: Use --format full for detailed output with descriptions.`,
 				team = GetDefaultTeam()
 			}
 
+			if project == "" {
+				project = GetDefaultProject()
+			}
+
 			// Route to appropriate search handler
 			switch entityType {
 			case "issues", "":
 				return searchIssues(deps, IssueSearchOptions{
 					TextQuery:   textQuery,
 					Team:        team,
+					Project:     project,
 					State:       state,
 					Priority:    priority,
 					Assignee:    assignee,
 					Cycle:       cycle,
 					Labels:      labels,
+					ExcludeLabels: excludeLabels,
 					BlockedBy:   blockedBy,
 					Blocks:      blocks,
 					HasBlockers: hasBlockers,
@@ -184,11 +194,13 @@ TIP: Use --format full for detailed output with descriptions.`,
 
 	// Standard issue filters
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVar(&state, "state", "", "Filter by state")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
+	cmd.Flags().StringVar(&state, "state", "", "Filter by state (comma-separated)")
 	cmd.Flags().IntVar(&priority, "priority", 0, "Filter by priority (0=none, 1=urgent, 2=high, 3=normal, 4=low)")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Filter by cycle")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Filter by labels (comma-separated)")
+	cmd.Flags().StringVarP(&excludeLabels, "exclude-labels", "L", "", "Exclude issues with these labels (comma-separated)")
 
 	// Dependency filters (NEW)
 	cmd.Flags().StringVar(&blockedBy, "blocked-by", "", "Issues blocked by this issue ID")
@@ -200,7 +212,7 @@ TIP: Use --format full for detailed output with descriptions.`,
 
 	// Output
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of results")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 
 	return cmd
@@ -228,6 +240,7 @@ func searchIssues(deps *Dependencies, opts IssueSearchOptions) error {
 	// Build search filters (using existing IssueService for consistency)
 	filters := &service.SearchFilters{
 		TeamID:     opts.Team,
+		ProjectID:  opts.Project,
 		StateIDs:   nil,
 		Priority:   nil,
 		AssigneeID: opts.Assignee,
@@ -239,13 +252,16 @@ func searchIssues(deps *Dependencies, opts IssueSearchOptions) error {
 
 	// Apply optional filters
 	if opts.State != "" {
-		filters.StateIDs = []string{opts.State}
+		filters.StateIDs = parseCommaSeparated(opts.State)
 	}
 	if opts.Priority > 0 {
 		filters.Priority = &opts.Priority
 	}
 	if opts.Labels != "" {
 		filters.LabelIDs = parseCommaSeparated(opts.Labels)
+	}
+	if opts.ExcludeLabels != "" {
+		filters.ExcludeLabelIDs = parseCommaSeparated(opts.ExcludeLabels)
 	}
 
 	// For dependency filters, use the Search service
@@ -255,6 +271,7 @@ func searchIssues(deps *Dependencies, opts IssueSearchOptions) error {
 			EntityType:  "issues",
 			TextQuery:   opts.TextQuery,
 			TeamID:      opts.Team,
+			ProjectID:   opts.Project,
 			StateIDs:    filters.StateIDs,
 			Priority:    filters.Priority,
 			AssigneeID:  opts.Assignee,

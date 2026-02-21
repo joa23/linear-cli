@@ -66,6 +66,12 @@ func (m *mockIssueClientForCreate) SearchIssues(filters *core.IssueSearchFilters
 func (m *mockIssueClientForCreate) UpdateIssueMetadataKey(id, key string, val interface{}) error {
 	return nil
 }
+func (m *mockIssueClientForCreate) CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error {
+	return nil
+}
+func (m *mockIssueClientForCreate) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
+	return "project-uuid", nil
+}
 func (m *mockIssueClientForCreate) CommentClient() *comments.Client   { return nil }
 func (m *mockIssueClientForCreate) WorkflowClient() *workflows.Client { return nil }
 func (m *mockIssueClientForCreate) IssueClient() *issues.Client       { return nil }

@@ -38,6 +38,17 @@ linear auth status   # Verify: should show "Mode: Agent"
 linear init          # Select default team - creates .linear.yaml
 ```
 
+**Step 3 (optional): Set default project**
+
+Edit `.linear.yaml` to add a default project:
+```yaml
+# .linear.yaml
+team: CEN
+project: my-project  # optional — used when --project flag is omitted
+```
+
+When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `search`, `deps`) will use this default. Explicit `--project` flags always override it.
+
 ### Authentication Modes
 
 - **User mode**: `--assignee me` assigns to the human's Linear account
@@ -64,7 +75,14 @@ linear issues get CEN-123 --output json
 **Verbosity Levels** (`--format` flag):
 - `minimal` - Essential fields only (~50 tokens)
 - `compact` - Key metadata (~150 tokens, default)
-- `full` - Complete details (~500 tokens)
+- `detailed` - Complete details, truncated comments (~500 tokens). Use `linear issues comments <id>` for full text.
+- `full` - Complete details, untruncated comments
+
+**Reading Comments:**
+```bash
+linear issues comments CEN-123          # Full comment bodies
+linear issues comments CEN-123 --last 5 # Last 5 only
+```
 
 **When to use JSON:**
 - Parsing data programmatically
@@ -94,6 +112,8 @@ linear issues get CEN-123 --format minimal --output json
 - `teams list`, `teams get`, `teams labels`, `teams states`
 - `users list`, `users get`, `users me`
 - `search` (all search operations)
+- `attachments list`, `attachments create`, `attachments update`
+- `deps` (dependency graph)
 
 ### Common Patterns
 
@@ -200,6 +220,34 @@ linear search --has-circular-deps --team CEN
 4. **Sprint planning**: Check `linear deps --team CEN` for work order
 5. **Priority alignment**: Ensure foundation work is prioritized over features it blocks
 
+#### Attachments (sidebar cards)
+
+Attachment objects are structured sidebar cards (GitHub PRs, Slack threads, uploaded files, URLs).
+This is different from `--attach` on `issues create/update/comment/reply`, which embeds files as inline markdown images.
+
+```bash
+# List attachment cards on an issue
+linear attachments list TEC-123
+
+# Attach a URL (sidebar card, auto-detects source type)
+linear attachments create TEC-123 --url "https://github.com/org/repo/pull/42" --title "PR #42"
+
+# Upload a file as attachment card (title defaults to filename)
+linear attachments create TEC-123 --file /tmp/screenshot.png
+
+# Upload with custom title
+linear attachments create TEC-123 --file /tmp/screenshot.png --title "Bug screenshot"
+
+# Update attachment metadata
+linear attachments update <uuid> --title "Updated title"
+
+# Delete attachment
+linear attachments delete <uuid>
+
+# Embed file as inline image in description (NOT a sidebar card)
+linear issues create "Bug" --attach /tmp/screenshot.png
+```
+
 ### Skills Usage
 
 After running `linear init`, use these skills:
@@ -217,6 +265,7 @@ After running `linear init`, use these skills:
 ```bash
 linear deps ENG-100          # Show deps for issue
 linear deps --team ENG       # Show all deps for team
+linear deps --team ENG --output json  # JSON for automation
 ```
 
 ### Skills Management
@@ -234,7 +283,7 @@ Available skills: `/linear`, `/prd`, `/triage`, `/cycle-plan`, `/retro`, `/deps`
 - **JSON output** - Machine-readable for automation via `--output json`
 - **Human-readable IDs** - "TEST-123" not UUIDs
 - **Service layer** - Validation and formatting abstraction
-- **Verbosity levels** - Control detail with `--format minimal|compact|full`
+- **Verbosity levels** - Control detail with `--format minimal|compact|detailed|full`
 
 ## Testing
 

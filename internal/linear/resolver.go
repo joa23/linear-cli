@@ -442,6 +442,109 @@ linear_search resource="issues" query={"cycleId":"%s"}`,
 	return matches[0].ID, nil
 }
 
+// ResolveProject resolves a project identifier (name or UUID) to a project UUID
+// Supports:
+// - UUIDs - returned as-is
+// - Project names: "My Project" (case-insensitive match)
+//
+// When teamID is provided, only projects for that team are searched.
+// When teamID is empty, all workspace projects are searched.
+//
+// Returns error with suggestions if multiple projects match
+func (r *Resolver) ResolveProject(nameOrID string, teamID string) (string, error) {
+	// Validate input
+	if nameOrID == "" {
+		return "", &core.ValidationError{
+			Field:   "project",
+			Message: "project identifier cannot be empty",
+		}
+	}
+
+	// If it's already a UUID, return as-is
+	if identifiers.IsUUID(nameOrID) {
+		return nameOrID, nil
+	}
+
+	// Check cache first
+	if projectID, found := r.cache.getProjectByName(nameOrID); found {
+		return projectID, nil
+	}
+
+	// Fetch projects (scoped to team if provided)
+	var allProjects []core.Project
+	var err error
+	if teamID != "" {
+		allProjects, err = r.client.Projects.ListByTeam(teamID, 100)
+	} else {
+		allProjects, err = r.client.Projects.ListAllProjects(100)
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch projects for resolution: %w", err)
+	}
+
+	// Find matching projects by name (case-insensitive)
+	var matches []core.Project
+	nameLower := strings.ToLower(nameOrID)
+
+	for _, project := range allProjects {
+		if strings.ToLower(project.Name) == nameLower {
+			matches = append(matches, project)
+		}
+	}
+
+	// Handle no matches
+	if len(matches) == 0 {
+		// Build list of available projects for error message
+		var available []string
+		for _, p := range allProjects {
+			available = append(available, p.Name)
+		}
+
+		return "", &guidance.ErrorWithGuidance{
+			Operation: "Resolve project",
+			Reason:    fmt.Sprintf("project '%s' not found", nameOrID),
+			Guidance: []string{
+				"Check the project name spelling (case-insensitive)",
+				"Use 'linear projects list' to see available projects",
+				"Use the project UUID for exact matching",
+			},
+			Example: fmt.Sprintf("Available projects: %s", strings.Join(available, ", ")),
+			OriginalErr: &core.NotFoundError{
+				ResourceType: "project",
+				ResourceID:   nameOrID,
+			},
+		}
+	}
+
+	// Handle ambiguous matches (unlikely for exact name match, but be safe)
+	if len(matches) > 1 {
+		var suggestions []string
+		for _, p := range matches {
+			suggestions = append(suggestions, fmt.Sprintf("%s (ID: %s)", p.Name, p.ID))
+		}
+
+		return "", &guidance.ErrorWithGuidance{
+			Operation: "Resolve project",
+			Reason:    fmt.Sprintf("multiple projects match '%s'", nameOrID),
+			Guidance: []string{
+				"Use the project UUID for exact matching",
+				"Choose from the suggestions below",
+			},
+			Example: fmt.Sprintf("Matching projects: %s", strings.Join(suggestions, ", ")),
+			OriginalErr: &core.ValidationError{
+				Field:  "project",
+				Value:  nameOrID,
+				Reason: fmt.Sprintf("ambiguous, matches: %s", strings.Join(suggestions, ", ")),
+			},
+		}
+	}
+
+	// Single match found — cache and return
+	project := matches[0]
+	r.cache.setProjectByName(nameOrID, project.ID)
+	return project.ID, nil
+}
+
 // ResolveLabel resolves a label name to a label UUID within a specific team
 // Labels are team-scoped, so teamID is required
 //

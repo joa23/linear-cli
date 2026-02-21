@@ -20,4 +20,8 @@ type Renderer interface {
 	RenderTeamList(teams []core.Team, verbosity Verbosity) string
 	RenderUserList(users []core.User, verbosity Verbosity) string
 	RenderCommentList(comments []core.Comment, verbosity Verbosity) string
+
+	// Attachment rendering
+	RenderAttachment(att *core.Attachment, verbosity Verbosity) string
+	RenderAttachmentList(atts []core.Attachment, verbosity Verbosity) string
 }

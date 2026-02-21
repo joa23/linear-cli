@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/joa23/linear-cli/internal/format"
+	paginationutil "github.com/joa23/linear-cli/internal/linear/pagination"
 	"github.com/joa23/linear-cli/internal/service"
 	"github.com/spf13/cobra"
 )
@@ -38,11 +39,14 @@ func newIssuesCmd() *cobra.Command {
 func newIssuesListCmd() *cobra.Command {
 	var (
 		teamID     string
+		project    string
 		state      string
 		priority   string
 		assignee   string
 		cycle      string
 		labels     string
+		excludeLabels string
+		sortBy     string
 		limit      int
 		formatStr  string
 		outputType string
@@ -60,33 +64,30 @@ IMPORTANT BEHAVIORS:
 - Returns 10 issues by default, use --limit to change
 
 TIP: Use --format full for detailed output, --format minimal for concise output.
-     Use --output json for machine-readable JSON output.`,
+     Use --output json for machine-readable JSON output.
+     Use --project to scope results to a specific project (name or UUID).`,
 		Example: `  # Minimal - list first 10 issues (requires 'linear init')
   linear issues list
+
+  # Filter by project (name or UUID)
+  linear issues list --project "My Project"
+  linear issues list -P "My Project" --state "In Progress"
 
   # Complete - using ALL available parameters
   linear issues list \
     --team CEN \
+    --project "My Project" \
     --state "In Progress" \
     --priority 1 \
     --assignee johannes.zillmann@centrum-ai.com \
     --cycle 65 \
+    --project "My Project" \
     --labels "customer,bug" \
     --limit 50 \
     --format full
 
   # JSON output for scripting
   linear issues list --output json | jq '.[] | select(.priority == 1)'
-
-  # Common pattern - high priority customer issues as JSON
-  linear issues list \
-    --labels customer \
-    --priority 1 \
-    --limit 20 \
-    --output json
-
-  # Get issues in specific cycle
-  linear issues list --cycle 65 --format full
 
   # Filter by assignee
   linear issues list --assignee me
@@ -104,6 +105,11 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 			}
 			if teamID == "" {
 				return errors.New(ErrTeamRequired)
+			}
+
+			// Use default project if not specified
+			if project == "" {
+				project = GetDefaultProject()
 			}
 
 			// Validate limit
@@ -130,13 +136,14 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 
 			// Build search filters
 			filters := &service.SearchFilters{
-				TeamID: teamID,
-				Limit:  limit,
+				TeamID:    teamID,
+				ProjectID: project,
+				Limit:     limit,
 			}
 
 			// Apply optional filters
 			if state != "" {
-				filters.StateIDs = []string{state}
+				filters.StateIDs = parseCommaSeparated(state)
 			}
 			if priority != "" {
 				p, err := parsePriority(priority)
@@ -151,8 +158,17 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 			if cycle != "" {
 				filters.CycleID = cycle
 			}
+			if project != "" {
+				filters.ProjectID = project
+			}
 			if labels != "" {
 				filters.LabelIDs = parseCommaSeparated(labels)
+			}
+			if excludeLabels != "" {
+				filters.ExcludeLabelIDs = parseCommaSeparated(excludeLabels)
+			}
+			if sortBy != "" {
+				filters.OrderBy = paginationutil.MapSortField(sortBy)
 			}
 
 			result, err := deps.Issues.SearchWithOutput(filters, verbosity, output)
@@ -166,13 +182,16 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	}
 
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVar(&state, "state", "", "Filter by workflow state (e.g., 'In Progress', 'Backlog')")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
+	cmd.Flags().StringVar(&state, "state", "", "Filter by workflow state (comma-separated, e.g., 'Backlog,Todo,In Progress')")
 	cmd.Flags().StringVar(&priority, "priority", "", "Filter by priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee (email or 'me')")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Filter by cycle (number, 'current', or 'next')")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Filter by labels (comma-separated)")
+	cmd.Flags().StringVarP(&excludeLabels, "exclude-labels", "L", "", "Exclude issues with these labels (comma-separated)")
+	cmd.Flags().StringVarP(&sortBy, "sort", "s", "", "Sort by: created, updated")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of items (max 250)")
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity level: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity level: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json")
 
 	return cmd
@@ -226,7 +245,7 @@ func newIssuesGetCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&formatStr, "format", "f", "full", "Verbosity level: minimal|compact|full")
+	cmd.Flags().StringVarP(&formatStr, "format", "f", "detailed", "Verbosity level: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json")
 
 	return cmd
@@ -361,6 +380,9 @@ TIP: Run 'linear init' first to set default team.`,
 			if cycle != "" {
 				input.CycleID = cycle
 			}
+			if project == "" {
+				project = GetDefaultProject()
+			}
 			if project != "" {
 				input.ProjectID = project
 			}
@@ -398,13 +420,13 @@ TIP: Run 'linear init' first to set default team.`,
 	cmd.Flags().Float64VarP(&estimate, "estimate", "e", 0, "Story points estimate")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Comma-separated label names/IDs")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Cycle number or name (e.g., 'current', 'next')")
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Project name or ID")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Assignee name or email (use 'me' for yourself)")
 	cmd.Flags().StringVar(&dueDate, "due", "", "Due date YYYY-MM-DD")
 	cmd.Flags().StringVar(&parent, "parent", "", "Parent issue ID (for sub-issues)")
 	cmd.Flags().StringVar(&dependsOn, "depends-on", "", "Comma-separated issue IDs this depends on")
 	cmd.Flags().StringVar(&blockedBy, "blocked-by", "", "Comma-separated issue IDs blocking this")
-	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 
 	return cmd
 }
@@ -457,15 +479,14 @@ func newIssuesUpdateCmd() *cobra.Command {
 			}
 			// Note: team can still be "" if no .linear.yaml, will fallback to issue identifier
 
-			// Check if any updates provided (stdin counts as description update)
-			hasStdin := hasStdinPipe()
+			// Check if any updates provided (description="-" means stdin)
 			hasFlags := title != "" || description != "" || state != "" ||
 				priority != "" || estimate != "" || labels != "" ||
 				cycle != "" || project != "" || assignee != "" ||
 				dueDate != "" || parent != "" || dependsOn != "" || blockedBy != "" ||
 				len(attachFiles) > 0
 
-			if !hasFlags && !hasStdin {
+			if !hasFlags {
 				return fmt.Errorf("no updates specified. Use flags like --state, --priority, etc")
 			}
 
@@ -515,6 +536,9 @@ func newIssuesUpdateCmd() *cobra.Command {
 			if cycle != "" {
 				input.CycleID = &cycle
 			}
+			if project == "" {
+				project = GetDefaultProject()
+			}
 			if project != "" {
 				input.ProjectID = &project
 			}
@@ -555,13 +579,13 @@ func newIssuesUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "Update story points estimate")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Update labels (comma-separated)")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Update cycle number or name")
-	cmd.Flags().StringVarP(&project, "project", "P", "", "Update project name or ID")
+	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Update assignee name or email (use 'me' for yourself)")
 	cmd.Flags().StringVar(&dueDate, "due", "", "Update due date YYYY-MM-DD")
 	cmd.Flags().StringVar(&parent, "parent", "", "Update parent issue")
 	cmd.Flags().StringVar(&dependsOn, "depends-on", "", "Update dependencies (comma-separated issue IDs)")
 	cmd.Flags().StringVar(&blockedBy, "blocked-by", "", "Update blocked-by (comma-separated issue IDs)")
-	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
 
 	return cmd
@@ -634,7 +658,7 @@ func newIssuesCommentCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&body, "body", "b", "", "Comment body (or pipe to stdin)")
-	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 
 	return cmd
 }
@@ -747,7 +771,7 @@ func newIssuesReplyCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&body, "body", "b", "", "Reply body (or pipe to stdin)")
-	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "File(s) to attach (can be used multiple times)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 
 	return cmd
 }

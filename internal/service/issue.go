@@ -27,12 +27,15 @@ func NewIssueService(client IssueClientOperations, formatter *format.Formatter) 
 // SearchFilters represents filters for searching issues
 type SearchFilters struct {
 	TeamID     string
+	ProjectID  string
 	AssigneeID string
 	CycleID    string
 	StateIDs   []string
 	LabelIDs   []string
+	ExcludeLabelIDs []string
 	Priority   *int
 	SearchTerm string
+	OrderBy    string
 	Limit      int
 	After      string
 	Format     format.Format
@@ -88,6 +91,15 @@ func (s *IssueService) Search(filters *SearchFilters) (string, error) {
 		linearFilters.TeamID = teamID
 	}
 
+	// Resolve project identifier if provided (name or UUID)
+	if filters.ProjectID != "" {
+		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID, linearFilters.TeamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
+		}
+		linearFilters.ProjectID = projectID
+	}
+
 	// Resolve assignee identifier if provided
 	if filters.AssigneeID != "" {
 		resolved, err := s.client.ResolveUserIdentifier(filters.AssigneeID)
@@ -133,9 +145,22 @@ func (s *IssueService) Search(filters *SearchFilters) (string, error) {
 		linearFilters.LabelIDs = resolvedLabels
 	}
 
+	// Resolve exclude-label names to IDs (requires team)
+	if len(filters.ExcludeLabelIDs) > 0 {
+		if linearFilters.TeamID == "" {
+			return "", fmt.Errorf("--team is required when filtering by labels")
+		}
+		resolvedLabels, err := s.resolveLabelIDs(filters.ExcludeLabelIDs, linearFilters.TeamID)
+		if err != nil {
+			return "", err
+		}
+		linearFilters.ExcludeLabelIDs = resolvedLabels
+	}
+
 	// Copy remaining filters
 	linearFilters.Priority = filters.Priority
 	linearFilters.SearchTerm = filters.SearchTerm
+	linearFilters.OrderBy = filters.OrderBy
 
 	// Execute search
 	result, err := s.client.SearchIssues(linearFilters)
@@ -178,6 +203,15 @@ func (s *IssueService) SearchWithOutput(filters *SearchFilters, verbosity format
 		linearFilters.TeamID = teamID
 	}
 
+	// Resolve project identifier if provided (name or UUID)
+	if filters.ProjectID != "" {
+		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID, linearFilters.TeamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
+		}
+		linearFilters.ProjectID = projectID
+	}
+
 	// Resolve assignee identifier if provided
 	if filters.AssigneeID != "" {
 		resolved, err := s.client.ResolveUserIdentifier(filters.AssigneeID)
@@ -223,9 +257,38 @@ func (s *IssueService) SearchWithOutput(filters *SearchFilters, verbosity format
 		linearFilters.LabelIDs = resolvedLabels
 	}
 
+	// Resolve project identifier if provided
+	if filters.ProjectID != "" {
+		teamID := linearFilters.TeamID
+		if teamID == "" {
+			// Try to resolve team for project lookup
+			if resolvedTeam, err := s.client.ResolveTeamIdentifier(filters.TeamID); err == nil {
+				teamID = resolvedTeam
+			}
+		}
+		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID, teamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
+		}
+		linearFilters.ProjectID = projectID
+	}
+
+	// Resolve exclude-label names to IDs (requires team)
+	if len(filters.ExcludeLabelIDs) > 0 {
+		if linearFilters.TeamID == "" {
+			return "", fmt.Errorf("--team is required when filtering by labels")
+		}
+		resolvedLabels, err := s.resolveLabelIDs(filters.ExcludeLabelIDs, linearFilters.TeamID)
+		if err != nil {
+			return "", err
+		}
+		linearFilters.ExcludeLabelIDs = resolvedLabels
+	}
+
 	// Copy remaining filters
 	linearFilters.Priority = filters.Priority
 	linearFilters.SearchTerm = filters.SearchTerm
+	linearFilters.OrderBy = filters.OrderBy
 
 	// Execute search
 	result, err := s.client.SearchIssues(linearFilters)
@@ -409,7 +472,6 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		Estimate:    input.Estimate,
 		DueDate:     input.DueDate,
 		ParentID:    input.ParentID,
-		ProjectID:   input.ProjectID,
 	}
 
 	if input.StateID != "" {
@@ -428,6 +490,14 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		// Linear's issueCreate only supports assigneeId (not delegateId),
 		// so we use the resolved user ID for both human users and OAuth apps.
 		createInput.AssigneeID = resolved.ID
+	}
+
+	if input.ProjectID != "" {
+		projectID, err := s.client.ResolveProjectIdentifier(input.ProjectID, teamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", input.ProjectID, err)
+		}
+		createInput.ProjectID = projectID
 	}
 
 	if input.CycleID != "" {
@@ -456,24 +526,21 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		return "", fmt.Errorf("failed to create issue: %w", err)
 	}
 
-	// Store dependencies in metadata if provided (separate metadata API).
+	// Create native relations for dependencies
 	if len(input.DependsOn) > 0 {
-		if err := s.client.UpdateIssueMetadataKey(issue.ID, "dependencies", input.DependsOn); err != nil {
-			return "", fmt.Errorf("failed to set dependencies metadata: %w", err)
+		for _, depID := range input.DependsOn {
+			// depID blocks the new issue (the dependency blocks this issue)
+			if err := s.client.CreateRelation(depID, issue.Identifier, core.RelationBlocks); err != nil {
+				return "", fmt.Errorf("failed to create depends-on relation for %s: %w", depID, err)
+			}
 		}
 	}
 	if len(input.BlockedBy) > 0 {
-		if err := s.client.UpdateIssueMetadataKey(issue.ID, "blocked_by", input.BlockedBy); err != nil {
-			return "", fmt.Errorf("failed to set blocked_by metadata: %w", err)
-		}
-	}
-
-	// Re-fetch the issue to get updated state with metadata
-	if len(input.DependsOn) > 0 || len(input.BlockedBy) > 0 {
-		issue, err = s.client.GetIssue(issue.Identifier)
-		if err != nil {
-			// Not fatal - just return what we have
-			return s.formatter.Issue(issue, format.Full), nil
+		for _, blockerID := range input.BlockedBy {
+			// blockerID blocks the new issue
+			if err := s.client.CreateRelation(blockerID, issue.Identifier, core.RelationBlocks); err != nil {
+				return "", fmt.Errorf("failed to create blocked-by relation for %s: %w", blockerID, err)
+			}
 		}
 	}
 
@@ -556,7 +623,19 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 	}
 
 	if input.ProjectID != nil {
-		linearInput.ProjectID = input.ProjectID
+		teamKey, _, err := identifiers.ParseIssueIdentifier(issue.Identifier)
+		if err != nil {
+			return "", fmt.Errorf("invalid issue identifier '%s': %w", issue.Identifier, err)
+		}
+		resolvedTeamID, err := s.client.ResolveTeamIdentifier(teamKey)
+		if err != nil {
+			return "", fmt.Errorf("could not resolve team '%s': %w", teamKey, err)
+		}
+		projectID, err := s.client.ResolveProjectIdentifier(*input.ProjectID, resolvedTeamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project '%s': %w", *input.ProjectID, err)
+		}
+		linearInput.ProjectID = &projectID
 	}
 	if input.ParentID != nil {
 		linearInput.ParentID = input.ParentID
@@ -634,30 +713,30 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 		linearInput.LabelIDs = resolvedLabelIDs
 	}
 
-	// Perform update
-	updatedIssue, err := s.client.UpdateIssue(issue.ID, linearInput)
-	if err != nil {
-		return "", fmt.Errorf("failed to update issue: %w", err)
+	// Perform update only if there are GraphQL fields to update
+	updatedIssue := issue
+	if hasServiceFieldsToUpdate(linearInput) {
+		updatedIssue, err = s.client.UpdateIssue(issue.ID, linearInput)
+		if err != nil {
+			return "", fmt.Errorf("failed to update issue: %w", err)
+		}
 	}
 
-	// Update dependencies metadata if provided
+	// Create native relations for dependencies
 	if len(input.DependsOn) > 0 {
-		if err := s.client.UpdateIssueMetadataKey(issue.ID, "dependencies", input.DependsOn); err != nil {
-			return "", fmt.Errorf("failed to set dependencies metadata: %w", err)
+		for _, depID := range input.DependsOn {
+			// depID blocks this issue (the dependency blocks this issue)
+			if err := s.client.CreateRelation(depID, issue.Identifier, core.RelationBlocks); err != nil {
+				return "", fmt.Errorf("failed to create depends-on relation for %s: %w", depID, err)
+			}
 		}
 	}
 	if len(input.BlockedBy) > 0 {
-		if err := s.client.UpdateIssueMetadataKey(issue.ID, "blocked_by", input.BlockedBy); err != nil {
-			return "", fmt.Errorf("failed to set blocked_by metadata: %w", err)
-		}
-	}
-
-	// Re-fetch if dependencies were updated
-	if len(input.DependsOn) > 0 || len(input.BlockedBy) > 0 {
-		updatedIssue, err = s.client.GetIssue(updatedIssue.Identifier)
-		if err != nil {
-			// Not fatal - just return what we have
-			return s.formatter.Issue(updatedIssue, format.Full), nil
+		for _, blockerID := range input.BlockedBy {
+			// blockerID blocks this issue
+			if err := s.client.CreateRelation(blockerID, issue.Identifier, core.RelationBlocks); err != nil {
+				return "", fmt.Errorf("failed to create blocked-by relation for %s: %w", blockerID, err)
+			}
 		}
 	}
 
@@ -720,6 +799,24 @@ func (s *IssueService) GetIssueID(identifier string) (string, error) {
 		return "", fmt.Errorf("failed to get issue %s: %w", identifier, err)
 	}
 	return issue.ID, nil
+}
+
+// hasServiceFieldsToUpdate checks if the UpdateIssueInput has any fields that
+// require a GraphQL UpdateIssue call (excludes relation-only operations).
+func hasServiceFieldsToUpdate(input core.UpdateIssueInput) bool {
+	return input.Title != nil ||
+		input.Description != nil ||
+		input.Priority != nil ||
+		input.Estimate != nil ||
+		input.DueDate != nil ||
+		input.StateID != nil ||
+		input.AssigneeID != nil ||
+		input.DelegateID != nil ||
+		input.ProjectID != nil ||
+		input.ParentID != nil ||
+		input.TeamID != nil ||
+		input.CycleID != nil ||
+		len(input.LabelIDs) > 0
 }
 
 // resolveStateID resolves a state name to a valid state ID
