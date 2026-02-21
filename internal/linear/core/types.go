@@ -618,7 +618,6 @@ type IssueCreateInput struct {
 	TeamID      string
 	AssigneeID  string
 	CycleID     string
-	DelegateID  string
 	DueDate     string
 	Estimate    *float64
 	LabelIDs    []string
