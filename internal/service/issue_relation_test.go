@@ -31,7 +31,7 @@ type mockIssueClientForRelation struct {
 	createRelationErr error
 }
 
-func (m *mockIssueClientForRelation) CreateIssue(title, desc, team string) (*core.Issue, error) {
+func (m *mockIssueClientForRelation) CreateIssue(input *core.IssueCreateInput) (*core.Issue, error) {
 	return &core.Issue{ID: "new-issue-uuid", Identifier: "TEST-99"}, nil
 }
 
