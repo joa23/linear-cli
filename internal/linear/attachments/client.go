@@ -3,6 +3,7 @@ package attachments
 import (
 	"github.com/joa23/linear-cli/internal/linear/core"
 	"github.com/joa23/linear-cli/internal/linear/guidance"
+	"github.com/joa23/linear-cli/internal/token"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -457,18 +458,30 @@ func (ac *Client) downloadAttachmentWithRetry(url string, maxRetries int) ([]byt
 	return nil, "", 0, fmt.Errorf("download failed after %d retries: %w", maxRetries+1, lastErr)
 }
 
+// isPrivateLinearURL reports whether the URL requires a Linear auth token.
+func isPrivateLinearURL(u string) bool {
+	return strings.Contains(u, "uploads.linear.app")
+}
+
 // attemptDownload performs a single download attempt
 func (ac *Client) attemptDownload(url string) ([]byte, string, int64, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, "", 0, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
+	// Private Linear upload URLs require a Bearer token.
+	if isPrivateLinearURL(url) {
+		if tok, err := ac.base.GetToken(); err == nil {
+			req.Header.Set("Authorization", token.FormatAuthHeader(tok))
+		}
+	}
+
 	// Set timeout for individual requests
 	ctx, cancel := context.WithTimeout(req.Context(), 30*time.Second)
 	defer cancel()
 	req = req.WithContext(ctx)
-	
+
 	resp, err := ac.httpClient.Do(req)
 	if err != nil {
 		// Enhance error context for better debugging

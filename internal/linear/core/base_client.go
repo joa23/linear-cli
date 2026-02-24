@@ -57,6 +57,11 @@ func (bc *BaseClient) SetHTTPClient(client *http.Client) {
 	bc.HTTPClient = client
 }
 
+// GetToken returns the current access token for use in non-GraphQL authenticated requests.
+func (bc *BaseClient) GetToken() (string, error) {
+	return bc.tokenProvider.GetToken()
+}
+
 // makeRequestWithRetry makes an HTTP request with exponential backoff for rate limiting and network errors.
 // This method implements a comprehensive retry strategy to handle:
 // - Rate limiting (429 responses) with respect for Retry-After headers
