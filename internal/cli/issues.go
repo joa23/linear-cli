@@ -206,7 +206,13 @@ func newIssuesGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <issue-id>",
 		Short: "Get issue details",
-		Long:  "Display detailed information about a specific issue (e.g., 'linear issues get CEN-123').",
+		Long: `Display detailed information about a specific issue.
+
+If the issue description contains image URLs (uploads.linear.app/...), those require
+authentication. Do NOT use WebFetch or curl — use the CLI instead:
+
+  linear attachments download "https://uploads.linear.app/..."
+  # → /tmp/linear-img-<hash>.png`,
 		Example: `  # Get issue with default text output
   linear issues get CEN-123
 
@@ -214,7 +220,10 @@ func newIssuesGetCmd() *cobra.Command {
   linear issues get CEN-123 --output json
 
   # Get minimal JSON output
-  linear issues get CEN-123 --format minimal --output json`,
+  linear issues get CEN-123 --format minimal --output json
+
+  # Download a private image from the issue description
+  linear attachments download "https://uploads.linear.app/..."`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
