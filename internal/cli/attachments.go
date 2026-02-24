@@ -216,8 +216,9 @@ func newAttachmentsUpdateCmd() *cobra.Command {
 
 func newAttachmentsDownloadCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "download <url>",
-		Short: "Download a private Linear image to a local temp file",
+		Use:     "download <url>",
+		Aliases: []string{"get"},
+		Short:   "Download a private Linear image to a local temp file",
 		Long: `Download a private uploads.linear.app URL to a local temp file using your Linear auth token.
 
 The file is saved to /tmp/linear-img-<hash>.<ext> and the path is printed to stdout.

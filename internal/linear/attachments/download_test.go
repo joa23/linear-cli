@@ -1,8 +1,10 @@
 package attachments
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/joa23/linear-cli/internal/linear/core"
@@ -75,13 +77,45 @@ func TestIsPrivateLinearURL(t *testing.T) {
 		{"https://uploads.linear.app/", true},
 		{"https://linear.app/team/issue", false},
 		{"https://github.com/org/repo", false},
-		{"https://example.com/uploads.linear.app.fake", true}, // contains the string
+		{"https://example.com/uploads.linear.app.fake", false},
+		{"not-a-valid-url", false},
 	}
 	for _, c := range cases {
 		got := isPrivateLinearURL(c.url)
 		if got != c.want {
 			t.Errorf("isPrivateLinearURL(%q) = %v, want %v", c.url, got, c.want)
 		}
+	}
+}
+
+func TestAttemptDownload_FailsFastWhenTokenLookupFailsForPrivateLinearURL(t *testing.T) {
+	hitServer := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hitServer = true
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("unused"))
+	}))
+	defer srv.Close()
+
+	base := core.NewBaseClientWithProvider(&failingTokenProvider{})
+	ac := NewClient(base)
+	ac.httpClient = &http.Client{
+		Transport: &rewriteTransport{
+			realURL: srv.URL,
+			target:  "uploads.linear.app",
+			inner:   srv.Client().Transport,
+		},
+	}
+
+	_, _, _, err := ac.attemptDownload("https://uploads.linear.app/private/image.png")
+	if err == nil {
+		t.Fatal("expected token retrieval error, got nil")
+	}
+	if !strings.Contains(err.Error(), "linear auth login") {
+		t.Fatalf("expected re-auth guidance in error, got: %v", err)
+	}
+	if hitServer {
+		t.Fatal("expected no outbound request when token lookup fails")
 	}
 }
 
@@ -100,4 +134,14 @@ func (rt *rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error)
 		return rt.inner.RoundTrip(rewritten)
 	}
 	return rt.inner.RoundTrip(req)
+}
+
+type failingTokenProvider struct{}
+
+func (p *failingTokenProvider) GetToken() (string, error) {
+	return "", errors.New("token unavailable")
+}
+
+func (p *failingTokenProvider) RefreshIfNeeded(string) (string, error) {
+	return "", errors.New("refresh unsupported")
 }

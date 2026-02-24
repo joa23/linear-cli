@@ -208,11 +208,9 @@ func newIssuesGetCmd() *cobra.Command {
 		Short: "Get issue details",
 		Long: `Display detailed information about a specific issue.
 
-If the issue description contains image URLs (uploads.linear.app/...), those require
-authentication. Do NOT use WebFetch or curl — use the CLI instead:
-
-  linear attachments download "https://uploads.linear.app/..."
-  # → /tmp/linear-img-<hash>.png`,
+Images in the description (uploads.linear.app/...) require auth — use:
+  linear attachments download "URL"   # → /tmp/linear-img-<hash>.png
+  Read /tmp/linear-img-<hash>.png     # view in Claude Code`,
 		Example: `  # Get issue with default text output
   linear issues get CEN-123
 

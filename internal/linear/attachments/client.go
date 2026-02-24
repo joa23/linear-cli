@@ -1,14 +1,14 @@
 package attachments
 
 import (
-	"github.com/joa23/linear-cli/internal/linear/core"
-	"github.com/joa23/linear-cli/internal/linear/guidance"
-	"github.com/joa23/linear-cli/internal/token"
 	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/internal/linear/guidance"
+	"github.com/joa23/linear-cli/internal/token"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -16,7 +16,9 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -48,10 +50,10 @@ func NewAttachmentCache(ttl time.Duration) *AttachmentCache {
 		entries: make(map[string]*CacheEntry),
 		ttl:     ttl,
 	}
-	
+
 	// Start cleanup goroutine
 	go cache.cleanupExpired()
-	
+
 	return cache
 }
 
@@ -68,7 +70,7 @@ func NewClient(base *core.BaseClient) *Client {
 	// Linear attachment URLs typically expire after 1 hour, so 30 minutes
 	// provides a good balance between performance and freshness
 	cache := NewAttachmentCache(30 * time.Minute)
-	
+
 	return &Client{
 		base:       base,
 		httpClient: core.NewOptimizedHTTPClient(), // Reuse the optimized HTTP client
@@ -88,14 +90,14 @@ const (
 // AttachmentResponse represents the response from GetAttachment
 type AttachmentResponse struct {
 	Format      AttachmentFormat `json:"format"`
-	Content     string          `json:"content,omitempty"`     // Base64 content or URL
-	URL         string          `json:"url,omitempty"`         // Original URL
-	ContentType string          `json:"contentType,omitempty"` // MIME type
-	Size        int64           `json:"size,omitempty"`        // Content size in bytes
-	Width       int             `json:"width,omitempty"`       // Image width (if image)
-	Height      int             `json:"height,omitempty"`      // Image height (if image)
-	Resized     bool            `json:"resized,omitempty"`     // True if image was resized for MCP limits
-	Error       string          `json:"error,omitempty"`       // Error message if download failed
+	Content     string           `json:"content,omitempty"`     // Base64 content or URL
+	URL         string           `json:"url,omitempty"`         // Original URL
+	ContentType string           `json:"contentType,omitempty"` // MIME type
+	Size        int64            `json:"size,omitempty"`        // Content size in bytes
+	Width       int              `json:"width,omitempty"`       // Image width (if image)
+	Height      int              `json:"height,omitempty"`      // Image height (if image)
+	Resized     bool             `json:"resized,omitempty"`     // True if image was resized for MCP limits
+	Error       string           `json:"error,omitempty"`       // Error message if download failed
 }
 
 // MCPSizeLimit is the 1MB limit for MCP content (Claude Desktop constraint)
@@ -142,7 +144,7 @@ content = linear_get_attachment(attachments[0].url, "base64")`)
 		response.Content = base64.StdEncoding.EncodeToString(cached.Content)
 		return response, nil
 	}
-	
+
 	// Not in cache - download and process the content
 	content, contentType, size, err := ac.downloadAttachment(attachmentURL)
 	if err != nil {
@@ -174,7 +176,7 @@ content = linear_get_attachment(attachments[0].url, "base64")`)
 			content = resizedContent
 			response.Size = int64(len(content))
 			response.Resized = true
-			
+
 			// Update dimensions after resize
 			width, height, err := ac.getImageDimensions(content)
 			if err == nil {
@@ -182,7 +184,7 @@ content = linear_get_attachment(attachments[0].url, "base64")`)
 				response.Height = height
 			}
 		}
-		
+
 		// Cache the successfully processed image
 		ac.cache.Set(cacheKey, &CacheEntry{
 			Content:     content,
@@ -201,7 +203,7 @@ content = linear_get_attachment(attachments[0].url, "base64")`)
 			response.Error = fmt.Sprintf("File too large (%d bytes) for MCP transfer, returning URL instead", size)
 			return response, nil
 		}
-		
+
 		// Cache the non-image content
 		ac.cache.Set(cacheKey, &CacheEntry{
 			Content:     content,
@@ -250,7 +252,7 @@ func (ac *Client) DownloadToTempFile(url string) (string, error) {
 	hasher.Write([]byte(url))
 	hash := fmt.Sprintf("%x", hasher.Sum(nil))[:16]
 
-	path := fmt.Sprintf("/tmp/linear-img-%s%s", hash, ext)
+	path := filepath.Join(os.TempDir(), fmt.Sprintf("linear-img-%s%s", hash, ext))
 	if err := os.WriteFile(path, content, 0600); err != nil {
 		return "", fmt.Errorf("failed to write temp file: %w", err)
 	}
@@ -278,7 +280,7 @@ func extensionFromContentType(ct string) string {
 	case "application/pdf":
 		return ".pdf"
 	default:
-		return ""
+		return ".bin"
 	}
 }
 
@@ -477,42 +479,46 @@ func (ac *Client) downloadAttachment(url string) ([]byte, string, int64, error) 
 // downloadAttachmentWithRetry implements robust download with exponential backoff retry logic
 func (ac *Client) downloadAttachmentWithRetry(url string, maxRetries int) ([]byte, string, int64, error) {
 	const baseDelay = 200 * time.Millisecond
-	
+
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		content, contentType, size, err := ac.attemptDownload(url)
-		
+
 		// Success case
 		if err == nil {
 			return content, contentType, size, nil
 		}
-		
+
 		// Store the error for final return
 		lastErr = err
-		
+
 		// Don't retry on final attempt
 		if attempt == maxRetries {
 			break
 		}
-		
+
 		// Check if error is retryable
 		if !ac.isRetryableError(err) {
 			return nil, "", 0, err
 		}
-		
+
 		// Exponential backoff with jitter
 		delay := time.Duration(float64(baseDelay) * math.Pow(2, float64(attempt)))
 		// Add jitter to prevent thundering herd
 		jitter := time.Duration(rand.Int63n(int64(delay / 4)))
 		time.Sleep(delay + jitter)
 	}
-	
+
 	return nil, "", 0, fmt.Errorf("download failed after %d retries: %w", maxRetries+1, lastErr)
 }
 
 // isPrivateLinearURL reports whether the URL requires a Linear auth token.
 func isPrivateLinearURL(u string) bool {
-	return strings.Contains(u, "uploads.linear.app")
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(parsed.Hostname(), "uploads.linear.app")
 }
 
 // attemptDownload performs a single download attempt
@@ -524,9 +530,11 @@ func (ac *Client) attemptDownload(url string) ([]byte, string, int64, error) {
 
 	// Private Linear upload URLs require a Bearer token.
 	if isPrivateLinearURL(url) {
-		if tok, err := ac.base.GetToken(); err == nil {
-			req.Header.Set("Authorization", token.FormatAuthHeader(tok))
+		tok, err := ac.base.GetToken()
+		if err != nil {
+			return nil, "", 0, fmt.Errorf("failed to get Linear auth token for private upload URL (run 'linear auth login'): %w", err)
 		}
+		req.Header.Set("Authorization", token.FormatAuthHeader(tok))
 	}
 
 	// Set timeout for individual requests
@@ -543,7 +551,7 @@ func (ac *Client) attemptDownload(url string) ([]byte, string, int64, error) {
 		return nil, "", 0, fmt.Errorf("network error during download: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// Handle various HTTP status codes
 	switch resp.StatusCode {
 	case http.StatusOK:
@@ -567,27 +575,27 @@ func (ac *Client) attemptDownload(url string) ([]byte, string, int64, error) {
 	default:
 		return nil, "", 0, fmt.Errorf("download failed with status %d: %s", resp.StatusCode, resp.Status)
 	}
-	
+
 	// Limit content size to prevent memory issues
 	const maxContentSize = 100 * 1024 * 1024 // 100MB limit
 	limitedReader := &io.LimitedReader{R: resp.Body, N: maxContentSize}
-	
+
 	content, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, "", 0, fmt.Errorf("failed to read content: %w", err)
 	}
-	
+
 	// Check if content was truncated
 	if limitedReader.N == 0 && len(content) == maxContentSize {
 		return nil, "", 0, fmt.Errorf("content too large (>%d MB) - use URL format for large files", maxContentSize/(1024*1024))
 	}
-	
+
 	contentType := resp.Header.Get("Content-Type")
 	if contentType == "" {
 		// Try to detect content type from content
 		contentType = http.DetectContentType(content)
 	}
-	
+
 	size := int64(len(content))
 	return content, contentType, size, nil
 }
@@ -597,44 +605,44 @@ func (ac *Client) isRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	errStr := err.Error()
-	
+
 	// Network errors are usually retryable
 	if strings.Contains(errStr, "network error") ||
-	   strings.Contains(errStr, "timeout") ||
-	   strings.Contains(errStr, "connection reset") ||
-	   strings.Contains(errStr, "connection refused") {
+		strings.Contains(errStr, "timeout") ||
+		strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "connection refused") {
 		return true
 	}
-	
+
 	// Server errors are retryable
 	if strings.Contains(errStr, "server error") ||
-	   strings.Contains(errStr, "rate limited") ||
-	   strings.Contains(errStr, "service temporarily unavailable") {
+		strings.Contains(errStr, "rate limited") ||
+		strings.Contains(errStr, "service temporarily unavailable") {
 		return true
 	}
-	
+
 	// URL expiration might be recoverable if we refresh the URL
 	if strings.Contains(errStr, "404") || strings.Contains(errStr, "not found") {
 		// In a full implementation, we could try to refresh the attachment URL
 		// by re-querying the issue's attachments
 		return false // For now, don't retry 404s as they likely won't resolve
 	}
-	
+
 	// Permission and auth errors are not retryable
-	if strings.Contains(errStr, "403") || 
-	   strings.Contains(errStr, "401") ||
-	   strings.Contains(errStr, "access denied") ||
-	   strings.Contains(errStr, "authentication required") {
+	if strings.Contains(errStr, "403") ||
+		strings.Contains(errStr, "401") ||
+		strings.Contains(errStr, "access denied") ||
+		strings.Contains(errStr, "authentication required") {
 		return false
 	}
-	
+
 	// Content too large errors are not retryable
 	if strings.Contains(errStr, "content too large") {
 		return false
 	}
-	
+
 	// Default to not retryable for unknown errors
 	return false
 }
@@ -744,7 +752,7 @@ func (cache *AttachmentCache) Get(key string) *CacheEntry {
 func (cache *AttachmentCache) Set(key string, entry *CacheEntry) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-	
+
 	cache.entries[key] = entry
 }
 
@@ -752,7 +760,7 @@ func (cache *AttachmentCache) Set(key string, entry *CacheEntry) {
 func (cache *AttachmentCache) Clear() {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-	
+
 	cache.entries = make(map[string]*CacheEntry)
 }
 
@@ -760,7 +768,7 @@ func (cache *AttachmentCache) Clear() {
 func (cache *AttachmentCache) Size() int {
 	cache.mu.RLock()
 	defer cache.mu.RUnlock()
-	
+
 	return len(cache.entries)
 }
 
@@ -768,7 +776,7 @@ func (cache *AttachmentCache) Size() int {
 func (cache *AttachmentCache) cleanupExpired() {
 	ticker := time.NewTicker(5 * time.Minute) // Run cleanup every 5 minutes
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -782,7 +790,7 @@ func (cache *AttachmentCache) cleanupExpired() {
 func (cache *AttachmentCache) removeExpiredEntries() {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-	
+
 	now := time.Now()
 	for key, entry := range cache.entries {
 		if now.After(entry.ExpiresAt) {
@@ -1013,8 +1021,8 @@ func (ac *Client) detectContentType(filepath string, content []byte) string {
 
 // IsImageAttachment checks if an attachment is an image based on content type
 func IsImageAttachment(attachment core.Attachment) bool {
-	return strings.HasPrefix(attachment.SourceType, "image/") || 
-		   strings.HasPrefix(attachment.ContentType, "image/")
+	return strings.HasPrefix(attachment.SourceType, "image/") ||
+		strings.HasPrefix(attachment.ContentType, "image/")
 }
 
 // FilterImageAttachments returns only image attachments from a slice
