@@ -230,6 +230,58 @@ func (ac *Client) getAttachmentMetadata(attachmentID string) (*core.Attachment, 
 	}, nil
 }
 
+// DownloadToTempFile downloads a private Linear URL with auth (adds Bearer header
+// automatically for uploads.linear.app URLs), saves content to
+// /tmp/linear-img-<sha256-of-url>.<ext>, and returns the file path.
+func (ac *Client) DownloadToTempFile(url string) (string, error) {
+	if url == "" {
+		return "", fmt.Errorf("url cannot be empty")
+	}
+
+	content, contentType, _, err := ac.downloadAttachment(url)
+	if err != nil {
+		return "", err
+	}
+
+	ext := extensionFromContentType(contentType)
+
+	// Derive a stable filename from the URL so repeated calls reuse the same file.
+	hasher := sha256.New()
+	hasher.Write([]byte(url))
+	hash := fmt.Sprintf("%x", hasher.Sum(nil))[:16]
+
+	path := fmt.Sprintf("/tmp/linear-img-%s%s", hash, ext)
+	if err := os.WriteFile(path, content, 0600); err != nil {
+		return "", fmt.Errorf("failed to write temp file: %w", err)
+	}
+
+	return path, nil
+}
+
+// extensionFromContentType returns a file extension (with dot) for a MIME type.
+func extensionFromContentType(ct string) string {
+	// Strip parameters (e.g. "image/png; charset=utf-8")
+	if idx := strings.Index(ct, ";"); idx != -1 {
+		ct = strings.TrimSpace(ct[:idx])
+	}
+	switch ct {
+	case "image/png":
+		return ".png"
+	case "image/jpeg", "image/jpg":
+		return ".jpg"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	case "image/svg+xml":
+		return ".svg"
+	case "application/pdf":
+		return ".pdf"
+	default:
+		return ""
+	}
+}
+
 // ListAttachments queries all attachments for an issue.
 // issueID must be a UUID (resolve identifiers like "TEC-123" before calling).
 func (ac *Client) ListAttachments(issueID string) ([]core.Attachment, error) {

@@ -30,6 +30,7 @@ tracked resources you want as sidebar cards.`,
 		newAttachmentsCreateCmd(),
 		newAttachmentsUpdateCmd(),
 		newAttachmentsDeleteCmd(),
+		newAttachmentsDownloadCmd(),
 	)
 
 	return cmd
@@ -209,6 +210,38 @@ func newAttachmentsUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&subtitle, "subtitle", "", "New subtitle")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
 	cmd.MarkFlagRequired("title")
+
+	return cmd
+}
+
+func newAttachmentsDownloadCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "download <url>",
+		Short: "Download a private Linear image to a local temp file",
+		Long: `Download a private uploads.linear.app URL to a local temp file using your Linear auth token.
+
+The file is saved to /tmp/linear-img-<hash>.<ext> and the path is printed to stdout.
+Use this instead of WebFetch or curl, which will 401 on private Linear uploads.`,
+		Example: `  # Download a private image from an issue description
+  linear attachments download "https://uploads.linear.app/<uuid>/screenshot.png"
+  # → /tmp/linear-img-a1b2c3d4e5f6.png`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			url := args[0]
+			deps, err := getDeps(cmd)
+			if err != nil {
+				return err
+			}
+
+			path, err := deps.Attachments.Download(url)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(path)
+			return nil
+		},
+	}
 
 	return cmd
 }
