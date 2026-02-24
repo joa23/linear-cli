@@ -128,7 +128,7 @@ func NewClientWithTokenPath(tokenPath string) *Client {
 
 	// Fall back to environment variable if no stored token
 	if provider == nil {
-		apiToken = os.Getenv("LINEAR_API_TOKEN")
+		apiToken = token.LoadTokenFromEnv()
 		if apiToken == "" {
 			// No token available at all
 			return nil

@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/joa23/linear-cli/internal/linear"
 	"github.com/joa23/linear-cli/internal/linear/core"
-	"github.com/joa23/linear-cli/internal/token"
 	"github.com/spf13/cobra"
 )
 
@@ -26,21 +24,11 @@ func runOnboard() error {
 	fmt.Println("================================")
 	fmt.Println()
 
-	// Check authentication
-	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
-	exists, _ := tokenStorage.TokenExistsWithError()
-	if !exists {
-		printNotLoggedIn()
-		return nil
-	}
-
-	tokenData, err := tokenStorage.LoadTokenData()
+	client, err := initializeClient()
 	if err != nil {
 		printNotLoggedIn()
 		return nil
 	}
-
-	client := linear.NewClient(tokenData.AccessToken)
 
 	// Get current user
 	viewer, err := client.GetViewer()
@@ -146,9 +134,8 @@ func printNotLoggedIn() {
 	fmt.Println()
 	fmt.Println("Getting Started")
 	fmt.Println("---------------")
-	fmt.Println("  1. Run 'linear auth login' to authenticate with Linear")
+	fmt.Println("  1. Run 'linear auth login' or set LINEAR_API_KEY")
 	fmt.Println("  2. Run 'linear onboard' again to see your teams")
 	fmt.Println("  3. Run 'linear issues list' to see your issues")
 	fmt.Println()
 }
-

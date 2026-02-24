@@ -47,18 +47,25 @@ func ValidateToken(token string) error {
 }
 
 // FormatAuthHeader formats a token for use in an Authorization header.
-// Ensures the token is sanitized and has the "Bearer " prefix.
-// Handles tokens that already have the Bearer prefix to avoid duplication.
+// Linear personal API keys (lin_api_*) must be sent without a Bearer prefix.
+// OAuth access tokens are sent with "Bearer ".
 func FormatAuthHeader(token string) string {
 	sanitized := SanitizeToken(token)
-
-	// After sanitization, all spaces are removed, so "Bearer token123" becomes "Bearertoken123"
-	// Check if already has Bearer prefix (without space since sanitization removes it)
-	if strings.HasPrefix(sanitized, "Bearer") {
-		// Extract the token part after "Bearer"
-		tokenPart := sanitized[6:] // Skip "Bearer"
-		return "Bearer " + tokenPart
+	if sanitized == "" {
+		return ""
 	}
 
+	// After sanitization, all spaces are removed, so "Bearer token123" becomes "Bearertoken123".
+	// If caller already passed a bearer token, normalize it first.
+	if strings.HasPrefix(sanitized, "Bearer") {
+		sanitized = SanitizeToken(sanitized[6:]) // Skip "Bearer"
+	}
+
+	// Linear API keys must not include "Bearer ".
+	if strings.HasPrefix(sanitized, "lin_api_") {
+		return sanitized
+	}
+
+	// OAuth access tokens require "Bearer ".
 	return "Bearer " + sanitized
 }

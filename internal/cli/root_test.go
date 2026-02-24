@@ -122,6 +122,31 @@ func TestInitializeClientWithTokenPath_NoTokenFile(t *testing.T) {
 	assert.Contains(t, err.Error(), "not authenticated")
 }
 
+func TestInitializeClientWithTokenPath_EnvKeyFallback(t *testing.T) {
+	tempDir := t.TempDir()
+	tokenPath := filepath.Join(tempDir, "nonexistent_token")
+
+	t.Setenv("LINEAR_API_KEY", "lin_api_env_key_456")
+
+	client, err := initializeClientWithTokenPath(tokenPath)
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	assert.Equal(t, "lin_api_env_key_456", client.GetAPIToken())
+}
+
+func TestInitializeClientWithTokenPath_EnvTokenNotSupported(t *testing.T) {
+	tempDir := t.TempDir()
+	tokenPath := filepath.Join(tempDir, "nonexistent_token")
+
+	t.Setenv("LINEAR_API_KEY", "")
+	t.Setenv("LINEAR_API_TOKEN", "lin_api_env_token_legacy")
+
+	client, err := initializeClientWithTokenPath(tokenPath)
+	assert.Nil(t, client)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "LINEAR_API_KEY")
+}
+
 func TestInitializeClientWithTokenPath_StaticToken(t *testing.T) {
 	tempDir := t.TempDir()
 	tokenPath := filepath.Join(tempDir, "token")

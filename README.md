@@ -38,6 +38,11 @@ linear init
 linear skills install --all
 ```
 
+Or use a personal API key directly (no OAuth login required):
+```bash
+export LINEAR_API_KEY=lin_api_your_token_here
+```
+
 You're ready! Try:
 ```bash
 linear issues list
@@ -138,6 +143,11 @@ make build
 
 ```bash
 linear auth login
+```
+
+If you already have a personal API token, you can skip OAuth login and set:
+```bash
+export LINEAR_API_KEY=lin_api_your_token_here
 ```
 
 You'll be prompted to choose an authentication mode:

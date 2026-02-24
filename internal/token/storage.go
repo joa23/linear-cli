@@ -73,7 +73,7 @@ func (s *Storage) LoadToken() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read token file: %w", err)
 	}
-	
+
 	return string(data), nil
 }
 
@@ -107,11 +107,11 @@ func (s *Storage) TokenExistsWithError() (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	
+
 	if os.IsNotExist(err) {
 		return false, nil // File not existing is expected and not an error
 	}
-	
+
 	// Other errors (permission denied, etc.) indicate real problems
 	return false, fmt.Errorf("failed to check token file: %w", err)
 }
@@ -121,11 +121,11 @@ func (s *Storage) DeleteToken() error {
 	if !s.TokenExists() {
 		return nil // Token doesn't exist, nothing to delete
 	}
-	
+
 	if err := os.Remove(s.tokenPath); err != nil {
 		return fmt.Errorf("failed to delete token file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -160,8 +160,14 @@ func LoadTokenWithFallback() string {
 		}
 	}
 
-	// Fall back to environment variable
-	return os.Getenv("LINEAR_API_TOKEN")
+	// Fall back to environment variables
+	return LoadTokenFromEnv()
+}
+
+// LoadTokenFromEnv loads a Linear token from environment variables.
+// Uses LINEAR_API_KEY as the canonical env var for direct API-key auth.
+func LoadTokenFromEnv() string {
+	return SanitizeToken(os.Getenv("LINEAR_API_KEY"))
 }
 
 // SaveTokenData saves structured token data as JSON with secure permissions.

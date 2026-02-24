@@ -8,9 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/joa23/linear-cli/internal/linear"
 	"github.com/joa23/linear-cli/internal/linear/core"
-	"github.com/joa23/linear-cli/internal/token"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -44,20 +42,11 @@ func runInit() error {
 	fmt.Println("==============================")
 	fmt.Println()
 
-	// Check authentication
-	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
-	exists, _ := tokenStorage.TokenExistsWithError()
-	if !exists {
-		fmt.Println("❌ Not logged in. Run 'linear auth login' first.")
+	client, err := initializeClient()
+	if err != nil {
+		fmt.Println("❌ Not authenticated. Run 'linear auth login' or set LINEAR_API_KEY.")
 		return nil
 	}
-
-	tokenData, err := tokenStorage.LoadTokenData()
-	if err != nil {
-		return fmt.Errorf("failed to load token: %w", err)
-	}
-
-	client := linear.NewClient(tokenData.AccessToken)
 
 	// Get teams
 	teams, err := client.GetTeams()

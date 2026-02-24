@@ -76,10 +76,21 @@ func TestNewClientWithTokenPath_FallsBackToEnvVar(t *testing.T) {
 	tokenPath := filepath.Join(tempDir, "nonexistent_token")
 
 	// Set env var
-	t.Setenv("LINEAR_API_TOKEN", "lin_api_env_token_123")
+	t.Setenv("LINEAR_API_KEY", "lin_api_env_key_123")
 
 	client := NewClientWithTokenPath(tokenPath)
 	require.NotNil(t, client)
-	assert.Equal(t, "lin_api_env_token_123", client.GetAPIToken())
+	assert.Equal(t, "lin_api_env_key_123", client.GetAPIToken())
 	assert.Equal(t, "", client.GetAuthMode()) // env var tokens have no auth mode
+}
+
+func TestNewClientWithTokenPath_EnvTokenNotSupported(t *testing.T) {
+	tempDir := t.TempDir()
+	tokenPath := filepath.Join(tempDir, "nonexistent_token")
+
+	t.Setenv("LINEAR_API_KEY", "")
+	t.Setenv("LINEAR_API_TOKEN", "lin_api_env_token_legacy")
+
+	client := NewClientWithTokenPath(tokenPath)
+	assert.Nil(t, client)
 }

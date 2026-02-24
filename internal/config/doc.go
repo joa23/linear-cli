@@ -19,7 +19,7 @@
 //
 //	LINEAR_CLIENT_ID     - OAuth2 client ID for Linear application
 //	LINEAR_CLIENT_SECRET - OAuth2 client secret (stored securely)
-//	LINEAR_TOKEN         - Direct API token for testing/development
+//	LINEAR_API_KEY       - Direct API token for CLI usage
 //	LINEAR_REDIRECT_URL  - OAuth2 callback URL (default: http://localhost:8080/callback)
 //
 // # Configuration File

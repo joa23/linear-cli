@@ -198,11 +198,7 @@ func Execute() {
 	// Initialize client ONCE at startup for all other commands
 	client, err := initializeClient()
 	if err != nil {
-		// Show friendly error for authentication issues
-		fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
-		if err.Error() == "not authenticated. Run 'linear auth login' to authenticate" {
-			fmt.Fprintf(os.Stderr, "Run 'linear auth login' to authenticate.\n")
-		}
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -247,18 +243,11 @@ func initializeClient() (*linear.Client, error) {
 // initializeClientWithTokenPath creates a Linear client from the given token path.
 // Extracted for testability — initializeClient delegates to this with the default path.
 func initializeClientWithTokenPath(tokenPath string) (*linear.Client, error) {
-	// Check token existence first for a friendly error message
-	tokenStorage := token.NewStorage(tokenPath)
-	exists, _ := tokenStorage.TokenExistsWithError()
-	if !exists {
-		return nil, fmt.Errorf("not authenticated. Run 'linear auth login' to authenticate")
-	}
-
 	// Use the refresh-capable provider which automatically selects between
 	// static and refreshing token providers based on available credentials
 	client := linear.NewClientWithTokenPath(tokenPath)
 	if client == nil {
-		return nil, fmt.Errorf("failed to initialize client. Run 'linear auth login' to re-authenticate")
+		return nil, fmt.Errorf("not authenticated. Run 'linear auth login' or set LINEAR_API_KEY")
 	}
 
 	return client, nil

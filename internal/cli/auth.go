@@ -322,38 +322,55 @@ func handleLogout() error {
 func handleStatus() error {
 	tokenStorage := token.NewStorage(token.GetDefaultTokenPath())
 	exists, _ := tokenStorage.TokenExistsWithError()
-	if !exists {
+	envToken := token.LoadTokenFromEnv()
+	if !exists && envToken == "" {
 		fmt.Println("❌ Not logged in to Linear")
-		fmt.Println("Run 'linear auth login' to authenticate")
+		fmt.Println("Run 'linear auth login' or set LINEAR_API_KEY")
 		return nil
 	}
 
-	// Try to load token and verify it
-	tokenData, err := tokenStorage.LoadTokenData()
-	if err != nil || tokenData.AccessToken == "" {
-		fmt.Println("⚠️  Token file exists but could not be read")
-		return nil
+	tokenSource := "env"
+	authMode := ""
+	if exists {
+		tokenData, err := tokenStorage.LoadTokenData()
+		if err != nil || tokenData.AccessToken == "" {
+			fmt.Println("⚠️  Token file exists but could not be read")
+			return nil
+		}
+		authMode = tokenData.AuthMode
+		tokenSource = "file"
 	}
 
 	// Create Linear client and test connection
-	client := linear.NewClientWithAuthMode(tokenData.AccessToken, tokenData.AuthMode)
+	client := linear.NewDefaultClient()
+	if client == nil {
+		fmt.Println("❌ Not logged in to Linear")
+		fmt.Println("Run 'linear auth login' or set LINEAR_API_KEY")
+		return nil
+	}
+
 	if viewer, err := client.GetViewer(); err == nil {
 		fmt.Println("✅ Logged in to Linear")
 		fmt.Printf("User: %s (%s)\n", viewer.Name, viewer.Email)
 		fmt.Printf("ID: %s\n", viewer.ID)
-		// Show auth mode
-		switch tokenData.AuthMode {
-		case "agent":
-			fmt.Println("Mode: Agent (--assignee me uses delegate)")
-		case "user":
-			fmt.Println("Mode: User (--assignee me uses assignee)")
-		default:
-			fmt.Println("\n⚠️  Auth mode not set. Run 'linear auth login' to configure.")
+		if tokenSource == "env" {
+			fmt.Println("Source: Environment variable (LINEAR_API_KEY)")
+		}
+		// Show auth mode for stored OAuth sessions
+		if tokenSource == "file" {
+			switch authMode {
+			case "agent":
+				fmt.Println("Mode: Agent (--assignee me uses delegate)")
+			case "user":
+				fmt.Println("Mode: User (--assignee me uses assignee)")
+			default:
+				fmt.Println("\n⚠️  Auth mode not set. Run 'linear auth login' to configure.")
+			}
 		}
 	} else {
-		fmt.Println("⚠️  Token exists but may be invalid")
+		fmt.Println("⚠️  Credentials exist but may be invalid")
 		fmt.Println("Error:", err)
-		fmt.Println("Try running 'linear auth login' to re-authenticate")
+		fmt.Println("Try running 'linear auth login' or set a valid LINEAR_API_KEY")
 	}
 
 	return nil
