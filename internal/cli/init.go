@@ -206,6 +206,18 @@ linear issues list
 linear issues get %s-123
 `+"```"+`
 
+### Fetching private Linear images
+
+`+"`uploads.linear.app`"+` URLs in issue descriptions require authentication.
+Do **NOT** use `+"`WebFetch`"+` or `+"`curl`"+` — they will 401.
+
+`+"```bash"+`
+linear attachments download "https://uploads.linear.app/..."
+# → /tmp/linear-img-<hash>.png
+`+"```"+`
+
+Then `+"`Read`"+` that path to view the image.
+
 ### Claude Code Skills
 
 Available workflow skills (install with `+"`linear skills install --all`"+`):
