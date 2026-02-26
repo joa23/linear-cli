@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-02-25
+
+### Fixed
+
+- `linear teams labels <team> --output json` now correctly outputs JSON instead of silently falling back to text
+- `linear teams states <team> --output json` had the same bug — also fixed
+
 ## [1.6.0] - 2026-02-24
 
 ### Added
@@ -511,6 +518,7 @@ A token-efficient CLI for Linear.
 - Windows (64-bit)
 
 [Unreleased]: https://github.com/joa23/linear-cli/compare/v1.6.0...HEAD
+[1.6.1]: https://github.com/joa23/linear-cli/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/joa23/linear-cli/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/joa23/linear-cli/compare/v1.4.9...v1.5.0
 [1.4.9]: https://github.com/joa23/linear-cli/compare/v1.4.8...v1.4.9

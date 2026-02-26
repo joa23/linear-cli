@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/joa23/linear-cli/internal/format"
@@ -115,9 +116,16 @@ func (s *TeamService) GetLabelsWithOutput(identifier string, verbosity format.Ve
 		return "", fmt.Errorf("failed to list labels: %w", err)
 	}
 
-	// For now, use the legacy formatter since there's no RenderLabelList yet
 	if len(labels) == 0 {
 		return "No labels found.", nil
+	}
+
+	if outputType.IsJSON() {
+		data, err := json.MarshalIndent(labels, "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal labels: %w", err)
+		}
+		return string(data), nil
 	}
 
 	// Format labels as simple list
@@ -171,9 +179,16 @@ func (s *TeamService) GetWorkflowStatesWithOutput(identifier string, verbosity f
 		return "", fmt.Errorf("failed to list workflow states: %w", err)
 	}
 
-	// For now, use the legacy formatter since there's no RenderWorkflowStateList yet
 	if len(states) == 0 {
 		return "No workflow states found.", nil
+	}
+
+	if outputType.IsJSON() {
+		data, err := json.MarshalIndent(states, "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal states: %w", err)
+		}
+		return string(data), nil
 	}
 
 	// Format states
