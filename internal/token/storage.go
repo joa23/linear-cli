@@ -213,21 +213,19 @@ func (s *Storage) LoadTokenData() (*TokenData, error) {
 		return nil, fmt.Errorf("failed to read token file: %w", err)
 	}
 
-	content := SanitizeToken(string(data))
-
-	// Try parsing as JSON first (new format)
+	// Try parsing as JSON first — do NOT sanitize here; SaveTokenData already
+	// sanitizes individual token fields before writing, and sanitizing the whole
+	// document corrupts JSON string values containing spaces (e.g. "read write").
 	var tokenData TokenData
-	if err := json.Unmarshal([]byte(content), &tokenData); err == nil {
-		// Successfully parsed as JSON
+	if err := json.Unmarshal(data, &tokenData); err == nil {
 		return &tokenData, nil
 	}
 
-	// Fall back to legacy plain string format
-	// Treat as access token with no refresh capability
+	// Legacy plain-string token: sanitize the individual value.
+	content := SanitizeToken(string(data))
 	return &TokenData{
 		AccessToken: content,
 		TokenType:   "Bearer",
-		// No RefreshToken, no ExpiresAt - indicates legacy token
 	}, nil
 }
 
