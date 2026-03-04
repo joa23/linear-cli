@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joa23/linear-cli/internal/linear"
 	"github.com/joa23/linear-cli/internal/token"
@@ -11,7 +12,8 @@ import (
 )
 
 var (
-	verbose bool // global flag for verbose output
+	verbose   bool   // global flag for verbose output
+	workspace string // global flag for workspace selection
 
 	// Version is set via ldflags at build time
 	Version = "dev"
@@ -65,6 +67,7 @@ Setup:
   init                         Initialize Linear for this project
   onboard                      Show setup status and quick reference
   auth login|logout|status     Manage authentication
+  auth list                    List configured workspaces (offline)
 
 Issues (alias: i):
   i list                       List your assigned issues
@@ -74,7 +77,7 @@ Issues (alias: i):
   i comment <ID> [flags]       Add comment to issue
   i comments <ID>              List comments on issue
   i reply <ID> <COMMENT> [fl]  Reply to a comment
-  i react <ID> <emoji>         Add reaction (👍 ❤️ 🎉 etc)
+  i react <ID> <emoji>         Add reaction
   i dependencies <ID>          Show dependencies
   i blocked-by <ID>            Show blockers
   i blocking <ID>              Show what this blocks
@@ -148,6 +151,7 @@ Configuration:
 
 	// Global flags
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Enable verbose output")
+	rootCmd.PersistentFlags().StringVar(&workspace, "workspace", "", "Workspace to use (overrides .linear.yaml)")
 
 	// Add subcommands - grouped logically
 	rootCmd.AddCommand(
@@ -182,34 +186,33 @@ Configuration:
 	return rootCmd
 }
 
-// Execute runs the CLI with dependency injection
+// Execute runs the CLI with dependency injection via PersistentPreRunE.
+// Commands that handle their own auth (login, logout, status, init, onboard)
+// are skipped; all others get an authenticated client injected into context.
 func Execute() {
-	// Check if this is an auth command (doesn't need client initialization)
-	if isAuthCommand() {
-		// Auth commands handle their own client creation
-		rootCmd := NewRootCmd()
-		if err := rootCmd.Execute(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-		return
-	}
-
-	// Initialize client ONCE at startup for all other commands
-	client, err := initializeClient()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Create dependency container
-	deps := NewDependencies(client)
-
-	// Inject into command context
-	ctx := context.WithValue(context.Background(), dependenciesKey, deps)
-
 	rootCmd := NewRootCmd()
-	rootCmd.SetContext(ctx)
+
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// Commands annotated with skipAuth handle their own client setup
+		for c := cmd; c != nil; c = c.Parent() {
+			if c.Annotations["skipAuth"] == "true" {
+				return nil
+			}
+		}
+		// Skip for root command (no parent = help display)
+		if !cmd.HasParent() {
+			return nil
+		}
+
+		p := resolveWorkspace()
+		client, err := initializeClient(p)
+		if err != nil {
+			return err
+		}
+		deps := NewDependencies(client)
+		cmd.SetContext(context.WithValue(cmd.Context(), dependenciesKey, deps))
+		return nil
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -217,32 +220,81 @@ func Execute() {
 	}
 }
 
-// isAuthCommand checks if the current command is an auth-related command
-// that doesn't require client initialization
-func isAuthCommand() bool {
-	// Check if "auth" appears in the command arguments
-	// This handles: linear auth login, linear auth logout, linear auth status
-	for _, arg := range os.Args[1:] {
-		if arg == "auth" {
-			return true
-		}
-		// Stop at first non-flag argument
-		if len(arg) > 0 && arg[0] != '-' {
-			break
-		}
+// resolveWorkspace returns the workspace to use.
+// Resolution order: --workspace flag > .linear.yaml workspace > single named workspace > "" (global default)
+func resolveWorkspace() string {
+	if workspace != "" {
+		return workspace
 	}
-	return false
+	if w := GetDefaultWorkspace(); w != "" {
+		return w
+	}
+	// No explicit config — auto-select if exactly one named workspace exists.
+	return autoSelectWorkspace()
 }
 
-// initializeClient creates and configures the Linear client
-// Loads token from disk and returns an authenticated client with refresh capability
-func initializeClient() (*linear.Client, error) {
-	return initializeClientWithTokenPath(token.GetDefaultTokenPath())
+// resolveWorkspaceExplicit returns the workspace from explicit sources only:
+// --workspace flag or .linear.yaml. Does NOT auto-select from disk scan.
+// Used by init and login so the picker always runs.
+func resolveWorkspaceExplicit() string {
+	if workspace != "" {
+		return workspace
+	}
+	return GetDefaultWorkspace()
+}
+
+// autoSelectWorkspace returns the single named workspace when only one exists.
+// Returns "" when zero or multiple named workspaces are present.
+func autoSelectWorkspace() string {
+	tokens := token.ListWorkspaceTokens()
+	var named []string
+	for _, t := range tokens {
+		if t.Name != "" {
+			named = append(named, t.Name)
+		}
+	}
+	if len(named) == 1 {
+		return named[0]
+	}
+	return ""
+}
+
+// initializeClient creates and configures the Linear client for the given profile.
+// Loads token from the profile-specific (or default) path and returns an authenticated client.
+func initializeClient(p string) (*linear.Client, error) {
+	return initializeClientWithTokenPath(p, token.GetWorkspaceTokenPath(p))
 }
 
 // initializeClientWithTokenPath creates a Linear client from the given token path.
-// Extracted for testability — initializeClient delegates to this with the default path.
-func initializeClientWithTokenPath(tokenPath string) (*linear.Client, error) {
+// Extracted for testability — initializeClient delegates to this with the resolved path.
+//
+// Resolution order: LINEAR_API_KEY env > profile token file > LINEAR_API_TOKEN (legacy)
+func initializeClientWithTokenPath(p string, tokenPath string) (*linear.Client, error) {
+	// LINEAR_API_KEY takes highest priority — simple bearer token override
+	if envToken := os.Getenv("LINEAR_API_KEY"); envToken != "" {
+		return linear.NewClient(envToken), nil
+	}
+
+	tokenStorage := token.NewStorage(tokenPath)
+	exists, _ := tokenStorage.TokenExistsWithError()
+	if !exists {
+		if p != "" {
+			return nil, fmt.Errorf("not authenticated for workspace %q. Run 'linear auth login --workspace %s' to authenticate", p, p)
+		}
+		// Check if multiple named workspaces exist — give a more helpful error.
+		allTokens := token.ListWorkspaceTokens()
+		var named []string
+		for _, t := range allTokens {
+			if t.Name != "" {
+				named = append(named, t.Name)
+			}
+		}
+		if len(named) > 1 {
+			return nil, fmt.Errorf("multiple workspaces configured. Use --workspace <name> or run 'linear init'\nAvailable: %s", strings.Join(named, ", "))
+		}
+		return nil, fmt.Errorf("not authenticated. Run 'linear auth login' to authenticate")
+	}
+
 	// Use the refresh-capable provider which automatically selects between
 	// static and refreshing token providers based on available credentials
 	client := linear.NewClientWithTokenPath(tokenPath)

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+**Multi-workspace support:**
+- `--workspace` global flag to select a named workspace (overrides `.linear.yaml`)
+- `linear auth login` now shows workspace picker when existing workspaces exist
+- `linear auth list` — offline listing of all configured workspaces with auth mode and token status
+- Workspace tokens stored at `$XDG_CONFIG_HOME/linear/workspaces/<name>/token`
+- OAuth credentials embedded in token file for self-contained refresh (no re-auth needed)
+- Per-workspace org metadata (name, URL key) stored for display in `auth list`/`auth status`
+
+**XDG Base Directory compliance:**
+- Config and token paths now respect `$XDG_CONFIG_HOME` (defaults to `~/.config`)
+
 ## [1.6.0] - 2026-02-24
 
 ### Added
@@ -33,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.5.0] - 2026-02-16
 
 ### Added
+
+**Multi-workspace support:**
+- Manage multiple Linear accounts (e.g., work + personal) from one CLI
+- Global `-w`/`--workspace` flag, or set project default via `linear init`
+- Per-workspace tokens at `~/.config/linear/workspaces/<name>/token`
 
 **Attachment Commands (GitHub #36):**
 - Added `linear attachments list <issue-id>` to list attachment objects on an issue

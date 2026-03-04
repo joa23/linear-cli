@@ -85,7 +85,14 @@ func NewClientWithAuthMode(apiToken string, authMode string) *Client {
 // It intelligently selects between static and refreshing token providers based on:
 // - Whether a refresh token is available
 // - Whether OAuth credentials are configured
+//
+// Resolution order: LINEAR_API_KEY env > token file > LINEAR_API_TOKEN (legacy)
 func NewClientWithTokenPath(tokenPath string) *Client {
+	// LINEAR_API_KEY takes highest priority — simple bearer token override
+	if envToken := os.Getenv("LINEAR_API_KEY"); envToken != "" {
+		return NewClient(envToken)
+	}
+
 	storage := token.NewStorage(tokenPath)
 	var provider token.TokenProvider
 	var apiToken string // For backward compatibility
@@ -98,19 +105,29 @@ func NewClientWithTokenPath(tokenPath string) *Client {
 			apiToken = tokenData.AccessToken
 			authMode = tokenData.AuthMode
 
-			// Check if OAuth credentials available for refresh
-			cfgManager := config.NewManager("")
-			cfg, _ := cfgManager.Load()
+			// Get credentials from token data (self-contained after Improvement 1)
+			clientID := tokenData.ClientID
+			clientSecret := tokenData.ClientSecret
 
-			clientID := cfg.Linear.ClientID
-			clientSecret := cfg.Linear.ClientSecret
+			// Fall back to config/env for legacy tokens without embedded credentials
+			if clientID == "" || clientSecret == "" {
+				cfgManager := config.NewManager("")
+				cfg, _ := cfgManager.Load()
 
-			// Also check env vars
-			if clientID == "" {
-				clientID = os.Getenv("LINEAR_CLIENT_ID")
-			}
-			if clientSecret == "" {
-				clientSecret = os.Getenv("LINEAR_CLIENT_SECRET")
+				if clientID == "" {
+					clientID = cfg.Linear.ClientID
+				}
+				if clientSecret == "" {
+					clientSecret = cfg.Linear.ClientSecret
+				}
+
+				// Also check env vars
+				if clientID == "" {
+					clientID = os.Getenv("LINEAR_CLIENT_ID")
+				}
+				if clientSecret == "" {
+					clientSecret = os.Getenv("LINEAR_CLIENT_SECRET")
+				}
 			}
 
 			// If OAuth credentials available AND token has refresh capability

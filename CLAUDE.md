@@ -21,6 +21,7 @@ internal/service/    # Service layer
 internal/skills/     # Embedded Claude Code skills
 internal/oauth/      # OAuth2 flow
 internal/token/      # Secure token storage
+internal/xdg/        # XDG Base Directory helpers
 ```
 
 ## For AI Agents (Claude Code)
@@ -36,6 +37,7 @@ linear auth status   # Verify: should show "Mode: Agent"
 **Step 2: Set default team**
 ```bash
 linear init          # Select default team - creates .linear.yaml
+                     # Shows workspace picker if 2+ workspaces configured
 ```
 
 **Step 3 (optional): Set default project**
@@ -48,6 +50,37 @@ project: my-project  # optional — used when --project flag is omitted
 ```
 
 When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `search`, `deps`) will use this default. Explicit `--project` flags always override it.
+
+### Multiple Workspaces
+
+For users with multiple Linear accounts (e.g., work + personal):
+
+**Setup a new workspace:**
+```bash
+linear auth login --workspace centrum-ai    # Prompts for OAuth credentials
+```
+
+**Use a workspace:**
+```bash
+# Explicit flag (works everywhere)
+linear issues list --workspace centrum-ai
+
+# Or set project default
+linear init                      # Picker shown if 2+ workspaces
+# Saves workspace to .linear.yaml, used for all future commands in this dir
+```
+
+**List workspaces (offline):**
+```bash
+linear auth list                 # Shows all workspaces with auth mode and token status
+```
+
+**Resolution order:** `--workspace` flag > `.linear.yaml` workspace > default
+
+**Storage** (respects `$XDG_CONFIG_HOME`):
+- Credentials: `$XDG_CONFIG_HOME/linear/config.yaml` (under `workspaces:`)
+- Tokens: `$XDG_CONFIG_HOME/linear/workspaces/<name>/token`
+- Default: `~/.config/linear/` when `$XDG_CONFIG_HOME` is unset
 
 ### Authentication Modes
 

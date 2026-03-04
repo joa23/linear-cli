@@ -91,6 +91,7 @@ linear auth login
   - [Claude Code Skills](#claude-code-skills)
 - [Cycle Analytics](#cycle-analytics)
 - [Configuration](#configuration)
+  - [Multiple Workspaces](#multiple-workspaces)
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [License](#license)
@@ -218,6 +219,7 @@ Once approved, the agent can be @mentioned and assigned issues like any team mem
 
 ```bash
 linear auth status   # Check login status and auth mode
+linear auth list     # List configured workspaces (offline, no API calls)
 linear auth logout   # Remove credentials
 ```
 
@@ -712,12 +714,15 @@ Output includes:
 
 ### Global (OAuth credentials)
 
-Stored in `~/.config/linear/`:
+Stored in `$XDG_CONFIG_HOME/linear/` (defaults to `~/.config/linear/`):
 
 ```
 ~/.config/linear/
-├── config.yaml    # OAuth credentials
-└── token          # Access token
+├── config.yaml              # OAuth credentials and workspace configs
+├── token                    # Default workspace access token
+└── workspaces/
+    └── <name>/
+        └── token            # Named workspace access token
 ```
 
 ### Per-project (`.linear.yaml`)
@@ -736,6 +741,35 @@ Resolution order for both `--team` and `--project`:
 3. Error (team) or no filter (project)
 
 The file is searched up the directory tree, so it works from subdirectories.
+
+### Multiple Workspaces
+
+Manage multiple Linear accounts (e.g., work + personal) from one CLI. A workspace corresponds to a Linear organization subdomain (e.g., `centrum-ai.linear.app` → `centrum-ai`).
+
+#### Setup
+
+1. **Create OAuth app** in the new Linear account (Settings → API → OAuth Applications)
+   - Use a unique callback port: `http://localhost:8484/oauth-callback`
+
+2. **Authenticate:**
+   ```bash
+   linear auth login --workspace centrum-ai
+   ```
+
+#### Usage
+
+```bash
+# Explicit flag
+linear issues list --workspace centrum-ai
+
+# List all workspaces (offline, no API calls)
+linear auth list
+
+# Or set project default
+linear init    # Shows picker when multiple workspaces authenticated
+```
+
+**Resolution:** `--workspace` flag > `.linear.yaml` workspace > default
 
 ---
 

@@ -45,6 +45,11 @@ func TestRootCmdGlobalFlags(t *testing.T) {
 	verboseFlag := cmd.PersistentFlags().Lookup("verbose")
 	require.NotNil(t, verboseFlag)
 	assert.Equal(t, "false", verboseFlag.DefValue)
+
+	// Check for --workspace flag
+	workspaceFlag := cmd.PersistentFlags().Lookup("workspace")
+	require.NotNil(t, workspaceFlag)
+	assert.Equal(t, "", workspaceFlag.DefValue)
 }
 
 func TestAuthSubcommands(t *testing.T) {
@@ -53,7 +58,7 @@ func TestAuthSubcommands(t *testing.T) {
 
 	require.NotNil(t, authCmd)
 
-	expectedSubCmds := []string{"login", "logout", "status"}
+	expectedSubCmds := []string{"login", "logout", "status", "list"}
 	for _, subCmdName := range expectedSubCmds {
 		found := false
 		for _, c := range authCmd.Commands() {
@@ -113,10 +118,15 @@ func TestOnboardCommand(t *testing.T) {
 }
 
 func TestInitializeClientWithTokenPath_NoTokenFile(t *testing.T) {
+	// Clear env vars that would override token file resolution
+	t.Setenv("LINEAR_API_KEY", "")
+	// Isolate from real workspaces on disk so ListWorkspaceTokens returns empty
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	tempDir := t.TempDir()
 	tokenPath := filepath.Join(tempDir, "nonexistent_token")
 
-	client, err := initializeClientWithTokenPath(tokenPath)
+	client, err := initializeClientWithTokenPath("", tokenPath)
 	assert.Nil(t, client)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not authenticated")
@@ -128,7 +138,7 @@ func TestInitializeClientWithTokenPath_EnvKeyFallback(t *testing.T) {
 
 	t.Setenv("LINEAR_API_KEY", "lin_api_env_key_456")
 
-	client, err := initializeClientWithTokenPath(tokenPath)
+	client, err := initializeClientWithTokenPath("", tokenPath)
 	require.NoError(t, err)
 	require.NotNil(t, client)
 	assert.Equal(t, "lin_api_env_key_456", client.GetAPIToken())
@@ -140,14 +150,18 @@ func TestInitializeClientWithTokenPath_EnvTokenNotSupported(t *testing.T) {
 
 	t.Setenv("LINEAR_API_KEY", "")
 	t.Setenv("LINEAR_API_TOKEN", "lin_api_env_token_legacy")
+	// Isolate from real workspaces on disk so ListWorkspaceTokens returns empty
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	client, err := initializeClientWithTokenPath(tokenPath)
+	client, err := initializeClientWithTokenPath("", tokenPath)
 	assert.Nil(t, client)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "LINEAR_API_KEY")
+	assert.Contains(t, err.Error(), "not authenticated")
 }
 
 func TestInitializeClientWithTokenPath_StaticToken(t *testing.T) {
+	t.Setenv("LINEAR_API_KEY", "")
+
 	tempDir := t.TempDir()
 	tokenPath := filepath.Join(tempDir, "token")
 
@@ -161,13 +175,15 @@ func TestInitializeClientWithTokenPath_StaticToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(tokenPath, data, 0600))
 
-	client, err := initializeClientWithTokenPath(tokenPath)
+	client, err := initializeClientWithTokenPath("", tokenPath)
 	require.NoError(t, err)
 	require.NotNil(t, client)
 	assert.Equal(t, "user", client.GetAuthMode())
 }
 
 func TestInitializeClientWithTokenPath_AgentMode(t *testing.T) {
+	t.Setenv("LINEAR_API_KEY", "")
+
 	tempDir := t.TempDir()
 	tokenPath := filepath.Join(tempDir, "token")
 
@@ -180,7 +196,7 @@ func TestInitializeClientWithTokenPath_AgentMode(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(tokenPath, data, 0600))
 
-	client, err := initializeClientWithTokenPath(tokenPath)
+	client, err := initializeClientWithTokenPath("", tokenPath)
 	require.NoError(t, err)
 	require.NotNil(t, client)
 	assert.Equal(t, "agent", client.GetAuthMode())
@@ -188,14 +204,29 @@ func TestInitializeClientWithTokenPath_AgentMode(t *testing.T) {
 }
 
 func TestInitializeClientWithTokenPath_LegacyPlainToken(t *testing.T) {
+	t.Setenv("LINEAR_API_KEY", "")
+
 	tempDir := t.TempDir()
 	tokenPath := filepath.Join(tempDir, "token")
 
 	// Write a legacy plain string token (not JSON)
 	require.NoError(t, os.WriteFile(tokenPath, []byte("lin_api_legacy_token_123"), 0600))
 
-	client, err := initializeClientWithTokenPath(tokenPath)
+	client, err := initializeClientWithTokenPath("", tokenPath)
 	require.NoError(t, err)
 	require.NotNil(t, client)
 	assert.Equal(t, "", client.GetAuthMode()) // Legacy tokens have no auth mode
+}
+
+func TestInitializeClientWithTokenPath_ProfileNotAuthenticated(t *testing.T) {
+	t.Setenv("LINEAR_API_KEY", "")
+
+	tempDir := t.TempDir()
+	tokenPath := filepath.Join(tempDir, "nonexistent_token")
+
+	client, err := initializeClientWithTokenPath("personal", tokenPath)
+	assert.Nil(t, client)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "workspace")
+	assert.Contains(t, err.Error(), "--workspace personal")
 }

@@ -12,6 +12,8 @@ import (
 )
 
 func TestNewClientWithTokenPath_PreservesAuthMode(t *testing.T) {
+	t.Setenv("LINEAR_API_KEY", "")
+
 	tests := []struct {
 		name             string
 		tokenData        token.TokenData
@@ -64,6 +66,7 @@ func TestNewClientWithTokenPath_PreservesAuthMode(t *testing.T) {
 }
 
 func TestNewClientWithTokenPath_ReturnsNilWhenNoToken(t *testing.T) {
+	t.Setenv("LINEAR_API_KEY", "")
 	tempDir := t.TempDir()
 	tokenPath := filepath.Join(tempDir, "nonexistent_token")
 
@@ -72,6 +75,7 @@ func TestNewClientWithTokenPath_ReturnsNilWhenNoToken(t *testing.T) {
 }
 
 func TestNewClientWithTokenPath_FallsBackToEnvVar(t *testing.T) {
+	t.Setenv("LINEAR_API_KEY", "")
 	tempDir := t.TempDir()
 	tokenPath := filepath.Join(tempDir, "nonexistent_token")
 

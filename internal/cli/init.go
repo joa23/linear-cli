@@ -5,18 +5,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/internal/token"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
 // ProjectConfig represents the .linear.yaml config file
 type ProjectConfig struct {
-	Team    string `yaml:"team"`
-	Project string `yaml:"project,omitempty"`
+	Workspace string `yaml:"workspace,omitempty"`
+	Team      string `yaml:"team"`
+	Project   string `yaml:"project,omitempty"`
 }
 
 const configFileName = ".linear.yaml"
@@ -31,6 +34,7 @@ This command will:
 1. Let you select a default team for this project
 2. Create a .linear.yaml config file
 3. Add usage instructions to AGENTS.md and CLAUDE.md`,
+		Annotations: map[string]string{"skipAuth": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runInit()
 		},
@@ -42,9 +46,32 @@ func runInit() error {
 	fmt.Println("==============================")
 	fmt.Println()
 
-	client, err := initializeClient()
+	// Determine workspace to use.
+	// Only use explicit sources here (--workspace flag or .linear.yaml) — skip auto-select
+	// so the picker below always gets a chance to run when workspaces are available.
+	p := resolveWorkspaceExplicit()
+	workspacePicked := p != ""
+
+	// If no explicit workspace, let the user pick from available workspaces.
+	if !workspacePicked {
+		workspaces := discoverWorkspaces()
+		if len(workspaces) > 1 {
+			p = promptWorkspaceSelection(workspaces)
+			workspacePicked = true
+			fmt.Println()
+		} else if len(workspaces) == 1 {
+			p = workspaces[0]
+			workspacePicked = true
+			if p != "" {
+				fmt.Printf("Using workspace: %s\n\n", p)
+			}
+		}
+	}
+
+	// Check authentication
+	client, err := initializeClient(p)
 	if err != nil {
-		fmt.Println("❌ Not authenticated. Run 'linear auth login' or set LINEAR_API_KEY.")
+		fmt.Printf("❌ %v\n", err)
 		return nil
 	}
 
@@ -55,7 +82,7 @@ func runInit() error {
 	}
 
 	if len(teams) == 0 {
-		fmt.Println("No teams found in your workspace.")
+		fmt.Println("No teams found in your Linear workspace.")
 		return nil
 	}
 
@@ -90,12 +117,29 @@ func runInit() error {
 
 	fmt.Println()
 
+	// Optionally set workspace
+	workspaceName := p
+	if workspacePicked && p == "" {
+		// User explicitly picked the default workspace from the picker;
+		// record it so the choice is visible in .linear.yaml.
+		workspaceName = "default"
+	} else if !workspacePicked {
+		fmt.Print("Default workspace (leave empty for none): ")
+		reader := bufio.NewReader(os.Stdin)
+		wInput, _ := reader.ReadString('\n')
+		workspaceName = strings.TrimSpace(wInput)
+	}
+
 	// Write config file
-	config := ProjectConfig{Team: selectedTeam.Key}
-	if err := writeConfig(config); err != nil {
+	projConfig := ProjectConfig{Team: selectedTeam.Key, Workspace: workspaceName}
+	if err := writeConfig(projConfig); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
-	fmt.Printf("✅ Created %s (team: %s)\n", configFileName, selectedTeam.Key)
+	if workspaceName != "" {
+		fmt.Printf("✅ Created %s (team: %s, workspace: %s)\n", configFileName, selectedTeam.Key, workspaceName)
+	} else {
+		fmt.Printf("✅ Created %s (team: %s)\n", configFileName, selectedTeam.Key)
+	}
 
 	// Write to AGENTS.md
 	if err := appendToAgentFile("AGENTS.md", selectedTeam.Key); err != nil {
@@ -236,11 +280,11 @@ func LoadProjectConfig() (*ProjectConfig, error) {
 				return nil, err
 			}
 
-			var config ProjectConfig
-			if err := yaml.Unmarshal(data, &config); err != nil {
+			var cfg ProjectConfig
+			if err := yaml.Unmarshal(data, &cfg); err != nil {
 				return nil, err
 			}
-			return &config, nil
+			return &cfg, nil
 		}
 
 		parent := filepath.Dir(dir)
@@ -269,4 +313,84 @@ func GetDefaultProject() string {
 		return ""
 	}
 	return config.Project
+}
+
+// GetDefaultWorkspace returns the default workspace from config, or empty string.
+// The special value "default" is normalized to "" (the unnamed default workspace).
+func GetDefaultWorkspace() string {
+	config, err := LoadProjectConfig()
+	if err != nil || config == nil {
+		return ""
+	}
+	if config.Workspace == "default" {
+		return ""
+	}
+	return config.Workspace
+}
+
+// workspaceLabelForDefault returns a display label for the unnamed default workspace.
+// If its token has org metadata, returns "centrum-ai (default)"; otherwise "(default)".
+func workspaceLabelForDefault() string {
+	path := token.GetWorkspaceTokenPath("")
+	storage := token.NewStorage(path)
+	if td, err := storage.LoadTokenData(); err == nil {
+		if td.OrgURLKey != "" {
+			return fmt.Sprintf("%s (default)", td.OrgURLKey)
+		}
+		if td.OrgName != "" {
+			return fmt.Sprintf("%s (default)", td.OrgName)
+		}
+	}
+	return "(default)"
+}
+
+// discoverWorkspaces returns a list of available workspace names by scanning
+// token files on disk. Returns empty string for the default workspace.
+// Uses the same approach as auth list/status for consistency.
+func discoverWorkspaces() []string {
+	tokens := token.ListWorkspaceTokens()
+	workspaces := make([]string, 0, len(tokens))
+	for _, wt := range tokens {
+		workspaces = append(workspaces, wt.Name)
+	}
+	// ListWorkspaceTokens returns default ("") first, then named workspaces
+	// in filesystem order; sort named ones for stable display.
+	if len(workspaces) > 1 && workspaces[0] == "" {
+		sort.Strings(workspaces[1:])
+	} else {
+		sort.Strings(workspaces)
+	}
+	return workspaces
+}
+
+// promptWorkspaceSelection displays a picker for workspace selection.
+// Returns the selected workspace name (empty string for default).
+func promptWorkspaceSelection(workspaces []string) string {
+	fmt.Println("Available workspaces:")
+	for i, w := range workspaces {
+		if w == "" {
+			label := workspaceLabelForDefault()
+			fmt.Printf("  %d. %s\n", i+1, label)
+		} else {
+			fmt.Printf("  %d. %s\n", i+1, w)
+		}
+	}
+	fmt.Println()
+
+	fmt.Print("Select workspace [1]: ")
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+
+	selection := 1
+	if input != "" {
+		sel, err := strconv.Atoi(input)
+		if err != nil || sel < 1 || sel > len(workspaces) {
+			fmt.Printf("Invalid selection, using default\n")
+			return workspaces[0]
+		}
+		selection = sel
+	}
+
+	return workspaces[selection-1]
 }

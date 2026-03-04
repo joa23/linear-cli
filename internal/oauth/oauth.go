@@ -338,6 +338,45 @@ func (h *Handler) HandleCallbackWithFullResponse(port, expectedState string) (*T
 	}
 }
 
+// TryClientCredentials attempts a client_credentials grant to obtain tokens
+// without a browser flow. This works when the OAuth app is already installed
+// in the Linear workspace — Linear issues tokens directly from client ID + secret.
+// Returns nil, nil if the grant type is not supported (fall through to browser flow).
+func (h *Handler) TryClientCredentials(agentMode bool) (*TokenResponse, error) {
+	scope := "read write"
+	if agentMode {
+		scope = "app:assignable app:mentionable read write"
+	}
+
+	data := url.Values{
+		"grant_type":    {"client_credentials"},
+		"client_id":     {h.clientID},
+		"client_secret": {h.clientSecret},
+		"scope":         {scope},
+	}
+
+	resp, err := h.httpClient.PostForm(linearTokenURL, data)
+	if err != nil {
+		return nil, nil // network error — don't fail, let browser flow try
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil // grant type not supported — fall through to browser flow
+	}
+
+	var tokenResp TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, nil // bad response — fall through
+	}
+
+	if tokenResp.AccessToken == "" {
+		return nil, nil // no token — fall through
+	}
+
+	return &tokenResp, nil
+}
+
 // RefreshAccessToken uses a refresh token to obtain a new access token.
 // This is called automatically when tokens expire for OAuth apps created after Oct 1, 2025.
 func (h *Handler) RefreshAccessToken(refreshToken string) (*TokenResponse, error) {
