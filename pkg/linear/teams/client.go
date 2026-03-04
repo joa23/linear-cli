@@ -106,6 +106,10 @@ func (tc *Client) GetViewer() (*core.User, error) {
 				avatarUrl
 				createdAt
 				isMe
+				organization {
+					name
+					urlKey
+				}
 			}
 		}
 	`

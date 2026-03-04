@@ -117,34 +117,39 @@ func TestFormatAuthHeader(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "api key stays unprefixed",
+			name:     "API key sent without Bearer prefix",
 			token:    "lin_api_token123",
 			expected: "lin_api_token123",
 		},
 		{
-			name:     "api key with existing Bearer prefix gets normalized to raw key",
-			token:    "Bearer lin_api_token123",
-			expected: "lin_api_token123",
-		},
-		{
-			name:     "oauth token gets Bearer prefix",
-			token:    "oauth_token_abc123",
-			expected: "Bearer oauth_token_abc123",
-		},
-		{
-			name:     "oauth token with existing Bearer prefix unchanged",
-			token:    "Bearer oauth_token_abc123",
-			expected: "Bearer oauth_token_abc123",
-		},
-		{
-			name:     "api key with newline gets sanitized and remains unprefixed",
+			name:     "API key with newline gets sanitized, no Bearer",
 			token:    "lin_api_token123\n",
 			expected: "lin_api_token123",
 		},
 		{
+			name:     "API key with whitespace gets sanitized, no Bearer",
+			token:    " lin_api_token123 ",
+			expected: "lin_api_token123",
+		},
+		{
+			name:     "OAuth token gets Bearer prefix",
+			token:    "lin_oauth_abc123",
+			expected: "Bearer lin_oauth_abc123",
+		},
+		{
+			name:     "generic token gets Bearer prefix",
+			token:    "some_other_token",
+			expected: "Bearer some_other_token",
+		},
+		{
+			name:     "token with existing Bearer prefix unchanged",
+			token:    "Bearer some_token",
+			expected: "Bearer some_token",
+		},
+		{
 			name:     "token with Bearer and extra whitespace",
-			token:    " Bearer  oauth_token_abc123 ",
-			expected: "Bearer oauth_token_abc123",
+			token:    " Bearer  some_token ",
+			expected: "Bearer some_token",
 		},
 	}
 

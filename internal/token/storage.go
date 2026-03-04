@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/joa23/linear-cli/internal/xdg"
 )
 
 // TokenData represents structured OAuth token information with expiration tracking.
@@ -17,7 +19,11 @@ type TokenData struct {
 	TokenType    string    `json:"token_type"`
 	ExpiresAt    time.Time `json:"expires_at,omitempty"`
 	Scope        string    `json:"scope"`
-	AuthMode     string    `json:"auth_mode,omitempty"` // "user" or "agent" - determines how "me" resolves
+	AuthMode     string    `json:"auth_mode,omitempty"`     // "user" or "agent" - determines how "me" resolves
+	ClientID     string    `json:"client_id,omitempty"`     // OAuth client ID for self-contained refresh
+	ClientSecret string    `json:"client_secret,omitempty"` // OAuth client secret for self-contained refresh
+	OrgName      string    `json:"org_name,omitempty"`      // Organization display name (e.g. "Centrum AI")
+	OrgURLKey    string    `json:"org_url_key,omitempty"`   // Organization URL key (e.g. "centrum-ai")
 }
 
 // Storage handles token storage and retrieval with secure file permissions.
@@ -80,15 +86,10 @@ func (s *Storage) LoadToken() (string, error) {
 // TokenExists checks if a token file exists.
 // Returns false for file not found and logs errors for other issues like permission denied.
 //
-// Why log but not fail: This maintains backward compatibility while still
-// alerting developers to potential issues. Permission errors might indicate
-// security problems that should be investigated.
-//
 // Deprecated: Use TokenExistsWithError for better error handling.
 func (s *Storage) TokenExists() bool {
 	exists, err := s.TokenExistsWithError()
 	if err != nil {
-		// Log the error but maintain backward compatibility by returning false
 		fmt.Fprintf(os.Stderr, "Warning: Error checking token file existence: %v\n", err)
 	}
 	return exists
@@ -97,11 +98,6 @@ func (s *Storage) TokenExists() bool {
 // TokenExistsWithError checks if a token file exists and returns detailed error information.
 // Returns (false, nil) if file doesn't exist - this is not an error condition.
 // Returns (false, error) if there's an actual error like permission denied.
-//
-// Why distinguish between "not found" and other errors:
-// - File not found is expected when user hasn't authenticated yet
-// - Permission errors indicate a security or configuration problem
-// - This allows callers to handle these cases differently
 func (s *Storage) TokenExistsWithError() (bool, error) {
 	_, err := os.Stat(s.tokenPath)
 	if err == nil {
@@ -130,23 +126,55 @@ func (s *Storage) DeleteToken() error {
 }
 
 // GetDefaultTokenPath returns the default path for storing tokens.
-//
-// Token location strategy:
-// - Primary: ~/.config/linear/token (XDG standard)
-// - Fallback: .config/linear/token (current directory)
-//
-// Why home directory: Tokens are user-specific credentials. Storing them
-// in the home directory ensures they're not accidentally committed to
-// version control and are isolated per user on multi-user systems.
+// Uses $XDG_CONFIG_HOME/linear/token or ~/.config/linear/token.
 func GetDefaultTokenPath() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		// Fallback to current directory if home dir unavailable
-		// This might happen in restricted environments or containers
-		return ".config/linear/token"
+	return filepath.Join(xdg.LinearConfigDir(), "token")
+}
+
+// GetWorkspaceTokenPath returns the token path for a given workspace.
+// Empty workspace returns the default path (backward compatible).
+// Named workspaces use $XDG_CONFIG_HOME/linear/workspaces/<name>/token.
+func GetWorkspaceTokenPath(workspace string) string {
+	if workspace == "" {
+		return GetDefaultTokenPath()
+	}
+	return filepath.Join(xdg.LinearConfigDir(), "workspaces", workspace, "token")
+}
+
+// WorkspaceToken represents a discovered workspace token on disk.
+type WorkspaceToken struct {
+	Name string // Empty string = default workspace
+	Path string // Full path to the token file
+}
+
+// ListWorkspaceTokens scans for all workspace tokens on disk.
+// Returns the default token (if exists) plus all named workspace tokens.
+func ListWorkspaceTokens() []WorkspaceToken {
+	var tokens []WorkspaceToken
+
+	// Check default token
+	defaultPath := GetDefaultTokenPath()
+	if _, err := os.Stat(defaultPath); err == nil {
+		tokens = append(tokens, WorkspaceToken{Name: "", Path: defaultPath})
 	}
 
-	return filepath.Join(homeDir, ".config", "linear", "token")
+	// Scan for named workspace tokens
+	workspacesDir := filepath.Join(xdg.LinearConfigDir(), "workspaces")
+	entries, err := os.ReadDir(workspacesDir)
+	if err != nil {
+		return tokens
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		tokenPath := filepath.Join(workspacesDir, entry.Name(), "token")
+		if _, err := os.Stat(tokenPath); err == nil {
+			tokens = append(tokens, WorkspaceToken{Name: entry.Name(), Path: tokenPath})
+		}
+	}
+
+	return tokens
 }
 
 // LoadTokenWithFallback loads token from default location with env var fallback

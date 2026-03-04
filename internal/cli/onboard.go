@@ -10,9 +10,10 @@ import (
 
 func newOnboardCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "onboard",
-		Short: "Show setup status and quick start guide",
-		Long:  "Display authentication status, available teams, and quick reference for getting started.",
+		Use:         "onboard",
+		Short:       "Show setup status and quick start guide",
+		Long:        "Display authentication status, available teams, and quick reference for getting started.",
+		Annotations: map[string]string{"skipAuth": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runOnboard()
 		},
@@ -24,7 +25,9 @@ func runOnboard() error {
 	fmt.Println("================================")
 	fmt.Println()
 
-	client, err := initializeClient()
+	// Check authentication
+	p := resolveWorkspace()
+	client, err := initializeClient(p)
 	if err != nil {
 		printNotLoggedIn()
 		return nil
