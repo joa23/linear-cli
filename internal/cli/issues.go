@@ -440,27 +440,37 @@ TIP: Run 'linear init' first to set default team.`,
 
 func newIssuesUpdateCmd() *cobra.Command {
 	var (
-		team        string
-		title       string
-		description string
-		state       string
-		priority    string
-		estimate    string
-		labels      string
-		cycle       string
-		project     string
-		assignee    string
-		dueDate     string
-		parent      string
-		dependsOn   string
-		blockedBy   string
-		attachFiles []string
+		team         string
+		title        string
+		description  string
+		state        string
+		priority     string
+		estimate     string
+		labels       string
+		addLabels    string
+		removeLabels string
+		cycle        string
+		project      string
+		assignee     string
+		dueDate      string
+		parent       string
+		dependsOn    string
+		blockedBy    string
+		attachFiles  []string
 	)
 
 	cmd := &cobra.Command{
 		Use:   "update <issue-id>",
 		Short: "Update an existing issue",
-		Long:  `Update an existing issue. Only provided flags are changed.`,
+		Long: `Update an existing issue. Only provided flags are changed.
+
+LABEL MODES:
+  --labels         Replace ALL labels (removes existing, sets new ones)
+  --add-labels     Add labels without removing existing ones
+  --remove-labels  Remove specific labels without affecting others
+
+  --add-labels and --remove-labels can be used together.
+  --labels cannot be combined with --add-labels or --remove-labels.`,
 		Example: `  # Update state and priority
   linear issues update CEN-123 --state Done --priority 0
 
@@ -469,6 +479,18 @@ func newIssuesUpdateCmd() *cobra.Command {
 
   # Assign to yourself
   linear issues update CEN-123 --assignee me
+
+  # Replace all labels (existing labels are removed)
+  linear issues update CEN-123 --labels "backend,security"
+
+  # Add labels without removing existing ones
+  linear issues update CEN-123 --add-labels "bug,urgent"
+
+  # Remove specific labels
+  linear issues update CEN-123 --remove-labels "wontfix"
+
+  # Add and remove labels in one command
+  linear issues update CEN-123 --add-labels "in-progress" --remove-labels "backlog"
 
   # Update description from file (use - for stdin)
   cat updated-spec.md | linear issues update CEN-123 -d -`,
@@ -489,12 +511,18 @@ func newIssuesUpdateCmd() *cobra.Command {
 			// Check if any updates provided (description="-" means stdin)
 			hasFlags := title != "" || description != "" || state != "" ||
 				priority != "" || estimate != "" || labels != "" ||
+				addLabels != "" || removeLabels != "" ||
 				cycle != "" || project != "" || assignee != "" ||
 				dueDate != "" || parent != "" || dependsOn != "" || blockedBy != "" ||
 				len(attachFiles) > 0
 
 			if !hasFlags {
 				return fmt.Errorf("no updates specified. Use flags like --state, --priority, etc")
+			}
+
+			// Validate mutual exclusivity: --labels cannot be used with --add-labels or --remove-labels
+			if labels != "" && (addLabels != "" || removeLabels != "") {
+				return fmt.Errorf("--labels cannot be combined with --add-labels or --remove-labels. Use --labels to replace all labels, or --add-labels/--remove-labels for incremental changes")
 			}
 
 			// Get description from flag or stdin
@@ -540,6 +568,12 @@ func newIssuesUpdateCmd() *cobra.Command {
 			if labels != "" {
 				input.LabelIDs = parseCommaSeparated(labels)
 			}
+			if addLabels != "" {
+				input.AddLabelIDs = parseCommaSeparated(addLabels)
+			}
+			if removeLabels != "" {
+				input.RemoveLabelIDs = parseCommaSeparated(removeLabels)
+			}
 			if cycle != "" {
 				input.CycleID = &cycle
 			}
@@ -584,7 +618,9 @@ func newIssuesUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Update workflow state name (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().StringVarP(&priority, "priority", "p", "", "Priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "Update story points estimate")
-	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Update labels (comma-separated)")
+	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Replace ALL labels (comma-separated); removes existing labels")
+	cmd.Flags().StringVar(&addLabels, "add-labels", "", "Add labels without removing existing ones (comma-separated)")
+	cmd.Flags().StringVar(&removeLabels, "remove-labels", "", "Remove specific labels without affecting others (comma-separated)")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Update cycle number or name")
 	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Update assignee name or email (use 'me' for yourself)")
