@@ -549,20 +549,22 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 
 // UpdateIssueInput represents input for updating an issue
 type UpdateIssueInput struct {
-	Title       *string
-	Description *string
-	StateID     *string
-	AssigneeID  *string
-	ProjectID   *string
-	ParentID    *string
-	TeamID      *string
-	CycleID     *string
-	Priority    *int
-	Estimate    *float64
-	DueDate     *string
-	LabelIDs    []string
-	DependsOn   []string // Issue identifiers this issue depends on (stored in metadata)
-	BlockedBy   []string // Issue identifiers that block this issue (stored in metadata)
+	Title          *string
+	Description    *string
+	StateID        *string
+	AssigneeID     *string
+	ProjectID      *string
+	ParentID       *string
+	TeamID         *string
+	CycleID        *string
+	Priority       *int
+	Estimate       *float64
+	DueDate        *string
+	LabelIDs       []string // Replace mode: replaces all labels
+	AddLabelIDs    []string // Additive mode: labels to add (names, resolved later)
+	RemoveLabelIDs []string // Subtractive mode: labels to remove (names, resolved later)
+	DependsOn      []string // Issue identifiers this issue depends on (stored in metadata)
+	BlockedBy      []string // Issue identifiers that block this issue (stored in metadata)
 }
 
 // Update updates an existing issue
@@ -679,7 +681,8 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 		}
 		linearInput.CycleID = &cycleID
 	}
-	if len(input.LabelIDs) > 0 {
+	hasLabelChanges := len(input.LabelIDs) > 0 || len(input.AddLabelIDs) > 0 || len(input.RemoveLabelIDs) > 0
+	if hasLabelChanges {
 		// Resolve team ID for label resolution
 		var teamIDForLabels string
 		var err error
@@ -701,16 +704,52 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 			}
 		}
 
-		// Resolve label names to IDs
-		resolvedLabelIDs := make([]string, 0, len(input.LabelIDs))
-		for _, labelName := range input.LabelIDs {
-			labelID, err := s.client.ResolveLabelIdentifier(labelName, teamIDForLabels)
-			if err != nil {
-				return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
+		if len(input.LabelIDs) > 0 {
+			// Replace mode: resolve label names to IDs and set directly
+			resolvedLabelIDs := make([]string, 0, len(input.LabelIDs))
+			for _, labelName := range input.LabelIDs {
+				labelID, err := s.client.ResolveLabelIdentifier(labelName, teamIDForLabels)
+				if err != nil {
+					return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
+				}
+				resolvedLabelIDs = append(resolvedLabelIDs, labelID)
 			}
-			resolvedLabelIDs = append(resolvedLabelIDs, labelID)
+			linearInput.LabelIDs = resolvedLabelIDs
+		} else {
+			// Additive/subtractive mode: fetch current labels, merge/remove, then set
+			currentLabelIDs := s.extractCurrentLabelIDs(issue)
+
+			// Build a set from current labels for efficient merge/remove
+			labelSet := make(map[string]bool, len(currentLabelIDs))
+			for _, id := range currentLabelIDs {
+				labelSet[id] = true
+			}
+
+			// Add new labels
+			for _, labelName := range input.AddLabelIDs {
+				labelID, err := s.client.ResolveLabelIdentifier(labelName, teamIDForLabels)
+				if err != nil {
+					return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
+				}
+				labelSet[labelID] = true
+			}
+
+			// Remove labels
+			for _, labelName := range input.RemoveLabelIDs {
+				labelID, err := s.client.ResolveLabelIdentifier(labelName, teamIDForLabels)
+				if err != nil {
+					return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
+				}
+				delete(labelSet, labelID)
+			}
+
+			// Convert set back to slice
+			finalLabelIDs := make([]string, 0, len(labelSet))
+			for id := range labelSet {
+				finalLabelIDs = append(finalLabelIDs, id)
+			}
+			linearInput.LabelIDs = finalLabelIDs
 		}
-		linearInput.LabelIDs = resolvedLabelIDs
 	}
 
 	// Perform update only if there are GraphQL fields to update
@@ -817,6 +856,18 @@ func hasServiceFieldsToUpdate(input core.UpdateIssueInput) bool {
 		input.TeamID != nil ||
 		input.CycleID != nil ||
 		len(input.LabelIDs) > 0
+}
+
+// extractCurrentLabelIDs extracts the current label IDs from an issue
+func (s *IssueService) extractCurrentLabelIDs(issue *core.Issue) []string {
+	if issue.Labels == nil || len(issue.Labels.Nodes) == 0 {
+		return nil
+	}
+	ids := make([]string, len(issue.Labels.Nodes))
+	for i, label := range issue.Labels.Nodes {
+		ids[i] = label.ID
+	}
+	return ids
 }
 
 // resolveStateID resolves a state name to a valid state ID
