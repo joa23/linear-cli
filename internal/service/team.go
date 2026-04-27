@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/joa23/linear-cli/internal/format"
-	"github.com/joa23/linear-cli/internal/linear"
+	"github.com/joa23/linear-cli/pkg/linear"
 )
 
 // TeamService handles team-related operations

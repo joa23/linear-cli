@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/joa23/linear-cli/internal/config"
-	"github.com/joa23/linear-cli/internal/linear"
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 	"github.com/joa23/linear-cli/internal/oauth"
 	"github.com/joa23/linear-cli/internal/token"
 	"github.com/spf13/cobra"

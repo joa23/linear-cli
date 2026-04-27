@@ -1,14 +1,14 @@
 package service
 
 import (
-	"github.com/joa23/linear-cli/internal/linear"
-	"github.com/joa23/linear-cli/internal/linear/comments"
-	"github.com/joa23/linear-cli/internal/linear/core"
-	"github.com/joa23/linear-cli/internal/linear/cycles"
-	"github.com/joa23/linear-cli/internal/linear/issues"
-	"github.com/joa23/linear-cli/internal/linear/projects"
-	"github.com/joa23/linear-cli/internal/linear/teams"
-	"github.com/joa23/linear-cli/internal/linear/workflows"
+	"github.com/joa23/linear-cli/pkg/linear"
+	"github.com/joa23/linear-cli/pkg/linear/comments"
+	"github.com/joa23/linear-cli/pkg/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/cycles"
+	"github.com/joa23/linear-cli/pkg/linear/issues"
+	"github.com/joa23/linear-cli/pkg/linear/projects"
+	"github.com/joa23/linear-cli/pkg/linear/teams"
+	"github.com/joa23/linear-cli/pkg/linear/workflows"
 )
 
 // IssueClientOperations defines the minimal interface needed by IssueService.

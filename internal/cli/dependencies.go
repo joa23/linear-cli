@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/joa23/linear-cli/internal/linear"
+	"github.com/joa23/linear-cli/pkg/linear"
 	"github.com/joa23/linear-cli/internal/service"
 )
 

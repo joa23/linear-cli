@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/joa23/linear-cli/internal/format"
-	paginationutil "github.com/joa23/linear-cli/internal/linear/pagination"
+	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
 	"github.com/joa23/linear-cli/internal/service"
 	"github.com/spf13/cobra"
 )

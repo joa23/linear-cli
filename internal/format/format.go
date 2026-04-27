@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // Format specifies the level of detail in formatted output

@@ -3,7 +3,7 @@ package format
 import (
 	"strings"
 
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // Team formats a single team
