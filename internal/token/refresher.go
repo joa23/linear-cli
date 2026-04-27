@@ -160,6 +160,11 @@ func (r *Refresher) refreshTokenLocked(oldToken *TokenData) (string, error) {
 		newTokenData.RefreshToken = oldToken.RefreshToken
 	}
 
+	// Preserve old auth mode if not in response (OAuth server never returns it)
+	if newTokenData.AuthMode == "" {
+		newTokenData.AuthMode = oldToken.AuthMode
+	}
+
 	// Save new token to disk
 	if err := r.storage.SaveTokenData(newTokenData); err != nil {
 		return "", fmt.Errorf("failed to save refreshed token: %w", err)

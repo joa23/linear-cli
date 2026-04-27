@@ -109,7 +109,7 @@ func TestTokenStorage(t *testing.T) {
 		}
 	})
 
-	t.Run("load token data with newlines sanitizes", func(t *testing.T) {
+	t.Run("load legacy plain token with whitespace sanitizes", func(t *testing.T) {
 		malformedTokenPath := filepath.Join(tempDir, "malformed_token")
 
 		// Write token with newlines directly to file (bypassing SaveToken validation)
@@ -129,6 +129,30 @@ func TestTokenStorage(t *testing.T) {
 		expected := "lin_api_token123"
 		if tokenData.AccessToken != expected {
 			t.Errorf("Expected sanitized token %q, got %q", expected, tokenData.AccessToken)
+		}
+	})
+
+	t.Run("load token data JSON with spaces in scope", func(t *testing.T) {
+		jsonTokenPath := filepath.Join(tempDir, "json_scope_token")
+
+		// Write valid JSON directly — scope contains a space
+		jsonContent := `{"access_token":"tok","token_type":"Bearer","scope":"read write"}`
+		err := os.WriteFile(jsonTokenPath, []byte(jsonContent), 0600)
+		if err != nil {
+			t.Fatalf("failed to write JSON token: %v", err)
+		}
+
+		jsonStorage := NewStorage(jsonTokenPath)
+		tokenData, err := jsonStorage.LoadTokenData()
+		if err != nil {
+			t.Fatalf("failed to load token data: %v", err)
+		}
+
+		if tokenData.AccessToken != "tok" {
+			t.Errorf("expected access token %q, got %q", "tok", tokenData.AccessToken)
+		}
+		if tokenData.Scope != "read write" {
+			t.Errorf("expected scope %q (spaces preserved), got %q", "read write", tokenData.Scope)
 		}
 	})
 
