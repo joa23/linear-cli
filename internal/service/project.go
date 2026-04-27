@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/joa23/linear-cli/internal/format"
-	"github.com/joa23/linear-cli/internal/linear/projects"
+	"github.com/joa23/linear-cli/pkg/linear/projects"
 )
 
 // ProjectService handles project-related operations

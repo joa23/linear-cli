@@ -1,6 +1,6 @@
 package format
 
-import "github.com/joa23/linear-cli/internal/linear/core"
+import "github.com/joa23/linear-cli/pkg/linear/core"
 
 // Renderer defines the interface for formatting Linear resources.
 // Different implementations can render to text, JSON, or other formats.

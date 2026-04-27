@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/joa23/linear-cli/internal/linear/core"
-	"github.com/joa23/linear-cli/internal/linear/cycles"
+	"github.com/joa23/linear-cli/pkg/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/cycles"
 )
 
 func TestParseFormat(t *testing.T) {

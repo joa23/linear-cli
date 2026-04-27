@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // Issue formats a single issue

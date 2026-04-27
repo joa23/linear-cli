@@ -1,6 +1,6 @@
 package format
 
-import "github.com/joa23/linear-cli/internal/linear/core"
+import "github.com/joa23/linear-cli/pkg/linear/core"
 
 // --- Issue DTOs ---
 

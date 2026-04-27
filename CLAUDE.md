@@ -16,7 +16,7 @@ make clean    # Clean build artifacts
 cmd/linear/          # CLI entry point
 internal/cli/        # CLI commands (Cobra)
 internal/format/     # ASCII formatters for token-efficient output
-internal/linear/     # Linear GraphQL client
+pkg/linear/          # Linear GraphQL client (public library)
 internal/service/    # Service layer
 internal/skills/     # Embedded Claude Code skills
 internal/oauth/      # OAuth2 flow

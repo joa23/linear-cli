@@ -5,9 +5,9 @@ import (
 	"sort"
 
 	"github.com/joa23/linear-cli/internal/format"
-	"github.com/joa23/linear-cli/internal/linear/identifiers"
-	paginationutil "github.com/joa23/linear-cli/internal/linear/pagination"
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/identifiers"
+	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // IssueService handles issue-related operations

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 func TestTextRenderer_RenderAttachmentList(t *testing.T) {

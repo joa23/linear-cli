@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 
 	"github.com/joa23/linear-cli/internal/format"
-	"github.com/joa23/linear-cli/internal/linear"
-	"github.com/joa23/linear-cli/internal/linear/attachments"
-	"github.com/joa23/linear-cli/internal/linear/identifiers"
+	"github.com/joa23/linear-cli/pkg/linear"
+	"github.com/joa23/linear-cli/pkg/linear/attachments"
+	"github.com/joa23/linear-cli/pkg/linear/identifiers"
 )
 
 // AttachmentService handles attachment-related operations

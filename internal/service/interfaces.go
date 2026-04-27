@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/joa23/linear-cli/internal/format"
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // IssueServiceInterface defines the contract for issue operations

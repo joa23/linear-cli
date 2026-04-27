@@ -3,8 +3,8 @@ package service
 import (
 	"testing"
 
-	"github.com/joa23/linear-cli/internal/linear"
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // mockIssueClientForDelegate is a minimal mock for testing delegate vs assignee logic

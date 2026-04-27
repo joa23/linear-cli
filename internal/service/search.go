@@ -5,7 +5,7 @@ import (
 
 	"github.com/dominikbraun/graph"
 	"github.com/joa23/linear-cli/internal/format"
-	"github.com/joa23/linear-cli/internal/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // SearchService handles unified search operations across entities
