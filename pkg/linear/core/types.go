@@ -694,10 +694,18 @@ type IssueWithDetails struct {
 
 // Label represents a Linear label
 type Label struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Color       string `json:"color"`
-	Description string `json:"description"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Color       string    `json:"color"`
+	Description string    `json:"description"`
+	Parent      *LabelRef `json:"parent,omitempty"`
+}
+
+// LabelRef is a minimal label reference, used for parent links so we don't
+// recurse the full Label graph.
+type LabelRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // CreateLabelInput represents the input for creating a label

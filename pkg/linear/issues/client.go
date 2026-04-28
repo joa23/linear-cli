@@ -205,6 +205,10 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 						id
 						name
 						color
+						parent {
+							id
+							name
+						}
 					}
 				}
 				cycle {
@@ -358,6 +362,10 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 						id
 						name
 						color
+						parent {
+							id
+							name
+						}
 					}
 				}
 				cycle {
@@ -507,6 +515,10 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 						id
 						name
 						color
+						parent {
+							id
+							name
+						}
 					}
 				}
 				cycle {
@@ -865,6 +877,10 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 							id
 							name
 							color
+							parent {
+								id
+								name
+							}
 						}
 					}
 					priority
@@ -1120,6 +1136,10 @@ func (ic *Client) BatchUpdateIssues(issueIDs []string, update core.BatchIssueUpd
 							id
 							name
 							color
+							parent {
+								id
+								name
+							}
 						}
 					}
 					priority
@@ -1500,6 +1520,10 @@ func (ic *Client) GetIssueSimplified(issueID string) (*core.Issue, error) {
 						id
 						name
 						color
+						parent {
+							id
+							name
+						}
 					}
 				}
 				cycle {
@@ -1843,6 +1867,10 @@ func (ic *Client) ListAllIssues(filter *core.IssueFilter) (*core.ListAllIssuesRe
 							id
 							name
 							color
+							parent {
+								id
+								name
+							}
 						}
 					}
 					project {
