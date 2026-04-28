@@ -283,3 +283,74 @@ func TestGetIssueResponseStruct_ShadowedVersion(t *testing.T) {
 		t.Error("Shadowed struct should lose attachment data — this test proves the bug exists")
 	}
 }
+
+// TestLabelParent_Deserialization verifies that Parent is populated when the
+// GraphQL response includes a parent field on a label, and is nil when absent.
+func TestLabelParent_Deserialization(t *testing.T) {
+	// Simulated GraphQL response: one label with a parent, one without.
+	graphqlResponse := `{
+		"issue": {
+			"id": "issue-uuid",
+			"identifier": "TEC-200",
+			"title": "Issue with labels",
+			"description": "",
+			"state": {"id": "state-1", "name": "Todo"},
+			"createdAt": "2025-01-01T00:00:00Z",
+			"updatedAt": "2025-01-01T00:00:00Z",
+			"url": "https://linear.app/test/issue/TEC-200",
+			"labels": {
+				"nodes": [
+					{
+						"id": "label-child-1",
+						"name": "Bug",
+						"color": "#ff0000",
+						"description": "A bug",
+						"parent": {
+							"id": "label-parent-1",
+							"name": "Type"
+						}
+					},
+					{
+						"id": "label-orphan-1",
+						"name": "Urgent",
+						"color": "#ff9900",
+						"description": "Urgent issue"
+					}
+				]
+			}
+		}
+	}`
+
+	var response struct {
+		Issue core.Issue `json:"issue"`
+	}
+
+	if err := json.Unmarshal([]byte(graphqlResponse), &response); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if response.Issue.Labels == nil {
+		t.Fatal("Labels is nil")
+	}
+	if len(response.Issue.Labels.Nodes) != 2 {
+		t.Fatalf("expected 2 label nodes, got %d", len(response.Issue.Labels.Nodes))
+	}
+
+	// First label has a parent
+	first := response.Issue.Labels.Nodes[0]
+	if first.Parent == nil {
+		t.Fatal("Labels.Nodes[0].Parent is nil, want non-nil")
+	}
+	if first.Parent.ID != "label-parent-1" {
+		t.Errorf("Labels.Nodes[0].Parent.ID = %q, want %q", first.Parent.ID, "label-parent-1")
+	}
+	if first.Parent.Name != "Type" {
+		t.Errorf("Labels.Nodes[0].Parent.Name = %q, want %q", first.Parent.Name, "Type")
+	}
+
+	// Second label has no parent
+	second := response.Issue.Labels.Nodes[1]
+	if second.Parent != nil {
+		t.Errorf("Labels.Nodes[1].Parent = %+v, want nil", second.Parent)
+	}
+}

@@ -573,6 +573,10 @@ func (tc *Client) ListLabels(teamID string) ([]core.Label, error) {
 						name
 						color
 						description
+						parent {
+							id
+							name
+						}
 					}
 				}
 			}
