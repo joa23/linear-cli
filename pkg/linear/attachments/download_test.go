@@ -145,3 +145,113 @@ func (p *failingTokenProvider) GetToken() (string, error) {
 func (p *failingTokenProvider) RefreshIfNeeded(string) (string, error) {
 	return "", errors.New("refresh unsupported")
 }
+
+func TestFilenameFromDisposition(t *testing.T) {
+	cases := []struct {
+		header string
+		want   string
+	}{
+		{`attachment; filename="report.xlsx"`, "report.xlsx"},
+		{`attachment; filename="image.png"`, "image.png"},
+		{`attachment; filename="file with spaces.json"`, "file with spaces.json"},
+		{`inline; filename="doc.pdf"`, "doc.pdf"},
+		{"", ""},
+		{"attachment", ""},
+		{`attachment; filename="../../../etc/passwd"`, ".._.._.._etc_passwd"},
+	}
+	for _, c := range cases {
+		got := filenameFromDisposition(c.header)
+		if got != c.want {
+			t.Errorf("filenameFromDisposition(%q) = %q, want %q", c.header, got, c.want)
+		}
+	}
+}
+
+func TestExtensionFromContentType(t *testing.T) {
+	cases := []struct {
+		ct   string
+		want string
+	}{
+		{"image/png", ".png"},
+		{"image/jpeg", ".jpg"},
+		{"application/json", ".json"},
+		{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"},
+		{"text/plain; charset=utf-8", ".txt"},
+		{"application/pdf", ".pdf"},
+		{"application/zip", ".zip"},
+		{"video/mp4", ".mp4"},
+		{"application/octet-stream", ".bin"},
+		{"something/unknown", ".bin"},
+	}
+	for _, c := range cases {
+		got := extensionFromContentType(c.ct)
+		if got != c.want {
+			t.Errorf("extensionFromContentType(%q) = %q, want %q", c.ct, got, c.want)
+		}
+	}
+}
+
+func TestDownloadToFile_UsesContentDisposition(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", `attachment; filename="debug.json"`)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"test": true}`))
+	}))
+	defer srv.Close()
+
+	base := core.NewTestBaseClient("tok", "http://unused", srv.Client())
+	ac := NewClient(base)
+	ac.httpClient = srv.Client()
+
+	path, err := ac.DownloadToFile(srv.URL+"/file", t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(path, "debug.json") {
+		t.Errorf("expected path to contain original filename, got %q", path)
+	}
+}
+
+func TestDownloadToFile_FallsBackToContentType(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/pdf")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("fake pdf"))
+	}))
+	defer srv.Close()
+
+	base := core.NewTestBaseClient("tok", "http://unused", srv.Client())
+	ac := NewClient(base)
+	ac.httpClient = srv.Client()
+
+	path, err := ac.DownloadToFile(srv.URL+"/file", t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.HasSuffix(path, ".pdf") {
+		t.Errorf("expected path to end with .pdf, got %q", path)
+	}
+}
+
+func TestDownloadToFile_FilenameOverride(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Content-Disposition", `attachment; filename="original.txt"`)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("content"))
+	}))
+	defer srv.Close()
+
+	base := core.NewTestBaseClient("tok", "http://unused", srv.Client())
+	ac := NewClient(base)
+	ac.httpClient = srv.Client()
+
+	path, err := ac.DownloadToFile(srv.URL+"/file", t.TempDir(), "override.txt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(path, "override.txt") {
+		t.Errorf("expected filename override in path, got %q", path)
+	}
+}

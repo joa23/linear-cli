@@ -215,17 +215,26 @@ func newAttachmentsUpdateCmd() *cobra.Command {
 }
 
 func newAttachmentsDownloadCmd() *cobra.Command {
+	var dir, filename string
+
 	cmd := &cobra.Command{
 		Use:     "download <url>",
 		Aliases: []string{"get"},
-		Short:   "Download a private Linear image to a local temp file",
-		Long: `Download a private uploads.linear.app URL to a local temp file using your Linear auth token.
+		Short:   "Download a private Linear file to a local file",
+		Long: `Download a private uploads.linear.app URL using your Linear auth token.
 
-The file is saved to /tmp/linear-img-<hash>.<ext> and the path is printed to stdout.
+Uses the Content-Disposition header to determine the original filename.
+Falls back to content-type-based extension if no filename is available.
 Use this instead of WebFetch or curl, which will 401 on private Linear uploads.`,
-		Example: `  # Download a private image from an issue description
-  linear attachments download "https://uploads.linear.app/<uuid>/screenshot.png"
-  # → /tmp/linear-img-a1b2c3d4e5f6.png`,
+		Example: `  # Download to /tmp with original filename
+  linear attachments download "https://uploads.linear.app/<uuid>/<uuid>"
+  # → /tmp/linear-abc123-report.xlsx
+
+  # Download to current directory
+  linear attachments download --dir . "https://uploads.linear.app/<uuid>/<uuid>"
+
+  # Override the output filename
+  linear attachments download --filename report.xlsx "https://uploads.linear.app/<uuid>/<uuid>"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			url := args[0]
@@ -234,7 +243,7 @@ Use this instead of WebFetch or curl, which will 401 on private Linear uploads.`
 				return err
 			}
 
-			path, err := deps.Attachments.Download(url)
+			path, err := deps.Attachments.DownloadToDir(url, dir, filename)
 			if err != nil {
 				return err
 			}
@@ -243,6 +252,9 @@ Use this instead of WebFetch or curl, which will 401 on private Linear uploads.`
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(&dir, "dir", "", "Output directory (default: system temp dir)")
+	cmd.Flags().StringVar(&filename, "filename", "", "Override output filename")
 
 	return cmd
 }

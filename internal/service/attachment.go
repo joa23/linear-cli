@@ -23,6 +23,7 @@ type AttachmentServiceInterface interface {
 	Update(attachmentID string, input *AttachmentUpdateParams) (string, error)
 	Delete(attachmentID string) error
 	Download(url string) (string, error)
+	DownloadToDir(url, dir, filename string) (string, error)
 }
 
 // AttachmentCreateParams holds CLI-level parameters for creating an attachment
@@ -139,6 +140,11 @@ func (s *AttachmentService) Delete(attachmentID string) error {
 // Download downloads a private Linear URL to a temp file and returns the local path.
 func (s *AttachmentService) Download(url string) (string, error) {
 	return s.client.Attachments.DownloadToTempFile(url)
+}
+
+// DownloadToDir downloads a private Linear URL to a specified directory with optional filename override.
+func (s *AttachmentService) DownloadToDir(url, dir, filename string) (string, error) {
+	return s.client.Attachments.DownloadToFile(url, dir, filename)
 }
 
 // resolveIssueID resolves an issue identifier (e.g., "TEC-123") to UUID

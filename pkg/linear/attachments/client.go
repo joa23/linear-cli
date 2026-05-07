@@ -233,36 +233,121 @@ func (ac *Client) getAttachmentMetadata(attachmentID string) (*core.Attachment, 
 }
 
 // DownloadToTempFile downloads a private Linear URL with auth (adds Bearer header
-// automatically for uploads.linear.app URLs), saves content to
-// /tmp/linear-img-<sha256-of-url>.<ext>, and returns the file path.
+// automatically for uploads.linear.app URLs), saves content to a temp file, and
+// returns the file path. Uses Content-Disposition header to determine the original
+// filename and extension.
 func (ac *Client) DownloadToTempFile(url string) (string, error) {
-	if url == "" {
+	return ac.DownloadToFile(url, "", "")
+}
+
+// DownloadToFile downloads a private Linear URL to a file. If dir is empty, uses
+// os.TempDir(). If filename is empty, derives it from Content-Disposition header
+// or falls back to content-type-based extension.
+func (ac *Client) DownloadToFile(rawURL, dir, filename string) (string, error) {
+	if rawURL == "" {
 		return "", fmt.Errorf("url cannot be empty")
 	}
+	if dir == "" {
+		dir = os.TempDir()
+	}
 
-	content, contentType, _, err := ac.downloadAttachment(url)
+	content, contentType, disposition, err := ac.downloadWithDisposition(rawURL)
 	if err != nil {
 		return "", err
 	}
 
-	ext := extensionFromContentType(contentType)
+	if filename == "" {
+		filename = filenameFromDisposition(disposition)
+	}
 
-	// Derive a stable filename from the URL so repeated calls reuse the same file.
 	hasher := sha256.New()
-	hasher.Write([]byte(url))
+	hasher.Write([]byte(rawURL))
 	hash := fmt.Sprintf("%x", hasher.Sum(nil))[:16]
 
-	path := filepath.Join(os.TempDir(), fmt.Sprintf("linear-img-%s%s", hash, ext))
+	if filename != "" {
+		// Use original filename with hash prefix for cache stability
+		filename = fmt.Sprintf("linear-%s-%s", hash, filename)
+	} else {
+		ext := extensionFromContentType(contentType)
+		filename = fmt.Sprintf("linear-img-%s%s", hash, ext)
+	}
+
+	path := filepath.Join(dir, filename)
 	if err := os.WriteFile(path, content, 0600); err != nil {
-		return "", fmt.Errorf("failed to write temp file: %w", err)
+		return "", fmt.Errorf("failed to write file: %w", err)
 	}
 
 	return path, nil
 }
 
+// downloadWithDisposition performs the download and returns content, content-type,
+// and the raw Content-Disposition header value.
+func (ac *Client) downloadWithDisposition(rawURL string) ([]byte, string, string, error) {
+	req, err := http.NewRequest("GET", rawURL, nil)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if isPrivateLinearURL(rawURL) {
+		tok, err := ac.base.GetToken()
+		if err != nil {
+			return nil, "", "", fmt.Errorf("failed to get Linear auth token (run 'linear auth login'): %w", err)
+		}
+		req.Header.Set("Authorization", token.FormatAuthHeader(tok))
+	}
+
+	ctx, cancel := context.WithTimeout(req.Context(), 30*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+
+	resp, err := ac.httpClient.Do(req)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("download failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", "", fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	const maxSize = 100 * 1024 * 1024
+	content, err := io.ReadAll(&io.LimitedReader{R: resp.Body, N: maxSize})
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to read content: %w", err)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = http.DetectContentType(content)
+	}
+	disposition := resp.Header.Get("Content-Disposition")
+
+	return content, contentType, disposition, nil
+}
+
+// filenameFromDisposition extracts the filename from a Content-Disposition header.
+// Returns empty string if no filename found.
+func filenameFromDisposition(header string) string {
+	if header == "" {
+		return ""
+	}
+	// Parse: attachment; filename="name.ext" or filename*=UTF-8''name.ext
+	for _, part := range strings.Split(header, ";") {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(part, "filename=") {
+			name := strings.TrimPrefix(part, "filename=")
+			name = strings.Trim(name, `"`)
+			// Sanitize: remove path separators
+			name = strings.ReplaceAll(name, "/", "_")
+			name = strings.ReplaceAll(name, "\\", "_")
+			return name
+		}
+	}
+	return ""
+}
+
 // extensionFromContentType returns a file extension (with dot) for a MIME type.
 func extensionFromContentType(ct string) string {
-	// Strip parameters (e.g. "image/png; charset=utf-8")
 	if idx := strings.Index(ct, ";"); idx != -1 {
 		ct = strings.TrimSpace(ct[:idx])
 	}
@@ -279,6 +364,34 @@ func extensionFromContentType(ct string) string {
 		return ".svg"
 	case "application/pdf":
 		return ".pdf"
+	case "application/json":
+		return ".json"
+	case "text/plain":
+		return ".txt"
+	case "text/csv":
+		return ".csv"
+	case "text/html":
+		return ".html"
+	case "text/xml", "application/xml":
+		return ".xml"
+	case "application/zip":
+		return ".zip"
+	case "application/gzip":
+		return ".gz"
+	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		return ".xlsx"
+	case "application/vnd.ms-excel":
+		return ".xls"
+	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+		return ".docx"
+	case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+		return ".pptx"
+	case "application/x-tar":
+		return ".tar"
+	case "video/mp4":
+		return ".mp4"
+	case "audio/mpeg":
+		return ".mp3"
 	default:
 		return ".bin"
 	}

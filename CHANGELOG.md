@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-05-06
+
+### Fixed
+
+- `attachments download` now preserves original filenames using Content-Disposition header (previously saved xlsx, json, etc. as `.bin`)
+- Expanded MIME type → extension mapping to 20+ types (json, xlsx, docx, csv, txt, zip, mp4, etc.)
+
+### Added
+
+- `--dir` flag for `attachments download` to specify output directory
+- `--filename` flag for `attachments download` to override output filename
+- `DownloadToFile` method on attachment client for programmatic use with directory/filename control
+
+## [1.8.0] - 2026-04-28
+
+### Added
+
+- Expose `Parent` field on `core.Label` for label-group consumers (#48)
+
+## [1.7.0] - 2026-04-27
+
+### Added
+
+- `--add-labels` and `--remove-labels` flags for `issues update` — additive/subtractive label management (#44)
+- Moved `internal/linear` to `pkg/linear` so the GraphQL client can be imported as a library (#47)
+
+### Fixed
+
+- OAuth token refresh bugs: AuthMode loss and scope corruption on refresh (#42)
+
 ## [1.6.1] - 2026-02-25
 
 ### Fixed
