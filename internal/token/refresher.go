@@ -160,9 +160,23 @@ func (r *Refresher) refreshTokenLocked(oldToken *TokenData) (string, error) {
 		newTokenData.RefreshToken = oldToken.RefreshToken
 	}
 
-	// Preserve old auth mode if not in response (OAuth server never returns it)
+	// Preserve metadata from old token that the OAuth refresh response doesn't include.
+	// AuthMode is preserved defensively (only if response is empty) per #42; ClientID/Secret
+	// and Org metadata are never present in refresh responses, so always carry forward.
 	if newTokenData.AuthMode == "" {
 		newTokenData.AuthMode = oldToken.AuthMode
+	}
+	if newTokenData.ClientID == "" {
+		newTokenData.ClientID = oldToken.ClientID
+	}
+	if newTokenData.ClientSecret == "" {
+		newTokenData.ClientSecret = oldToken.ClientSecret
+	}
+	if newTokenData.OrgName == "" {
+		newTokenData.OrgName = oldToken.OrgName
+	}
+	if newTokenData.OrgURLKey == "" {
+		newTokenData.OrgURLKey = oldToken.OrgURLKey
 	}
 
 	// Save new token to disk

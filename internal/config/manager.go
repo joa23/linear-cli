@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
+	"github.com/joa23/linear-cli/internal/xdg"
 	"gopkg.in/yaml.v3"
 )
 
@@ -13,11 +15,11 @@ import (
 // It supports multiple configuration sources with environment variables
 // taking precedence over file-based configuration.
 type Config struct {
-	LogLevel        string                       `yaml:"log_level"`        // Logging verbosity: debug, info, warn, error
-	LogFile         string                       `yaml:"log_file,omitempty"` // Optional log file path
-	PollingInterval string                       `yaml:"polling_interval"`   // How often to check for updates (e.g., "60s")
-	Linear          LinearConfig                 `yaml:"linear,omitempty"`   // Global Linear OAuth credentials
-	Workspaces      map[string]WorkspaceConfig   `yaml:"workspaces,omitempty"` // Per-workspace configurations
+	LogLevel        string                     `yaml:"log_level"`          // Logging verbosity: debug, info, warn, error
+	LogFile         string                     `yaml:"log_file,omitempty"` // Optional log file path
+	PollingInterval string                     `yaml:"polling_interval"`   // How often to check for updates (e.g., "60s")
+	Linear          LinearConfig               `yaml:"linear,omitempty"`   // Global Linear OAuth credentials
+	Workspaces      map[string]WorkspaceConfig  `yaml:"workspaces,omitempty"` // Per-workspace configurations
 }
 
 // LinearConfig holds Linear OAuth credentials
@@ -27,11 +29,13 @@ type LinearConfig struct {
 	Port         int    `yaml:"port,omitempty"` // OAuth callback port (default: 37412)
 }
 
-// WorkspaceConfig represents a Linear workspace configuration
+// WorkspaceConfig represents a named workspace configuration.
+// Each workspace corresponds to a distinct set of OAuth credentials for a Linear organization.
 type WorkspaceConfig struct {
 	Name               string `yaml:"name"`
 	LinearClientID     string `yaml:"linear_client_id"`
 	LinearClientSecret string `yaml:"linear_client_secret"`
+	Port               int    `yaml:"port,omitempty"` // OAuth callback port (each OAuth app may use a different one)
 	Description        string `yaml:"description,omitempty"`
 }
 
@@ -48,13 +52,7 @@ type Manager struct {
 func NewManager(configPath string) *Manager {
 	// If no path provided, use default (XDG standard)
 	if configPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			// Fallback to current directory
-			configPath = ".config/linear/config.yaml"
-		} else {
-			configPath = filepath.Join(homeDir, ".config", "linear", "config.yaml")
-		}
+		configPath = filepath.Join(xdg.LinearConfigDir(), "config.yaml")
 	}
 
 	return &Manager{
@@ -66,7 +64,7 @@ func NewManager(configPath string) *Manager {
 //
 // Configuration precedence (highest to lowest):
 // 1. Environment variables (LINEAR_CLIENT_ID, LINEAR_CLIENT_SECRET, etc.)
-// 2. Configuration file (~/.config/linear/config.yaml)
+// 2. Configuration file ($XDG_CONFIG_HOME/linear/config.yaml)
 // 3. Default values
 //
 // Why this order: Environment variables allow secure credential injection
@@ -80,7 +78,7 @@ func (m *Manager) Load() (*Config, error) {
 		PollingInterval: "60s",
 		Workspaces:      make(map[string]WorkspaceConfig),
 	}
-	
+
 	// Check if config file exists with proper error handling
 	exists, err := m.ConfigExistsWithError()
 	if err != nil {
@@ -90,21 +88,21 @@ func (m *Manager) Load() (*Config, error) {
 		// File doesn't exist, return defaults
 		return cfg, nil
 	}
-	
+
 	// Read config file
 	data, err := os.ReadFile(m.configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	
+
 	// Parse YAML
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
-	
+
 	// Apply environment variable overrides
 	m.applyEnvironmentOverrides(cfg)
-	
+
 	return cfg, nil
 }
 
@@ -124,18 +122,18 @@ func (m *Manager) Save(cfg *Config) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
-	
+
 	// Marshal config to YAML
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	
+
 	// Write to file with secure permissions
 	if err := os.WriteFile(m.configPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -152,11 +150,11 @@ func (m *Manager) ConfigExistsWithError() (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	
+
 	if os.IsNotExist(err) {
 		return false, nil // File not existing is not an error
 	}
-	
+
 	// Other errors (permission denied, etc.) should be reported
 	return false, fmt.Errorf("failed to check config file: %w", err)
 }
@@ -167,17 +165,17 @@ func (m *Manager) applyEnvironmentOverrides(cfg *Config) {
 	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
 		cfg.LogLevel = logLevel
 	}
-	
+
 	// Override log file
 	if logFile := os.Getenv("LOG_FILE"); logFile != "" {
 		cfg.LogFile = logFile
 	}
-	
+
 	// Override polling interval
 	if interval := os.Getenv("POLLING_INTERVAL"); interval != "" {
 		cfg.PollingInterval = interval
 	}
-	
+
 	// Override Linear credentials
 	if clientID := os.Getenv("LINEAR_CLIENT_ID"); clientID != "" {
 		cfg.Linear.ClientID = clientID
@@ -191,46 +189,37 @@ func (m *Manager) applyEnvironmentOverrides(cfg *Config) {
 func (c *Config) Validate() error {
 	// Validate log level
 	validLogLevels := []string{"debug", "info", "warn", "error"}
-	isValidLogLevel := false
-	for _, level := range validLogLevels {
-		if c.LogLevel == level {
-			isValidLogLevel = true
-			break
-		}
-	}
-	if !isValidLogLevel {
+	if !slices.Contains(validLogLevels, c.LogLevel) {
 		return fmt.Errorf("invalid log level: %s (must be one of: debug, info, warn, error)", c.LogLevel)
 	}
-	
+
 	// Validate polling interval
 	if _, err := time.ParseDuration(c.PollingInterval); err != nil {
 		return fmt.Errorf("invalid polling interval: %s", c.PollingInterval)
 	}
-	
-	// Validate workspaces - only check if credentials are provided
-	for name, ws := range c.Workspaces {
-		if ws.LinearClientID == "" || ws.LinearClientSecret == "" {
+
+	// Validate workspaces
+	for name, w := range c.Workspaces {
+		if w.LinearClientID == "" || w.LinearClientSecret == "" {
 			return fmt.Errorf("workspace '%s' missing Linear credentials", name)
 		}
 	}
-	
-	// Note: We allow empty global Linear credentials as users might only use workspace-specific ones
-	
+
 	return nil
 }
 
 // GetWorkspace returns a workspace configuration by name
 func (c *Config) GetWorkspace(name string) (WorkspaceConfig, bool) {
-	ws, exists := c.Workspaces[name]
-	return ws, exists
+	w, exists := c.Workspaces[name]
+	return w, exists
 }
 
 // SetWorkspace adds or updates a workspace configuration
-func (c *Config) SetWorkspace(name string, ws WorkspaceConfig) {
+func (c *Config) SetWorkspace(name string, w WorkspaceConfig) {
 	if c.Workspaces == nil {
 		c.Workspaces = make(map[string]WorkspaceConfig)
 	}
-	c.Workspaces[name] = ws
+	c.Workspaces[name] = w
 }
 
 // DeleteWorkspace removes a workspace configuration
@@ -238,16 +227,29 @@ func (c *Config) DeleteWorkspace(name string) {
 	delete(c.Workspaces, name)
 }
 
-// GetLinearCredentials returns the Linear credentials to use
-// It checks workspace-specific credentials first, then falls back to global
+// GetLinearCredentials returns the Linear credentials to use.
+// It checks workspace-specific credentials first, then falls back to global.
 func (c *Config) GetLinearCredentials(workspace string) (clientID, clientSecret string) {
-	// Check if workspace is specified and exists
 	if workspace != "" {
-		if ws, exists := c.GetWorkspace(workspace); exists {
-			return ws.LinearClientID, ws.LinearClientSecret
+		if w, exists := c.GetWorkspace(workspace); exists {
+			return w.LinearClientID, w.LinearClientSecret
 		}
 	}
-	
+
 	// Fall back to global credentials
 	return c.Linear.ClientID, c.Linear.ClientSecret
+}
+
+// GetLinearPort returns the OAuth callback port to use.
+// Checks workspace-specific port first, then global, then default (37412).
+func (c *Config) GetLinearPort(workspace string) int {
+	if workspace != "" {
+		if w, exists := c.GetWorkspace(workspace); exists && w.Port != 0 {
+			return w.Port
+		}
+	}
+	if c.Linear.Port != 0 {
+		return c.Linear.Port
+	}
+	return 37412
 }

@@ -31,34 +31,42 @@ func ParseResponseFormat(s string) (ResponseFormat, error) {
 	}
 }
 
+// Organization represents a Linear organization/workspace
+type Organization struct {
+	Name   string `json:"name"`
+	URLKey string `json:"urlKey"`
+}
+
 // User represents a Linear user with full information
 type User struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
-	Email       string `json:"email"`
-	AvatarURL   string `json:"avatarUrl"`
-	Active      bool   `json:"active"`
-	Admin       bool   `json:"admin"`
-	CreatedAt   string `json:"createdAt"`
-	IsMe        bool   `json:"isMe"`
-	Teams       []Team `json:"teams,omitempty"`
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	DisplayName  string       `json:"displayName"`
+	Email        string       `json:"email"`
+	AvatarURL    string       `json:"avatarUrl"`
+	Active       bool         `json:"active"`
+	Admin        bool         `json:"admin"`
+	CreatedAt    string       `json:"createdAt"`
+	IsMe         bool         `json:"isMe"`
+	Teams        []Team       `json:"teams,omitempty"`
+	Organization Organization `json:"organization,omitempty"`
 }
 
 // UnmarshalJSON handles custom unmarshaling for User to support both
 // direct teams array and nested teams.nodes structure from GraphQL
 func (u *User) UnmarshalJSON(data []byte) error {
 	type userAlias struct {
-		ID          string          `json:"id"`
-		Name        string          `json:"name"`
-		DisplayName string          `json:"displayName"`
-		Email       string          `json:"email"`
-		AvatarURL   string          `json:"avatarUrl"`
-		Active      bool            `json:"active"`
-		Admin       bool            `json:"admin"`
-		CreatedAt   string          `json:"createdAt"`
-		IsMe        bool            `json:"isMe"`
-		Teams       json.RawMessage `json:"teams,omitempty"`
+		ID           string          `json:"id"`
+		Name         string          `json:"name"`
+		DisplayName  string          `json:"displayName"`
+		Email        string          `json:"email"`
+		AvatarURL    string          `json:"avatarUrl"`
+		Active       bool            `json:"active"`
+		Admin        bool            `json:"admin"`
+		CreatedAt    string          `json:"createdAt"`
+		IsMe         bool            `json:"isMe"`
+		Teams        json.RawMessage `json:"teams,omitempty"`
+		Organization Organization    `json:"organization,omitempty"`
 	}
 
 	var alias userAlias
@@ -75,6 +83,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	u.Admin = alias.Admin
 	u.CreatedAt = alias.CreatedAt
 	u.IsMe = alias.IsMe
+	u.Organization = alias.Organization
 
 	// Handle teams - can be either direct array or nested object with nodes
 	if len(alias.Teams) > 0 {
