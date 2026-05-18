@@ -2068,6 +2068,20 @@ func buildFilterObject(filter *core.IssueFilter) map[string]interface{} {
 		}
 	}
 
+	// Date filters (createdAt gte/lte)
+	if filter.CreatedAfter != "" {
+		if _, ok := filterObj["createdAt"]; !ok {
+			filterObj["createdAt"] = make(map[string]interface{})
+		}
+		filterObj["createdAt"].(map[string]interface{})["gte"] = filter.CreatedAfter
+	}
+	if filter.CreatedBefore != "" {
+		if _, ok := filterObj["createdAt"]; !ok {
+			filterObj["createdAt"] = make(map[string]interface{})
+		}
+		filterObj["createdAt"].(map[string]interface{})["lte"] = filter.CreatedBefore
+	}
+
 	return filterObj
 }
 

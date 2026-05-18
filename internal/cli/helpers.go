@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joa23/linear-cli/pkg/linear"
 	"github.com/spf13/cobra"
@@ -140,6 +141,49 @@ func parsePriority(s string) (int, error) {
 	default:
 		return 0, fmt.Errorf("invalid priority '%s': use 0-4 or none/urgent/high/normal/low", s)
 	}
+}
+
+// parseCreatedSince converts a relative duration like "24h", "7d", "2w" into an
+// RFC3339 UTC timestamp for the gte side of a createdAt filter. Returns an empty
+// string when input is empty. Accepts Go's time.ParseDuration units (ns/us/ms/s/m/h)
+// plus the calendar-friendly extensions "d" (days) and "w" (weeks).
+func parseCreatedSince(s string) (string, error) {
+	if s == "" {
+		return "", nil
+	}
+
+	d, err := parseExtendedDuration(s)
+	if err != nil {
+		return "", fmt.Errorf("invalid --created-since %q: %w (expected e.g. 24h, 7d, 2w)", s, err)
+	}
+	if d <= 0 {
+		return "", fmt.Errorf("invalid --created-since %q: duration must be positive", s)
+	}
+	return time.Now().UTC().Add(-d).Format(time.RFC3339), nil
+}
+
+// parseExtendedDuration extends time.ParseDuration with day/week units.
+func parseExtendedDuration(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, fmt.Errorf("empty duration")
+	}
+	// Translate trailing "d" / "w" suffix into hours so ParseDuration accepts it.
+	if n := len(s); n >= 2 {
+		last := s[n-1]
+		if last == 'd' || last == 'w' {
+			num, err := strconv.ParseFloat(s[:n-1], 64)
+			if err != nil {
+				return 0, err
+			}
+			hoursPerUnit := 24.0
+			if last == 'w' {
+				hoursPerUnit = 24.0 * 7.0
+			}
+			return time.Duration(num * hoursPerUnit * float64(time.Hour)), nil
+		}
+	}
+	return time.ParseDuration(s)
 }
 
 // Context key type for dependencies injection

@@ -47,6 +47,9 @@ func newIssuesListCmd() *cobra.Command {
 		labels     string
 		excludeLabels string
 		sortBy     string
+		createdSince  string
+		createdAfter  string
+		createdBefore string
 		limit      int
 		formatStr  string
 		outputType string
@@ -170,6 +173,19 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 			if sortBy != "" {
 				filters.OrderBy = paginationutil.MapSortField(sortBy)
 			}
+			if createdSince != "" {
+				ts, err := parseCreatedSince(createdSince)
+				if err != nil {
+					return err
+				}
+				filters.CreatedAfter = ts
+			}
+			if createdAfter != "" {
+				filters.CreatedAfter = createdAfter
+			}
+			if createdBefore != "" {
+				filters.CreatedBefore = createdBefore
+			}
 
 			result, err := deps.Issues.SearchWithOutput(filters, verbosity, output)
 			if err != nil {
@@ -190,6 +206,9 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Filter by labels (comma-separated)")
 	cmd.Flags().StringVarP(&excludeLabels, "exclude-labels", "L", "", "Exclude issues with these labels (comma-separated)")
 	cmd.Flags().StringVarP(&sortBy, "sort", "s", "", "Sort by: created, updated")
+	cmd.Flags().StringVar(&createdSince, "created-since", "", "Filter to issues created in the last duration (e.g. 24h, 7d, 2w)")
+	cmd.Flags().StringVar(&createdAfter, "created-after", "", "Filter to issues created at/after ISO-8601 timestamp")
+	cmd.Flags().StringVar(&createdBefore, "created-before", "", "Filter to issues created at/before ISO-8601 timestamp")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of items (max 250)")
 	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity level: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json")
