@@ -26,6 +26,8 @@ func newIssuesCmd() *cobra.Command {
 		newIssuesUpdateCmd(),
 		newIssuesCommentCmd(),
 		newIssuesCommentsCmd(),
+		newIssuesSlugCmd(),
+		newIssuesExportCmd(),
 		newIssuesReplyCmd(),
 		newIssuesReactCmd(),
 		newIssuesDependenciesCmd(),
@@ -750,6 +752,73 @@ func newIssuesCommentsCmd() *cobra.Command {
 					body = body[:200] + "..."
 				}
 				fmt.Printf("%s  %s\n\n", prefix, body)
+			}
+			return nil
+		},
+	}
+}
+
+func newIssuesSlugCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "slug <issue-id>",
+		Short: "Print a worktree/branch slug for an issue",
+		Long: `Print a filesystem-friendly slug for an issue, suitable for naming a
+git worktree or branch, e.g. "cen-123_fix_the_login_bug".
+
+The slug is lowercase, underscore-separated, and capped at 60 characters,
+trimming whole trailing words so it never ends mid-word. Only the slug is
+printed (no decoration) so it can be used directly in scripts.`,
+		Example: `  # Name a worktree after an issue
+  git worktree add "../$(linear issues slug CEN-123)"`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			deps, err := getDeps(cmd)
+			if err != nil {
+				return err
+			}
+
+			issue, err := deps.Client.Issues.GetIssue(args[0])
+			if err != nil {
+				return fmt.Errorf("failed to get issue: %w", err)
+			}
+
+			fmt.Println(service.WorktreeSlug(issue.Identifier, issue.Title, service.DefaultWorktreeSlugMaxLen))
+			return nil
+		},
+	}
+}
+
+func newIssuesExportCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "export <issue-id> <folder>",
+		Short: "Export a ticket and its attachments to an LLM-ready folder",
+		Long: `Export a complete ticket into a folder for use by an LLM.
+
+Writes <folder>/<Identifier>.md containing the full description and all comments,
+and downloads every inline image and uploaded-file attachment into <folder>/assets/.
+The markdown references the downloaded files by relative path. External attachment
+cards (GitHub, Figma, Slack) are listed as links under a References section.`,
+		Example: `  # Export CEN-123 into ./export
+  linear issues export CEN-123 ./export`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			issueID := args[0]
+			folder := args[1]
+
+			deps, err := getDeps(cmd)
+			if err != nil {
+				return err
+			}
+
+			res, err := deps.IssueExport.Export(issueID, folder)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Exported %s -> %s (%d comments, %d assets)\n",
+				res.Identifier, res.MarkdownPath, res.CommentCount, res.AssetCount)
+			if len(res.FailedAssets) > 0 {
+				fmt.Printf("Warning: %d attachment(s) could not be downloaded\n", len(res.FailedAssets))
 			}
 			return nil
 		},

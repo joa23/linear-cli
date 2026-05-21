@@ -533,6 +533,13 @@ cat .claude/plans/feature-plan.md | linear issues create "Implementation plan" -
 cat prd.md | linear issues create "Feature: OAuth" --team ENG --description -
 cat bug-report.txt | linear issues comment ENG-123 --body -
 cat response.md | linear issues reply ENG-123 comment-id --body -
+
+# Export a ticket into an LLM-ready folder (description + comments + downloaded attachments)
+linear issues export ENG-123 ./export      # writes ./export/ENG-123.md + ./export/assets/
+
+# Worktree/branch slug (lowercase, underscore-separated, capped at 60 chars)
+linear issues slug ENG-123                  # -> eng-123_fix_the_login_bug
+git worktree add "../$(linear issues slug ENG-123)"
 ```
 
 ### Search

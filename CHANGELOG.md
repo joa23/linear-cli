@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-05-21
+
+### Added
+
+- `issues export <issue-id> <folder>` — export a complete ticket into an LLM-ready folder: writes `<Identifier>.md` with the full description and all comments, downloads every inline image and uploaded-file attachment into `assets/`, and rewrites references to local relative paths. External attachment cards (GitHub, Figma, Slack) are listed under a References section.
+- `issues slug <issue-id>` — print a filesystem-friendly worktree/branch slug (e.g. `cen-123_fix_login_bug`): lowercase, underscore-separated, capped at 60 characters, trimming whole trailing words. Prints only the slug for use in scripts like `git worktree add "../$(linear issues slug CEN-123)"`.
+- `DownloadBytes` method on the attachment client returning raw content plus a suggested filename (no cache prefix) for programmatic use.
+
 ## [1.8.1] - 2026-05-06
 
 ### Fixed
@@ -547,7 +555,8 @@ A token-efficient CLI for Linear.
 - Linux (64-bit)
 - Windows (64-bit)
 
-[Unreleased]: https://github.com/joa23/linear-cli/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/joa23/linear-cli/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/joa23/linear-cli/compare/v1.8.1...v1.9.0
 [1.6.1]: https://github.com/joa23/linear-cli/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/joa23/linear-cli/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/joa23/linear-cli/compare/v1.4.9...v1.5.0

@@ -280,6 +280,29 @@ func (ac *Client) DownloadToFile(rawURL, dir, filename string) (string, error) {
 	return path, nil
 }
 
+// DownloadBytes fetches a (possibly private) Linear URL and returns the raw
+// content plus a suggested filename derived from the Content-Disposition header
+// or, failing that, the content type. The Authorization header is applied
+// automatically for uploads.linear.app URLs. Unlike DownloadToFile, no cache
+// prefix is added — callers own final naming.
+func (ac *Client) DownloadBytes(rawURL string) ([]byte, string, error) {
+	if rawURL == "" {
+		return nil, "", fmt.Errorf("url cannot be empty")
+	}
+
+	content, contentType, disposition, err := ac.downloadWithDisposition(rawURL)
+	if err != nil {
+		return nil, "", err
+	}
+
+	filename := filenameFromDisposition(disposition)
+	if filename == "" {
+		filename = "file" + extensionFromContentType(contentType)
+	}
+
+	return content, filename, nil
+}
+
 // downloadWithDisposition performs the download and returns content, content-type,
 // and the raw Content-Disposition header value.
 func (ac *Client) downloadWithDisposition(rawURL string) ([]byte, string, string, error) {
