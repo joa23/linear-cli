@@ -68,6 +68,11 @@ linear_create_issue("Task title", "Description", teams[0].id)`)
 						name
 						email
 					}
+					creator {
+						id
+						name
+						email
+					}
 					createdAt
 					updatedAt
 					url
@@ -188,6 +193,11 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 					name
 				}
 				assignee {
+					id
+					name
+					email
+				}
+				creator {
 					id
 					name
 					email
@@ -349,6 +359,11 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 					name
 					email
 				}
+				creator {
+					id
+					name
+					email
+				}
 				delegate {
 					id
 					name
@@ -498,6 +513,11 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 					name
 				}
 				assignee {
+					id
+					name
+					email
+				}
+				creator {
 					id
 					name
 					email
@@ -708,6 +728,11 @@ func (ic *Client) AssignIssue(issueID, assigneeID string) error {
 						name
 						email
 					}
+					creator {
+						id
+						name
+						email
+					}
 				}
 			}
 		}
@@ -770,6 +795,11 @@ func (ic *Client) ListAssignedIssues(limit int) ([]core.Issue, error) {
 						name
 					}
 					assignee {
+						id
+						name
+						email
+					}
+					creator {
 						id
 						name
 						email
@@ -868,6 +898,11 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 						name
 					}
 					assignee {
+						id
+						name
+						email
+					}
+					creator {
 						id
 						name
 						email
@@ -1127,6 +1162,11 @@ func (ic *Client) BatchUpdateIssues(issueIDs []string, update core.BatchIssueUpd
 						name
 					}
 					assignee {
+						id
+						name
+						email
+					}
+					creator {
 						id
 						name
 						email
@@ -1507,6 +1547,11 @@ func (ic *Client) GetIssueSimplified(issueID string) (*core.Issue, error) {
 					name
 					email
 				}
+				creator {
+					id
+					name
+					email
+				}
 				delegate {
 					id
 					name
@@ -1648,6 +1693,11 @@ func (ic *Client) UpdateIssue(issueID string, input core.UpdateIssueInput) (*cor
 						name
 					}
 					assignee {
+						id
+						name
+						email
+					}
+					creator {
 						id
 						name
 						email
