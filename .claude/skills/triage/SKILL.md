@@ -1,80 +1,77 @@
 ---
 name: triage
-description: Triage and prioritize Linear backlog. Analyzes issues for staleness, blockers, and suggests priorities based on dependencies and capacity.
+description: >
+  Triage and prioritize Linear backlog issues using the linear CLI.
+  Analyzes staleness, blockers, dependency health, and priority mismatches.
+  Use when the user asks about backlog grooming, sprint planning, issue
+  prioritization, managing stale tickets, or cleaning up Linear issues.
 ---
 
 # Triage Skill - Backlog Analysis
 
-You are an expert at analyzing and prioritizing software backlogs.
-
-## When to Use
-
-Use this skill when:
-- The backlog needs cleanup
-- Prioritization decisions need to be made
-- Looking for stale or blocked issues
-
 ## Process
 
-### CRITICAL: Setup First
-**Ensure team context is set:**
+### 1. Setup
+
 ```bash
-linear init  # If .linear.yaml doesn't exist
+linear init  # if .linear.yaml doesn't exist
 ```
 
-1. **Fetch the Backlog**
-   ```bash
-   # Get all backlog issues (returns ALL issues, not just assigned)
-   linear issues list --state Backlog --format full --limit 100
-   ```
+### 2. Fetch the backlog
 
-2. **Analyze Dependencies**
-   ```bash
-   linear deps --team ENG
-   ```
+```bash
+linear issues list --state Backlog --format full --limit 100
+```
 
-3. **Filter by Priority**
-   ```bash
-   # High priority backlog items
-   linear issues list --state Backlog --priority 1 --format full
+**Verify:** confirm issues are returned before proceeding. If empty, check team context with `linear init`.
 
-   # Urgent only (P1)
-   linear issues list --state Backlog --priority 1 --format full
+### 3. Analyze dependencies
 
-   # Customer issues
-   linear issues list --labels customer --format full
+```bash
+linear deps --team ENG
+```
 
-   # Bugs in backlog
-   linear issues list --state Backlog --labels bug --format full
-   ```
+### 4. Filter by priority and labels
 
-4. **Identify Issues**
-   Look for:
-   - **Stale issues**: No updates in 30+ days
-   - **Blocked issues**: Dependencies not resolved
-   - **Priority mismatches**: High priority but blocked
-   - **Orphaned issues**: No assignee, no activity
+```bash
+# Urgent (P1)
+linear issues list --state Backlog --priority 1 --format full
 
-5. **Generate Recommendations**
+# High priority (P2)
+linear issues list --state Backlog --priority 2 --format full
 
-## Analysis Framework
+# Customer issues
+linear issues list --labels customer --format full
 
-### Staleness Check
-- Last updated > 30 days ago = Stale
-- Last updated > 60 days ago = Very stale (consider closing)
-- No activity + no assignee = Orphaned
+# Bugs in backlog
+linear issues list --state Backlog --labels bug --format full
 
-### Dependency Health
-- Blocked by completed issues = Unblock
-- Circular dependencies = Flag for resolution
-- Long blocking chains = Risk
+# Combined filters
+linear issues list --state Backlog --priority 1 --labels customer --format full
+```
 
-### Priority Assessment
-- P1/P2 but blocked = Escalate blocker
-- P3/P4 with no activity = Consider closing
-- No priority set = Needs triage
+### 5. Identify issues
 
-## Output Format
+Flag issues matching these patterns:
+
+| Pattern | Criteria | Action |
+|---|---|---|
+| Stale | No updates 30+ days | Ping assignee or close |
+| Very stale | No updates 60+ days | Close with comment |
+| Blocked | Dependencies unresolved | Escalate blocker |
+| Orphaned | No assignee + no activity | Assign or close |
+| Priority mismatch | P1/P2 but blocked | Escalate the blocker first |
+
+**Verify:** cross-check flagged issues against dependency graph from step 3. Blocked issues with completed blockers should be unblocked immediately:
+
+```bash
+linear issues update ENG-123 --priority 2
+linear issues comment ENG-123 --body "Triaged: Needs unblocking before sprint"
+```
+
+### 6. Generate report
+
+Use this output format:
 
 ```
 BACKLOG TRIAGE: Team ENG
@@ -100,47 +97,8 @@ Stale: 12 (26%)
 Healthy: 25 (55%)
 ```
 
-## Commands Used
+**Verify:** confirm every recommended action references a real issue ID from the fetched data.
 
-```bash
-# FIRST: Ensure team context is set
-linear init  # If .linear.yaml doesn't exist
+## References
 
-# Get backlog issues (returns ALL issues, not just assigned)
-linear issues list --state Backlog --format full --limit 100
-
-# Filter by priority
-linear issues list --state Backlog --priority 1 --format full  # Urgent
-linear issues list --state Backlog --priority 2 --format full  # High
-
-# Filter by labels
-linear issues list --labels customer --format full
-linear issues list --labels bug --format full
-linear issues list --state Backlog --labels "customer,bug" --format full
-
-# Combine filters
-linear issues list --state Backlog --priority 1 --labels customer --format full
-
-# Check dependencies
-linear deps --team ENG
-
-# Update priority
-linear issues update ENG-123 --priority 2
-
-# Add a comment about triage
-linear issues comment ENG-123 --body "Triaged: Needs unblocking before sprint"
-```
-
-## Key Learnings
-
-- **`linear issues list` returns ALL issues** (not just assigned to you)
-- Use `--format full` for structured output
-- Combine filters: `--state Backlog --labels customer`
-- Priority values: 0=none, 1=urgent, 2=high, 3=normal, 4=low
-
-## Best Practices
-
-1. **Regular cadence** - Triage weekly or bi-weekly
-2. **Be decisive** - Close issues that won't be done
-3. **Document reasoning** - Add comments explaining priority changes
-4. **Involve stakeholders** - Flag issues needing product input
+- [Analysis framework](references/analysis-framework.md) — staleness thresholds, dependency health rules, priority assessment criteria
