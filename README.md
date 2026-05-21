@@ -477,6 +477,11 @@ linear deps --team ENG --project "Q1 Release" # Works with deps too
 # Filter by state (comma-separated)
 linear issues list --state "Backlog,Todo,In Progress" --team ENG
 
+# Filter by creation date
+linear issues list --created-since 7d              # created in the last 7 days (also 24h, 2w)
+linear issues list --created-after 2026-01-01      # ISO-8601 lower bound
+linear issues list --created-before 2026-03-31     # ISO-8601 upper bound
+
 # Pagination - offset-based for easy navigation
 linear issues list                           # First 10 issues (default)
 linear issues list --start 10 --limit 10     # Items 11-20
