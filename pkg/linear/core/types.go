@@ -659,6 +659,10 @@ type IssueFilter struct {
 	ProjectID  string   `json:"projectId,omitempty"`  // Filter by project ID
 	TeamID     string   `json:"teamId,omitempty"`     // Filter by team ID
 
+	// Date filters (ISO-8601 timestamps)
+	CreatedAfter  string `json:"createdAfter,omitempty"`  // Issues created on/after this timestamp
+	CreatedBefore string `json:"createdBefore,omitempty"` // Issues created on/before this timestamp
+
 	// Sorting
 	OrderBy   string `json:"orderBy,omitempty"`   // Sort field: "createdAt", "updatedAt", "priority"
 	Direction string `json:"direction,omitempty"` // Sort direction: "asc" or "desc"

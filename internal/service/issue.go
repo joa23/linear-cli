@@ -36,9 +36,12 @@ type SearchFilters struct {
 	Priority   *int
 	SearchTerm string
 	OrderBy    string
-	Limit      int
-	After      string
-	Format     format.Format
+	// Date filters (RFC3339 timestamps). Set via CLI --created-since/--created-after/--created-before.
+	CreatedAfter  string
+	CreatedBefore string
+	Limit         int
+	After         string
+	Format        format.Format
 }
 
 // Get retrieves a single issue by identifier (e.g., "CEN-123")
@@ -161,6 +164,8 @@ func (s *IssueService) Search(filters *SearchFilters) (string, error) {
 	linearFilters.Priority = filters.Priority
 	linearFilters.SearchTerm = filters.SearchTerm
 	linearFilters.OrderBy = filters.OrderBy
+	linearFilters.CreatedAfter = filters.CreatedAfter
+	linearFilters.CreatedBefore = filters.CreatedBefore
 
 	// Execute search
 	result, err := s.client.SearchIssues(linearFilters)
@@ -289,6 +294,8 @@ func (s *IssueService) SearchWithOutput(filters *SearchFilters, verbosity format
 	linearFilters.Priority = filters.Priority
 	linearFilters.SearchTerm = filters.SearchTerm
 	linearFilters.OrderBy = filters.OrderBy
+	linearFilters.CreatedAfter = filters.CreatedAfter
+	linearFilters.CreatedBefore = filters.CreatedBefore
 
 	// Execute search
 	result, err := s.client.SearchIssues(linearFilters)

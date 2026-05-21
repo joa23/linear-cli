@@ -26,9 +26,14 @@ type IssueSearchOptions struct {
 	HasDeps     bool
 	HasCircular bool
 	DepthMax    int
-	Limit       int
-	Format      string
-	Output      string
+	// Date filters. CreatedSince is a relative duration (24h, 7d, 2w);
+	// CreatedAfter/CreatedBefore are RFC3339 timestamps.
+	CreatedSince  string
+	CreatedAfter  string
+	CreatedBefore string
+	Limit         int
+	Format        string
+	Output        string
 }
 
 func newSearchCmd() *cobra.Command {
@@ -53,6 +58,11 @@ func newSearchCmd() *cobra.Command {
 		hasDeps       bool
 		hasCircular   bool
 		depthMax      int
+
+		// Date filters
+		createdSince  string
+		createdAfter  string
+		createdBefore string
 
 		// Output
 		limit      int
@@ -156,24 +166,27 @@ TIP: Use --format full for detailed output with descriptions.`,
 			switch entityType {
 			case "issues", "":
 				return searchIssues(deps, IssueSearchOptions{
-					TextQuery:   textQuery,
-					Team:        team,
-					Project:     project,
-					State:       state,
-					Priority:    priority,
-					Assignee:    assignee,
-					Cycle:       cycle,
-					Labels:      labels,
+					TextQuery:     textQuery,
+					Team:          team,
+					Project:       project,
+					State:         state,
+					Priority:      priority,
+					Assignee:      assignee,
+					Cycle:         cycle,
+					Labels:        labels,
 					ExcludeLabels: excludeLabels,
-					BlockedBy:   blockedBy,
-					Blocks:      blocks,
-					HasBlockers: hasBlockers,
-					HasDeps:     hasDeps,
-					HasCircular: hasCircular,
-					DepthMax:    depthMax,
-					Limit:       limit,
-					Format:      formatStr,
-					Output:      outputType,
+					BlockedBy:     blockedBy,
+					Blocks:        blocks,
+					HasBlockers:   hasBlockers,
+					HasDeps:       hasDeps,
+					HasCircular:   hasCircular,
+					DepthMax:      depthMax,
+					CreatedSince:  createdSince,
+					CreatedAfter:  createdAfter,
+					CreatedBefore: createdBefore,
+					Limit:         limit,
+					Format:        formatStr,
+					Output:        outputType,
 				})
 			case "cycles":
 				return searchCycles(deps, textQuery, team, limit, formatStr, outputType)
@@ -209,6 +222,11 @@ TIP: Use --format full for detailed output with descriptions.`,
 	cmd.Flags().BoolVar(&hasDeps, "has-dependencies", false, "Issues with dependencies")
 	cmd.Flags().BoolVar(&hasCircular, "has-circular-deps", false, "Issues in circular deps")
 	cmd.Flags().IntVar(&depthMax, "max-depth", 0, "Max dependency chain depth")
+
+	// Date filters
+	cmd.Flags().StringVar(&createdSince, "created-since", "", "Filter to issues created in the last duration (e.g. 24h, 7d, 2w)")
+	cmd.Flags().StringVar(&createdAfter, "created-after", "", "Filter to issues created at/after ISO-8601 timestamp")
+	cmd.Flags().StringVar(&createdBefore, "created-before", "", "Filter to issues created at/before ISO-8601 timestamp")
 
 	// Output
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of results")
@@ -262,6 +280,21 @@ func searchIssues(deps *Dependencies, opts IssueSearchOptions) error {
 	}
 	if opts.ExcludeLabels != "" {
 		filters.ExcludeLabelIDs = parseCommaSeparated(opts.ExcludeLabels)
+	}
+
+	// Date filters
+	if opts.CreatedSince != "" {
+		ts, err := parseCreatedSince(opts.CreatedSince)
+		if err != nil {
+			return err
+		}
+		filters.CreatedAfter = ts
+	}
+	if opts.CreatedAfter != "" {
+		filters.CreatedAfter = opts.CreatedAfter
+	}
+	if opts.CreatedBefore != "" {
+		filters.CreatedBefore = opts.CreatedBefore
 	}
 
 	// For dependency filters, use the Search service
