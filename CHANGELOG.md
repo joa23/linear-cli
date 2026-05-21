@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `issues export <issue-id> <folder>` — export a complete ticket into an LLM-ready folder: writes `<Identifier>.md` with the full description and all comments, downloads every inline image and uploaded-file attachment into `assets/`, and rewrites references to local relative paths. External attachment cards (GitHub, Figma, Slack) are listed under a References section.
 - `issues slug <issue-id>` — print a filesystem-friendly worktree/branch slug (e.g. `cen-123_fix_login_bug`): lowercase, underscore-separated, capped at 60 characters, trimming whole trailing words. Prints only the slug for use in scripts like `git worktree add "../$(linear issues slug CEN-123)"`.
 - `DownloadBytes` method on the attachment client returning raw content plus a suggested filename (no cache prefix) for programmatic use.
+- `issues list` date filters: `--created-since` (relative durations like `24h`, `7d`, `2w`), `--created-after` and `--created-before` (ISO-8601 timestamps) (#52, #50).
+- Restructured `triage` skill with an analysis-framework reference, plus skill-review CI workflows (#45).
+
+### Fixed
+
+- Include the `creator` field in issue GraphQL projections so it is populated on returned issues (#51, #49).
 
 ## [1.8.1] - 2026-05-06
 
