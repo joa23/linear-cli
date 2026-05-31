@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/joa23/linear-cli/internal/cache"
 	"github.com/joa23/linear-cli/pkg/linear/core"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -111,6 +112,23 @@ func runInit() error {
 		fmt.Println("✅ Updated CLAUDE.md")
 	}
 
+	// Warm the durable cache so subsequent `teams states/labels`, `users
+	// list --team`, and `projects list --team` calls skip the network.
+	// Best-effort: a warm failure shouldn't fail init.
+	fmt.Println()
+	fmt.Print("Warming team-context cache (states, labels, projects, members)... ")
+	tc, err := fetchTeamContext(client, selectedTeam.Key)
+	if err != nil {
+		fmt.Printf("skipped (%v)\n", err)
+	} else if store, serr := cache.NewStore(); serr != nil {
+		fmt.Printf("skipped (%v)\n", serr)
+	} else if serr := store.Save(tc); serr != nil {
+		fmt.Printf("skipped (%v)\n", serr)
+	} else {
+		fmt.Printf("done (%d states, %d labels, %d projects, %d members)\n",
+			len(tc.States), len(tc.Labels), len(tc.Projects), len(tc.Members))
+	}
+
 	fmt.Println()
 	fmt.Println("Done! You can now use Linear commands without specifying --team.")
 	fmt.Println()
@@ -118,6 +136,7 @@ func runInit() error {
 	fmt.Printf("  linear issues list\n")
 	fmt.Printf("  linear cycles list\n")
 	fmt.Printf("  linear projects list\n")
+	fmt.Printf("  linear teams states %s     # cache-hit, no network\n", selectedTeam.Key)
 
 	return nil
 }

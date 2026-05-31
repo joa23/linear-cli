@@ -1,7 +1,7 @@
 ---
 skill: linear
 description: Linear issue tracking - MUST READ before using Linear commands
-version: 1.0.0
+version: 1.2.1
 ---
 
 # Linear Issue Tracking - Complete Reference
@@ -53,6 +53,7 @@ linear i create <title> [flags]          # Create issue
 linear i update <ID> [flags]             # Update issue
 linear i comment <ID> -b "text"          # Add comment
 linear i react <ID> 👍                   # Add reaction
+linear i watch <ID> [flags]              # Poll until issue changes
 
 # Projects (alias: p)
 linear p list [--mine]                   # List projects
@@ -72,6 +73,14 @@ linear users list [--team <KEY>]         # List users
 linear search <query> [flags]            # Semantic search across all entities
 linear deps <ID>                         # Dependency graph
 linear deps --team <KEY>                 # All team dependencies
+
+# Durable team-context cache
+linear cache fetch <TEAM>                # Pull states/labels/projects/members
+linear cache list                        # List cached teams + freshness
+linear cache show <TEAM>                 # Inspect a cached team
+linear cache refresh [TEAM]              # Refresh one team or all
+linear cache clear [TEAM|--all]          # Remove cache entries
+linear cache path                        # Print cache root directory
 ```
 
 ## Output Formats
@@ -224,6 +233,119 @@ linear i create "Add OAuth integration" \
 cat spec.md | linear i create "Feature title" --team CEN -d -
 ```
 
+## Cached Team Context (NEW in v1.2)
+
+Workflow states, labels, projects, and team members are cached on disk
+under `~/.cache/linear/` (XDG `$XDG_CACHE_HOME/linear`). Reads stay local
+for 24h then re-fetch transparently. `linear init` warms the cache for
+the selected team automatically.
+
+**Why this matters for agents:** repeated "what states exist in MTD?"
+checks no longer cost a network round trip or token tax. The cache is
+shared across project checkouts on the same machine.
+
+```bash
+# Warm cache for a team (also done automatically by `linear init`)
+linear cache fetch MTD
+
+# Inspect what's cached
+linear cache list                    # all teams + last-fetched age
+linear cache show MTD                # full payload for one team
+
+# Force a fresh fetch when you know something changed upstream
+linear teams states MTD --refresh    # update cache + show fresh data
+linear cache refresh MTD             # update cache only
+
+# Cache-only mode (errors instead of hitting network)
+linear teams states MTD --cached     # for offline / no-network scripts
+
+# Bypass cache entirely
+linear teams states MTD --no-cache
+
+# Drop the cache (e.g. after switching workspaces)
+linear cache clear MTD
+linear cache clear --all
+```
+
+**Cache-aware commands:**
+- `linear teams states <TEAM>`
+- `linear teams labels <TEAM>`
+- `linear users list --team <TEAM>`
+- `linear projects list --team <TEAM>`
+
+These commands accept `--cached`, `--refresh`, and `--no-cache`. A
+single-line freshness footer prints to **stderr** when data came from
+cache (so JSON output stays pipe-clean for `| jq` etc.).
+
+**Token-fingerprint safety:** the cache stores a hash of the current
+access token. Logging in as a different OAuth identity transparently
+invalidates the old cache — no risk of mixing data across workspaces.
+
+**Hard expiry:** entries older than 7 days are treated as missing and
+silently re-fetched, regardless of any flags.
+
+## Watching Issues for Changes
+
+`linear issues watch <ID>` polls an issue and exits when any field changes.
+Useful for waiting on a human review, blocking automation on a state transition,
+or chaining a follow-up command when an issue moves.
+
+**Tracked fields:** state, assignee, priority, title, description, estimate,
+cycle, project, parent, labels, comment count.
+
+**When to use `linear issues watch` vs Unix `watch`:**
+
+| Goal | Use |
+|---|---|
+| Refresh a dashboard on screen | `watch -n 30 "linear ..."` (Unix `watch(1)`) |
+| Gate a follow-up command on a state change | `linear issues watch CEN-123 && next-step.sh` |
+| Stream changes as JSON for processing | `linear issues watch CEN-123 --watch --output json` |
+| Trigger a script when a field changes | `linear issues watch CEN-123 --exec '...'` |
+
+The built-in does **diff detection** (reports `Backlog -> In Progress`, not
+the current snapshot), exits 0 on first change, and exposes structured env
+vars to `--exec`. Reach for Unix `watch` when you just want a refreshing
+screen; reach for the built-in when something needs to happen *in response
+to* a change.
+
+```bash
+# Block until ANY field changes (default 30s polling, 1h timeout)
+linear i watch CEN-123
+
+# Faster polling, shorter timeout
+linear i watch CEN-123 --interval 10s --timeout 5m
+
+# Loop forever, printing every change as it happens
+linear i watch CEN-123 --watch
+
+# JSON output, one line per change set — pipe to jq
+linear i watch CEN-123 --output json | jq '.changes'
+
+# Trigger a follow-up command on each change. Env vars available inside --exec:
+#   LINEAR_ISSUE_ID, LINEAR_CHANGED_FIELDS,
+#   LINEAR_STATE_FROM/TO, LINEAR_ASSIGNEE_FROM/TO, etc.
+linear i watch CEN-123 --watch --exec 'say "issue updated: $LINEAR_CHANGED_FIELDS"'
+
+# Chain on state transition (single-shot exit)
+linear i watch CEN-123 && deploy.sh
+```
+
+**Flags:**
+- `-i, --interval <duration>` — Poll interval (default 30s, minimum 5s clamped automatically)
+- `-T, --timeout <duration>` — Give up after this long (default 1h, `0` = forever)
+- `-w, --watch` — Keep looping after first change (default: exit on first change)
+- `-x, --exec <cmd>` — Shell command to run on each detected change set
+- `-o, --output text|json` — Output format
+- `--quiet` — Suppress baseline/heartbeat output, only print actual changes
+
+**Exit codes:** `0` change detected · `1` error · `2` timeout reached with no changes · `130` ctrl-c.
+
+**Tips:**
+- For long waits, prefer `--interval 30s` or longer to stay friendly to the Linear API.
+- Use single-shot mode (no `--watch`) when you want to gate a subsequent command.
+- Use `--watch` mode when you want a live activity feed for an issue.
+- `LINEAR_*_FROM/TO` env vars are passed safely as separate env entries — they are not re-parsed by the shell, so issue titles with quotes/spaces in them are safe.
+
 ## Piping Support (Powerful!)
 
 **All description and body flags support stdin via `-`:**
@@ -368,6 +490,8 @@ linear i list --creator me --team CEN
 7. **Combine filters** - search is powerful with multiple constraints
 8. **Issue IDs work everywhere** - CEN-123 format, no team context needed
 9. **Cycle numbers need init** - Run `linear init` before using cycle numbers
+10. **Block on issue changes** - `linear i watch <ID>` exits when fields change; chain with `&&` to gate follow-up steps on a human review or state transition
+11. **Cache is your friend** - `teams states`, `teams labels`, `users list --team`, `projects list --team` are all cache-aware. After `linear init`, repeated "what's available?" checks cost zero network. Pass `--refresh` if you suspect Linear-side changes
 
 ## Flag Reference
 
@@ -397,6 +521,19 @@ linear i list --creator me --team CEN
 - `--max-depth <n>` - Max dependency depth
 - `-n, --limit <n>` - Results limit
 - `-f, --format <type>` - minimal, compact, full
+
+**Watch Flags:**
+- `-i, --interval <duration>` - Poll interval (default 30s, min 5s)
+- `-T, --timeout <duration>` - Give up after this long (default 1h, 0 = forever)
+- `-w, --watch` - Loop after first change instead of exiting
+- `-x, --exec <cmd>` - Shell command to run on each change set
+- `-o, --output text|json` - Output format
+- `--quiet` - Suppress baseline + heartbeat output
+
+**Cache Flags (on `teams states/labels`, `users list --team`, `projects list --team`):**
+- `--cached` - Use cache only; error if missing or stale (offline mode)
+- `--refresh` - Force a live fetch and update the cache entry
+- `--no-cache` - Bypass cache entirely (live fetch, no write-through)
 
 **Output Formats:**
 - `--format minimal` - IDs only (most token-efficient)

@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/internal/service"
@@ -32,6 +33,7 @@ func newProjectsListCmd() *cobra.Command {
 	var teamID string
 	var limit int
 	var formatStr, outputType string
+	var cached, refresh, noCache bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -77,22 +79,41 @@ func newProjectsListCmd() *cobra.Command {
 			if mine {
 				// --mine overrides team requirement
 				result, err = deps.Projects.ListUserProjectsWithOutput(limit, verbosity, output)
-			} else {
-				// Get team from flag or config
-				if teamID == "" {
-					teamID = GetDefaultTeam()
+				if err != nil {
+					return fmt.Errorf("failed to list projects: %w", err)
 				}
-				if teamID == "" {
-					return errors.New(ErrTeamRequired)
-				}
-
-				result, err = deps.Projects.ListByTeamWithOutput(teamID, limit, verbosity, output)
+				fmt.Println(result)
+				return nil
 			}
+
+			if teamID == "" {
+				teamID = GetDefaultTeam()
+			}
+			if teamID == "" {
+				return errors.New(ErrTeamRequired)
+			}
+
+			opts := cacheReadOptions{UseOnly: cached, Refresh: refresh, Bypass: noCache}
+			if tc, err := loadFromCache(deps, teamID, opts); err != nil {
+				return err
+			} else if tc != nil {
+				rendered, err := renderProjectsFromCache(tc.Projects, output.IsJSON())
+				if err != nil {
+					return err
+				}
+				fmt.Println(rendered)
+				printFreshnessFooter(cmd.ErrOrStderr(), time.Since(tc.FetchedAt), !tc.IsFresh())
+				return nil
+			}
+
+			result, err = deps.Projects.ListByTeamWithOutput(teamID, limit, verbosity, output)
 			if err != nil {
 				return fmt.Errorf("failed to list projects: %w", err)
 			}
-
 			fmt.Println(result)
+			if !noCache {
+				writeThroughCache(deps, teamID, cmd.ErrOrStderr())
+			}
 			return nil
 		},
 	}
@@ -102,7 +123,7 @@ func newProjectsListCmd() *cobra.Command {
 	cmd.Flags().IntVarP(&limit, "limit", "n", 25, "Number of projects to return")
 	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
-
+	addCacheReadFlags(cmd, &cached, &refresh, &noCache)
 	return cmd
 }
 

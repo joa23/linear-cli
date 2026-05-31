@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/internal/service"
@@ -28,16 +29,23 @@ func newUsersCmd() *cobra.Command {
 func newUsersListCmd() *cobra.Command {
 	var teamID string
 	var formatStr, outputType string
+	var cached, refresh, noCache bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List users",
-		Long:  "List users in the workspace or a specific team.",
-		Example: `  # List all users
+		Long: `List users in the workspace or a specific team.
+
+When --team is set, reads team membership from the durable cache when
+fresh. Workspace-wide lists (no --team) always hit the API.`,
+		Example: `  # List all users (live)
   linear users list
 
-  # List users in a team
+  # List users in a team (cache-aware)
   linear users list --team CEN
+
+  # Force a refresh
+  linear users list --team CEN --refresh
 
   # Output as JSON
   linear users list --output json`,
@@ -47,7 +55,6 @@ func newUsersListCmd() *cobra.Command {
 				return err
 			}
 
-			// Parse format flags
 			verbosity, err := format.ParseVerbosity(formatStr)
 			if err != nil {
 				return err
@@ -57,17 +64,30 @@ func newUsersListCmd() *cobra.Command {
 				return err
 			}
 
-			filters := &service.UserFilters{
-				TeamID: teamID,
-				Limit:  50,
+			if teamID != "" {
+				opts := cacheReadOptions{UseOnly: cached, Refresh: refresh, Bypass: noCache}
+				if tc, err := loadFromCache(deps, teamID, opts); err != nil {
+					return err
+				} else if tc != nil {
+					rendered, err := renderMembersFromCache(tc.Members, output.IsJSON())
+					if err != nil {
+						return err
+					}
+					fmt.Println(rendered)
+					printFreshnessFooter(cmd.ErrOrStderr(), time.Since(tc.FetchedAt), !tc.IsFresh())
+					return nil
+				}
 			}
 
+			filters := &service.UserFilters{TeamID: teamID, Limit: 50}
 			result, err := deps.Users.SearchWithOutput(filters, verbosity, output)
 			if err != nil {
 				return fmt.Errorf("failed to list users: %w", err)
 			}
-
 			fmt.Println(result)
+			if teamID != "" && !noCache {
+				writeThroughCache(deps, teamID, cmd.ErrOrStderr())
+			}
 			return nil
 		},
 	}
@@ -75,7 +95,7 @@ func newUsersListCmd() *cobra.Command {
 	cmd.Flags().StringVar(&teamID, "team", "", TeamFlagDescription)
 	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")
 	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output: text|json")
-
+	addCacheReadFlags(cmd, &cached, &refresh, &noCache)
 	return cmd
 }
 

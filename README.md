@@ -336,6 +336,20 @@ chmod +x weekly-report.sh
 watch -n 30 "linear issues list --priority 1 --output json | jq '.[] | {id: .identifier, title: .title, state: .state}'"
 ```
 
+#### Unix `watch` vs `linear issues watch` — which should I use?
+
+Two different tools for two different jobs:
+
+| Use case | Reach for |
+|---|---|
+| Passive monitoring — keep a live dashboard on screen | Unix `watch -n 30 "linear ..."` |
+| Automation — gate a follow-up command on an issue's state change | `linear issues watch <ID>` |
+| One-off: "tell me when CEN-123 moves" then exit | `linear issues watch CEN-123` |
+| Stream every change as JSON for processing | `linear issues watch <ID> --watch --output json` |
+| Run a script on each detected change | `linear issues watch <ID> --exec '...'` |
+
+The built-in `linear issues watch` does **diff detection** (it reports the transition `Backlog → In Progress`, not just the current state), exits with code `0` on first change so you can do `linear issues watch CEN-123 && deploy.sh`, and exposes structured env vars (`LINEAR_STATE_FROM`, `LINEAR_STATE_TO`, ...) for `--exec` hooks. Use Unix `watch` when you just want a refreshing screen; reach for the built-in when something needs to happen in response to a change.
+
 ### Claude Code Task Export
 
 Export Linear issues to Claude Code task format for seamless integration between planning and execution:

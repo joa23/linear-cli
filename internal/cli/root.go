@@ -78,6 +78,7 @@ Issues (alias: i):
   i dependencies <ID>          Show dependencies
   i blocked-by <ID>            Show blockers
   i blocking <ID>              Show what this blocks
+  i watch <ID> [flags]         Wait for issue to change (polling)
 
   Issue flags: -t team, -d description, -s state, -p priority (0-4),
                -e estimate, -l labels, -c cycle, -P project, -a assignee,
@@ -132,6 +133,14 @@ Skills:
   skills list                  List available Claude Code skills
   skills install [--all]       Install skills to .claude/skills/
 
+Cache:
+  cache fetch <TEAM>           Cache team enumeration data
+  cache list                   List cached teams + freshness
+  cache show <TEAM>            Inspect a cached team
+  cache refresh [TEAM]         Refresh one or all cached teams
+  cache clear [TEAM|--all]     Remove cache entries
+  cache path                   Print cache root directory
+
 Configuration:
   Run 'linear init' to set a default team. Creates .linear.yaml.`,
 		SilenceUsage:  true,
@@ -174,6 +183,9 @@ Configuration:
 
 		// Export
 		newTasksCmd(),
+
+		// Cache
+		newCacheCmd(),
 
 		// Skills
 		newSkillsCmd(),
