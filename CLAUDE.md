@@ -5,10 +5,16 @@ Linear CLI - A token-efficient CLI for Linear, written in Go.
 ## Commands
 
 ```bash
-make build    # Build binary (bin/linear)
-make test     # Run unit tests
-make clean    # Clean build artifacts
+make build     # Build binary (bin/linear)
+make install   # Build + install to $(BINDIR)/linear (default /opt/homebrew/bin)
+make uninstall # Remove the installed binary
+make test      # Run unit tests
+make clean     # Clean build artifacts
 ```
+
+**Note**: This fork is installed via `make install`, not Homebrew. Run `linear --version`
+and look for a `-dirty` or `-g<sha>` suffix to confirm the locally-built binary is on PATH.
+After editing source, `make install` rebuilds and replaces it in one step.
 
 ## Project Structure
 
