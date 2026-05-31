@@ -33,6 +33,7 @@ func newIssuesCmd() *cobra.Command {
 		newIssuesDependenciesCmd(),
 		newIssuesBlockedByCmd(),
 		newIssuesBlockingCmd(),
+		newIssuesWatchCmd(),
 	)
 
 	return issuesCmd
