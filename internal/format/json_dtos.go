@@ -6,6 +6,7 @@ import "github.com/joa23/linear-cli/pkg/linear/core"
 
 // IssueMinimalDTO contains only essential issue fields (~50 tokens)
 type IssueMinimalDTO struct {
+	ID         string `json:"id"`
 	Identifier string `json:"identifier"`
 	Title      string `json:"title"`
 	State      string `json:"state"`
@@ -13,6 +14,7 @@ type IssueMinimalDTO struct {
 
 // IssueCompactDTO contains key metadata (~150 tokens)
 type IssueCompactDTO struct {
+	ID         string   `json:"id"`
 	Identifier string   `json:"identifier"`
 	Title      string   `json:"title"`
 	State      string   `json:"state"`
@@ -29,6 +31,7 @@ type IssueCompactDTO struct {
 
 // issueBaseFields contains the shared fields between IssueDetailedDTO and IssueFullDTO.
 type issueBaseFields struct {
+	ID          string          `json:"id"`
 	Identifier  string          `json:"identifier"`
 	Title       string          `json:"title"`
 	Description string          `json:"description"`
@@ -229,6 +232,7 @@ type CommentRefDTO struct {
 // IssueToMinimalDTO converts an issue to minimal DTO
 func IssueToMinimalDTO(issue *core.Issue) IssueMinimalDTO {
 	return IssueMinimalDTO{
+		ID:         issue.ID,
 		Identifier: issue.Identifier,
 		Title:      issue.Title,
 		State:      issue.State.Name,
@@ -238,6 +242,7 @@ func IssueToMinimalDTO(issue *core.Issue) IssueMinimalDTO {
 // IssueToCompactDTO converts an issue to compact DTO
 func IssueToCompactDTO(issue *core.Issue) IssueCompactDTO {
 	dto := IssueCompactDTO{
+		ID:         issue.ID,
 		Identifier: issue.Identifier,
 		Title:      issue.Title,
 		State:      issue.State.Name,
@@ -273,6 +278,7 @@ func IssueToCompactDTO(issue *core.Issue) IssueCompactDTO {
 // populateIssueBase populates the shared base fields from a core.Issue.
 func populateIssueBase(issue *core.Issue) issueBaseFields {
 	base := issueBaseFields{
+		ID:          issue.ID,
 		Identifier:  issue.Identifier,
 		Title:       issue.Title,
 		Description: issue.Description,
