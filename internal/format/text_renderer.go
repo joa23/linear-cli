@@ -114,6 +114,10 @@ func (r *TextRenderer) issueCompact(issue *core.Issue) string {
 		b.WriteString(fmtSprintf("  Project: %s\n", issue.Project.Name))
 	}
 
+	if issue.ProjectMilestone != nil {
+		b.WriteString(fmtSprintf("  Milestone: %s\n", issue.ProjectMilestone.Name))
+	}
+
 	// Line 4: Parent/Children (if any)
 	if issue.Parent != nil {
 		b.WriteString(fmtSprintf("  Parent: %s\n", issue.Parent.Identifier))
@@ -393,6 +397,115 @@ func (r *TextRenderer) projectCompact(project *core.Project) string {
 	if len(issues) > 0 {
 		b.WriteString(fmtSprintf("  Issues: %d\n", len(issues)))
 	}
+
+	return b.String()
+}
+
+// --- Milestone Rendering ---
+
+func (r *TextRenderer) RenderMilestone(milestone *core.ProjectMilestone, verbosity Verbosity) string {
+	if milestone == nil {
+		return ""
+	}
+
+	switch verbosity {
+	case VerbosityMinimal:
+		return r.milestoneMinimal(milestone)
+	case VerbosityCompact:
+		return r.milestoneCompact(milestone)
+	case VerbosityDetailed, VerbosityFull:
+		return r.milestoneFull(milestone)
+	default:
+		return r.milestoneCompact(milestone)
+	}
+}
+
+func (r *TextRenderer) RenderMilestoneList(milestones []core.ProjectMilestone, verbosity Verbosity) string {
+	if len(milestones) == 0 {
+		return "No milestones found."
+	}
+
+	var b strings.Builder
+	b.WriteString(fmtSprintf("MILESTONES (%d)\n", len(milestones)))
+	b.WriteString(line(40))
+	b.WriteString("\n")
+
+	for _, milestone := range milestones {
+		b.WriteString(r.RenderMilestone(&milestone, verbosity))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+func (r *TextRenderer) milestoneMinimal(milestone *core.ProjectMilestone) string {
+	return fmtSprintf("%s [%s] %s", milestone.Name, milestone.Status, formatDate(milestone.TargetDate))
+}
+
+func (r *TextRenderer) milestoneCompact(milestone *core.ProjectMilestone) string {
+	var b strings.Builder
+
+	targetDate := "No target"
+	if milestone.TargetDate != "" {
+		targetDate = formatDate(milestone.TargetDate)
+	}
+
+	b.WriteString(fmtSprintf("%s [%s]\n", milestone.Name, milestone.Status))
+	b.WriteString(fmtSprintf("  Target: %s | Progress: %.0f%%", targetDate, milestone.Progress))
+	if milestone.Project != nil {
+		b.WriteString(fmtSprintf(" | Project: %s", milestone.Project.Name))
+	}
+	b.WriteString("\n")
+
+	if milestone.Description != "" {
+		b.WriteString(fmtSprintf("  %s\n", truncate(cleanDescription(milestone.Description), 100)))
+	}
+
+	if milestone.Issues != nil && len(milestone.Issues.Nodes) > 0 {
+		b.WriteString(fmtSprintf("  Issues: %d\n", len(milestone.Issues.Nodes)))
+	}
+
+	return b.String()
+}
+
+func (r *TextRenderer) milestoneFull(milestone *core.ProjectMilestone) string {
+	var b strings.Builder
+
+	b.WriteString(fmtSprintf("%s\n", milestone.Name))
+	b.WriteString(line(50))
+	b.WriteString("\n")
+	b.WriteString(fmtSprintf("Status: %s\n", milestone.Status))
+	b.WriteString(fmtSprintf("Progress: %.1f%%\n", milestone.Progress))
+	if milestone.TargetDate != "" {
+		b.WriteString(fmtSprintf("Target: %s\n", formatDate(milestone.TargetDate)))
+	}
+	if milestone.Project != nil {
+		b.WriteString(fmtSprintf("Project: %s\n", milestone.Project.Name))
+	}
+	if milestone.Description != "" {
+		b.WriteString("\nDESCRIPTION\n")
+		b.WriteString(line(40))
+		b.WriteString("\n")
+		b.WriteString(cleanDescription(milestone.Description))
+		b.WriteString("\n")
+	}
+
+	if milestone.Issues != nil && len(milestone.Issues.Nodes) > 0 {
+		b.WriteString(fmtSprintf("\nISSUES (%d)\n", len(milestone.Issues.Nodes)))
+		b.WriteString(line(40))
+		b.WriteString("\n")
+		for _, issue := range milestone.Issues.Nodes {
+			assignee := "Unassigned"
+			if issue.Assignee != nil {
+				assignee = "@" + issue.Assignee.Name
+			}
+			b.WriteString(fmtSprintf("  %s [%s] %s (%s)\n",
+				issue.Identifier, issue.State.Name, truncate(issue.Title, 40), assignee))
+		}
+	}
+
+	b.WriteString(fmtSprintf("\nCreated: %s\n", formatDateTime(milestone.CreatedAt)))
+	b.WriteString(fmtSprintf("Updated: %s\n", formatDateTime(milestone.UpdatedAt)))
 
 	return b.String()
 }

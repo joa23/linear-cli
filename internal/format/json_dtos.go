@@ -13,41 +13,43 @@ type IssueMinimalDTO struct {
 
 // IssueCompactDTO contains key metadata (~150 tokens)
 type IssueCompactDTO struct {
-	Identifier string   `json:"identifier"`
-	Title      string   `json:"title"`
-	State      string   `json:"state"`
-	Priority   *int     `json:"priority"`
-	Assignee   *string  `json:"assignee"`
-	Delegate   *string  `json:"delegate,omitempty"` // OAuth app delegate
-	Estimate   *float64 `json:"estimate"`
-	DueDate    *string  `json:"dueDate"`
-	CycleNumber *int    `json:"cycleNumber"`
-	ProjectName *string `json:"projectName"`
-	CreatedAt  string   `json:"createdAt"`
-	UpdatedAt  string   `json:"updatedAt"`
+	Identifier    string   `json:"identifier"`
+	Title         string   `json:"title"`
+	State         string   `json:"state"`
+	Priority      *int     `json:"priority"`
+	Assignee      *string  `json:"assignee"`
+	Delegate      *string  `json:"delegate,omitempty"` // OAuth app delegate
+	Estimate      *float64 `json:"estimate"`
+	DueDate       *string  `json:"dueDate"`
+	CycleNumber   *int     `json:"cycleNumber"`
+	ProjectName   *string  `json:"projectName"`
+	MilestoneName *string  `json:"milestoneName"`
+	CreatedAt     string   `json:"createdAt"`
+	UpdatedAt     string   `json:"updatedAt"`
 }
 
 // issueBaseFields contains the shared fields between IssueDetailedDTO and IssueFullDTO.
 type issueBaseFields struct {
-	Identifier  string          `json:"identifier"`
-	Title       string          `json:"title"`
-	Description string          `json:"description"`
-	State       *StateDTO       `json:"state"`
-	Priority    *int            `json:"priority"`
-	Assignee    *UserDTO        `json:"assignee"`
-	Delegate    *UserDTO        `json:"delegate,omitempty"`
-	Creator     *UserDTO        `json:"creator"`
-	Estimate    *float64        `json:"estimate"`
-	DueDate     *string         `json:"dueDate"`
-	Labels      []LabelDTO      `json:"labels"`
-	Project     *ProjectRefDTO  `json:"project"`
-	Cycle       *CycleRefDTO    `json:"cycle"`
-	Parent      *IssueRefDTO    `json:"parent"`
-	Children    []IssueRefDTO   `json:"children"`
-	Attachments []AttachmentDTO `json:"attachments"`
-	CreatedAt   string          `json:"createdAt"`
-	UpdatedAt   string          `json:"updatedAt"`
-	URL         string          `json:"url"`
+	Identifier  string           `json:"identifier"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	State       *StateDTO        `json:"state"`
+	Priority    *int             `json:"priority"`
+	Assignee    *UserDTO         `json:"assignee"`
+	Delegate    *UserDTO         `json:"delegate,omitempty"`
+	Creator     *UserDTO         `json:"creator"`
+	Estimate    *float64         `json:"estimate"`
+	DueDate     *string          `json:"dueDate"`
+	Labels      []LabelDTO       `json:"labels"`
+	Project     *ProjectRefDTO   `json:"project"`
+	Milestone   *MilestoneRefDTO `json:"milestone"`
+	Cycle       *CycleRefDTO     `json:"cycle"`
+	Parent      *IssueRefDTO     `json:"parent"`
+	Children    []IssueRefDTO    `json:"children"`
+	Attachments []AttachmentDTO  `json:"attachments"`
+	CreatedAt   string           `json:"createdAt"`
+	UpdatedAt   string           `json:"updatedAt"`
+	URL         string           `json:"url"`
 }
 
 // IssueFullDTO contains complete issue details (~500 tokens)
@@ -93,47 +95,62 @@ type CycleCompactDTO struct {
 
 // CycleFullDTO contains complete cycle details
 type CycleFullDTO struct {
-	Number                      int      `json:"number"`
-	Name                        string   `json:"name"`
-	Status                      string   `json:"status"`
-	StartsAt                    string   `json:"startsAt"`
-	EndsAt                      string   `json:"endsAt"`
-	Progress                    float64  `json:"progress"`
-	Description                 string   `json:"description"`
-	Team                        *TeamDTO `json:"team"`
-	ScopeHistory                []int    `json:"scopeHistory"`
-	CompletedScopeHistory       []int    `json:"completedScopeHistory"`
-	InProgressScopeHistory      []int    `json:"inProgressScopeHistory"`
-	IssueCountHistory           []int    `json:"issueCountHistory"`
-	CompletedIssueCountHistory  []int    `json:"completedIssueCountHistory"`
-	CreatedAt                   string   `json:"createdAt"`
-	UpdatedAt                   string   `json:"updatedAt"`
+	Number                     int      `json:"number"`
+	Name                       string   `json:"name"`
+	Status                     string   `json:"status"`
+	StartsAt                   string   `json:"startsAt"`
+	EndsAt                     string   `json:"endsAt"`
+	Progress                   float64  `json:"progress"`
+	Description                string   `json:"description"`
+	Team                       *TeamDTO `json:"team"`
+	ScopeHistory               []int    `json:"scopeHistory"`
+	CompletedScopeHistory      []int    `json:"completedScopeHistory"`
+	InProgressScopeHistory     []int    `json:"inProgressScopeHistory"`
+	IssueCountHistory          []int    `json:"issueCountHistory"`
+	CompletedIssueCountHistory []int    `json:"completedIssueCountHistory"`
+	CreatedAt                  string   `json:"createdAt"`
+	UpdatedAt                  string   `json:"updatedAt"`
 }
 
 // --- Project DTOs ---
 
 // ProjectDTO represents a project in JSON format
 type ProjectDTO struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	State       string          `json:"state"`
-	Content     string          `json:"content"`
-	Issues      []IssueRefDTO   `json:"issues"`
-	CreatedAt   string          `json:"createdAt"`
-	UpdatedAt   string          `json:"updatedAt"`
+	ID          string        `json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	State       string        `json:"state"`
+	Content     string        `json:"content"`
+	Issues      []IssueRefDTO `json:"issues"`
+	CreatedAt   string        `json:"createdAt"`
+	UpdatedAt   string        `json:"updatedAt"`
+}
+
+// MilestoneDTO represents a project milestone in JSON format.
+type MilestoneDTO struct {
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	TargetDate  string         `json:"targetDate"`
+	Status      string         `json:"status"`
+	Progress    float64        `json:"progress"`
+	Project     *ProjectRefDTO `json:"project"`
+	Issues      []IssueRefDTO  `json:"issues"`
+	CreatedAt   string         `json:"createdAt"`
+	UpdatedAt   string         `json:"updatedAt"`
+	ArchivedAt  *string        `json:"archivedAt,omitempty"`
 }
 
 // --- Team DTOs ---
 
 // TeamDTO represents a team in JSON format
 type TeamDTO struct {
-	ID                   string          `json:"id"`
-	Key                  string          `json:"key"`
-	Name                 string          `json:"name"`
-	Description          string          `json:"description"`
-	IssueEstimationType  string          `json:"issueEstimationType"`
-	EstimateScale        *EstimateScale  `json:"estimateScale"`
+	ID                  string         `json:"id"`
+	Key                 string         `json:"key"`
+	Name                string         `json:"name"`
+	Description         string         `json:"description"`
+	IssueEstimationType string         `json:"issueEstimationType"`
+	EstimateScale       *EstimateScale `json:"estimateScale"`
 }
 
 // EstimateScale represents the estimation scale for a team
@@ -146,14 +163,14 @@ type EstimateScale struct {
 
 // UserDTO represents a user in JSON format
 type UserDTO struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	DisplayName string     `json:"displayName"`
-	Email       string     `json:"email"`
-	Active      bool       `json:"active"`
-	Admin       bool       `json:"admin"`
-	Teams       []TeamRef  `json:"teams"`
-	CreatedAt   string     `json:"createdAt"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	DisplayName string    `json:"displayName"`
+	Email       string    `json:"email"`
+	Active      bool      `json:"active"`
+	Admin       bool      `json:"admin"`
+	Teams       []TeamRef `json:"teams"`
+	CreatedAt   string    `json:"createdAt"`
 }
 
 // TeamRef is a minimal team reference
@@ -166,13 +183,13 @@ type TeamRef struct {
 
 // CommentDTO represents a comment in JSON format
 type CommentDTO struct {
-	ID        string        `json:"id"`
-	Body      string        `json:"body"`
-	User      *UserDTO      `json:"user"`
-	Issue     *IssueRefDTO  `json:"issue"`
+	ID        string         `json:"id"`
+	Body      string         `json:"body"`
+	User      *UserDTO       `json:"user"`
+	Issue     *IssueRefDTO   `json:"issue"`
 	Parent    *CommentRefDTO `json:"parent"`
-	CreatedAt string        `json:"createdAt"`
-	UpdatedAt string        `json:"updatedAt"`
+	CreatedAt string         `json:"createdAt"`
+	UpdatedAt string         `json:"updatedAt"`
 }
 
 // --- Reference DTOs (nested objects) ---
@@ -191,6 +208,12 @@ type LabelDTO struct {
 
 // ProjectRefDTO is a minimal project reference
 type ProjectRefDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// MilestoneRefDTO is a minimal project milestone reference.
+type MilestoneRefDTO struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
@@ -267,6 +290,11 @@ func IssueToCompactDTO(issue *core.Issue) IssueCompactDTO {
 		dto.ProjectName = &name
 	}
 
+	if issue.ProjectMilestone != nil {
+		name := issue.ProjectMilestone.Name
+		dto.MilestoneName = &name
+	}
+
 	return dto
 }
 
@@ -326,6 +354,13 @@ func populateIssueBase(issue *core.Issue) issueBaseFields {
 		base.Project = &ProjectRefDTO{
 			ID:   issue.Project.ID,
 			Name: issue.Project.Name,
+		}
+	}
+
+	if issue.ProjectMilestone != nil {
+		base.Milestone = &MilestoneRefDTO{
+			ID:   issue.ProjectMilestone.ID,
+			Name: issue.ProjectMilestone.Name,
 		}
 	}
 
@@ -396,8 +431,8 @@ func IssueToDetailedDTO(issue *core.Issue) IssueDetailedDTO {
 		dto.Comments = make([]CommentSummaryDTO, len(issue.Comments.Nodes))
 		for i, comment := range issue.Comments.Nodes {
 			dto.Comments[i] = CommentSummaryDTO{
-				ID:        comment.ID,
-				Body:      truncate(cleanDescription(comment.Body), 200),
+				ID:   comment.ID,
+				Body: truncate(cleanDescription(comment.Body), 200),
 				User: &UserDTO{
 					ID:   comment.User.ID,
 					Name: comment.User.Name,
@@ -486,6 +521,41 @@ func ProjectToDTO(project *core.Project) ProjectDTO {
 	if len(issues) > 0 {
 		dto.Issues = make([]IssueRefDTO, len(issues))
 		for i, issue := range issues {
+			dto.Issues[i] = IssueRefDTO{
+				Identifier: issue.Identifier,
+				Title:      issue.Title,
+				State:      issue.State.Name,
+			}
+		}
+	}
+
+	return dto
+}
+
+// MilestoneToDTO converts a project milestone to DTO.
+func MilestoneToDTO(milestone *core.ProjectMilestone) MilestoneDTO {
+	dto := MilestoneDTO{
+		ID:          milestone.ID,
+		Name:        milestone.Name,
+		Description: milestone.Description,
+		TargetDate:  milestone.TargetDate,
+		Status:      milestone.Status,
+		Progress:    milestone.Progress,
+		CreatedAt:   milestone.CreatedAt,
+		UpdatedAt:   milestone.UpdatedAt,
+		ArchivedAt:  milestone.ArchivedAt,
+	}
+
+	if milestone.Project != nil {
+		dto.Project = &ProjectRefDTO{
+			ID:   milestone.Project.ID,
+			Name: milestone.Project.Name,
+		}
+	}
+
+	if milestone.Issues != nil && len(milestone.Issues.Nodes) > 0 {
+		dto.Issues = make([]IssueRefDTO, len(milestone.Issues.Nodes))
+		for i, issue := range milestone.Issues.Nodes {
 			dto.Issues[i] = IssueRefDTO{
 				Identifier: issue.Identifier,
 				Title:      issue.Title,

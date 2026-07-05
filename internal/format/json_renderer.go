@@ -129,6 +129,30 @@ func (r *JSONRenderer) RenderProjectList(projects []core.Project, verbosity Verb
 	return r.marshal(dtos)
 }
 
+// --- Milestone Rendering ---
+
+func (r *JSONRenderer) RenderMilestone(milestone *core.ProjectMilestone, verbosity Verbosity) string {
+	if milestone == nil {
+		return r.renderError("Milestone is nil")
+	}
+
+	dto := MilestoneToDTO(milestone)
+	return r.marshal(dto)
+}
+
+func (r *JSONRenderer) RenderMilestoneList(milestones []core.ProjectMilestone, verbosity Verbosity) string {
+	if len(milestones) == 0 {
+		return "[]"
+	}
+
+	dtos := make([]MilestoneDTO, len(milestones))
+	for i, milestone := range milestones {
+		dtos[i] = MilestoneToDTO(&milestone)
+	}
+
+	return r.marshal(dtos)
+}
+
 // --- Team Rendering ---
 
 func (r *JSONRenderer) RenderTeam(team *core.Team, verbosity Verbosity) string {
