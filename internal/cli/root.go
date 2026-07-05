@@ -81,7 +81,8 @@ Issues (alias: i):
 
   Issue flags: -t team, -d description, -s state, -p priority (0-4),
                -e estimate, -l labels, -c cycle, -P project, -a assignee,
-               --parent, --blocked-by, --depends-on, --attach, --due, --title
+               -m milestone, --parent, --blocked-by, --depends-on,
+               --attach, --due, --title
   Comment/Reply flags: -b body, --attach <file> (inline image embed)
 
 Projects (alias: p):
@@ -91,6 +92,13 @@ Projects (alias: p):
   p update <ID> [flags]        Update project
 
   Project flags: -t team, -d description, -s state, -l lead, -n name
+
+Milestones (alias: m):
+  m list --project <name|id>    List project milestones
+  m get <ID|name>               Get milestone details
+  m create <name> [flags]       Create milestone
+  m update <ID|name> [flags]    Update milestone
+  m delete <ID|name>            Delete milestone
 
 Cycles (alias: c):
   c list [--team <KEY>]        List cycles
@@ -161,6 +169,7 @@ Configuration:
 		// Resources
 		newIssuesCmd(),
 		newProjectsCmd(),
+		newMilestonesCmd(),
 		newCyclesCmd(),
 		newTeamsCmd(),
 		newUsersCmd(),

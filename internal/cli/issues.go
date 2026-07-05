@@ -46,6 +46,7 @@ func newIssuesListCmd() *cobra.Command {
 		priority   string
 		assignee   string
 		cycle      string
+		milestone  string
 		labels     string
 		excludeLabels string
 		sortBy     string
@@ -86,7 +87,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
     --priority 1 \
     --assignee johannes.zillmann@centrum-ai.com \
     --cycle 65 \
-    --project "My Project" \
+    --milestone "Beta" \
     --labels "customer,bug" \
     --limit 50 \
     --format full
@@ -163,6 +164,9 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 			if cycle != "" {
 				filters.CycleID = cycle
 			}
+			if milestone != "" {
+				filters.MilestoneID = milestone
+			}
 			if project != "" {
 				filters.ProjectID = project
 			}
@@ -205,6 +209,7 @@ TIP: Use --format full for detailed output, --format minimal for concise output.
 	cmd.Flags().StringVar(&priority, "priority", "", "Filter by priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Filter by assignee (email or 'me')")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Filter by cycle (number, 'current', or 'next')")
+	cmd.Flags().StringVarP(&milestone, "milestone", "m", "", "Filter by project milestone (name or UUID)")
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Filter by labels (comma-separated)")
 	cmd.Flags().StringVarP(&excludeLabels, "exclude-labels", "L", "", "Exclude issues with these labels (comma-separated)")
 	cmd.Flags().StringVarP(&sortBy, "sort", "s", "", "Sort by: created, updated")
@@ -289,6 +294,7 @@ func newIssuesCreateCmd() *cobra.Command {
 		labels      string
 		cycle       string
 		project     string
+		milestone   string
 		assignee    string
 		dueDate     string
 		parent      string
@@ -322,6 +328,7 @@ TIP: Run 'linear init' first to set default team.`,
     --assignee stefan@centrum-ai.com \
     --estimate 5 \
     --cycle 65 \
+    --milestone "Beta" \
     --labels "backend,security" \
     --blocked-by CEN-99 \
     --depends-on CEN-98,CEN-97 \
@@ -414,6 +421,9 @@ TIP: Run 'linear init' first to set default team.`,
 			if project != "" {
 				input.ProjectID = project
 			}
+			if milestone != "" {
+				input.ProjectMilestoneID = milestone
+			}
 			if assignee != "" {
 				input.AssigneeID = assignee
 			}
@@ -449,6 +459,7 @@ TIP: Run 'linear init' first to set default team.`,
 	cmd.Flags().StringVarP(&labels, "labels", "l", "", "Comma-separated label names/IDs")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Cycle number or name (e.g., 'current', 'next')")
 	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
+	cmd.Flags().StringVarP(&milestone, "milestone", "m", "", "Project milestone name or UUID")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Assignee name or email (use 'me' for yourself)")
 	cmd.Flags().StringVar(&dueDate, "due", "", "Due date YYYY-MM-DD")
 	cmd.Flags().StringVar(&parent, "parent", "", "Parent issue ID (for sub-issues)")
@@ -472,6 +483,7 @@ func newIssuesUpdateCmd() *cobra.Command {
 		removeLabels string
 		cycle        string
 		project      string
+		milestone    string
 		assignee     string
 		dueDate      string
 		parent       string
@@ -523,7 +535,7 @@ LABEL MODES:
 				return err
 			}
 
-// Get team from flag or config (for cycle resolution)
+			// Get team from flag or config (for cycle resolution)
 			if team == "" {
 				team = GetDefaultTeam()
 			}
@@ -534,6 +546,7 @@ LABEL MODES:
 				priority != "" || estimate != "" || labels != "" ||
 				addLabels != "" || removeLabels != "" ||
 				cycle != "" || project != "" || assignee != "" ||
+				milestone != "" ||
 				dueDate != "" || parent != "" || dependsOn != "" || blockedBy != "" ||
 				len(attachFiles) > 0
 
@@ -604,6 +617,9 @@ LABEL MODES:
 			if project != "" {
 				input.ProjectID = &project
 			}
+			if milestone != "" {
+				input.ProjectMilestoneID = &milestone
+			}
 			if assignee != "" {
 				input.AssigneeID = &assignee
 			}
@@ -644,6 +660,7 @@ LABEL MODES:
 	cmd.Flags().StringVar(&removeLabels, "remove-labels", "", "Remove specific labels without affecting others (comma-separated)")
 	cmd.Flags().StringVarP(&cycle, "cycle", "c", "", "Update cycle number or name")
 	cmd.Flags().StringVarP(&project, "project", "P", "", ProjectFlagDescription)
+	cmd.Flags().StringVarP(&milestone, "milestone", "m", "", "Update project milestone name or UUID")
 	cmd.Flags().StringVarP(&assignee, "assignee", "a", "", "Update assignee name or email (use 'me' for yourself)")
 	cmd.Flags().StringVar(&dueDate, "due", "", "Update due date YYYY-MM-DD")
 	cmd.Flags().StringVar(&parent, "parent", "", "Update parent issue")

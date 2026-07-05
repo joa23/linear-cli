@@ -6,6 +6,7 @@ import (
 	"github.com/joa23/linear-cli/pkg/linear/core"
 	"github.com/joa23/linear-cli/pkg/linear/cycles"
 	"github.com/joa23/linear-cli/pkg/linear/issues"
+	"github.com/joa23/linear-cli/pkg/linear/milestones"
 	"github.com/joa23/linear-cli/pkg/linear/projects"
 	"github.com/joa23/linear-cli/pkg/linear/teams"
 	"github.com/joa23/linear-cli/pkg/linear/workflows"
@@ -30,6 +31,7 @@ type IssueClientOperations interface {
 	ResolveCycleIdentifier(numberOrNameOrID, teamID string) (string, error)
 	ResolveLabelIdentifier(labelName, teamID string) (string, error)
 	ResolveProjectIdentifier(nameOrID, teamID string) (string, error)
+	ResolveProjectMilestoneIdentifier(nameOrID, projectID string) (string, error)
 
 	// Relation operations
 	CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error
@@ -74,6 +76,22 @@ type ProjectClientOperations interface {
 	TeamClient() *teams.Client
 }
 
+// MilestoneClientOperations defines the minimal interface needed by MilestoneService.
+type MilestoneClientOperations interface {
+	ListProjectMilestones(projectID string, limit int) ([]core.ProjectMilestone, error)
+	GetProjectMilestone(id string) (*core.ProjectMilestone, error)
+	CreateProjectMilestone(input *core.CreateProjectMilestoneInput) (*core.ProjectMilestone, error)
+	UpdateProjectMilestone(id string, input *core.UpdateProjectMilestoneInput) (*core.ProjectMilestone, error)
+	DeleteProjectMilestone(id string) error
+
+	ResolveTeamIdentifier(keyOrName string) (string, error)
+	ResolveProjectIdentifier(nameOrID, teamID string) (string, error)
+	ResolveProjectMilestoneIdentifier(nameOrID, projectID string) (string, error)
+
+	MilestoneClient() *milestones.Client
+	ProjectClient() *projects.Client
+}
+
 // UserClientOperations defines the minimal interface needed by UserService
 type UserClientOperations interface {
 	// Smart resolver-aware methods (kept in Phase 2)
@@ -99,6 +117,7 @@ type SearchClientOperations interface {
 	ResolveCycleIdentifier(numberOrNameOrID, teamID string) (string, error)
 	ResolveLabelIdentifier(labelName, teamID string) (string, error)
 	ResolveProjectIdentifier(nameOrID, teamID string) (string, error)
+	ResolveProjectMilestoneIdentifier(nameOrID, projectID string) (string, error)
 
 	// Sub-client access (Phase 2 - use sub-clients directly)
 	IssueClient() *issues.Client
