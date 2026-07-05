@@ -47,7 +47,7 @@ team: CEN
 project: my-project  # optional — used when --project flag is omitted
 ```
 
-When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `search`, `deps`) will use this default. Explicit `--project` flags always override it.
+When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `milestones`, `search`, `deps`) will use this default. Explicit `--project` flags always override it.
 
 ### Authentication Modes
 
@@ -109,6 +109,7 @@ linear issues get CEN-123 --format minimal --output json
 - `issues list`, `issues get`
 - `cycles list`, `cycles get`, `cycles analyze`
 - `projects list`, `projects get`
+- `milestones list`, `milestones get`, `milestones create`, `milestones update`
 - `teams list`, `teams get`, `teams labels`, `teams states`
 - `users list`, `users get`, `users me`
 - `search` (all search operations)
@@ -130,6 +131,9 @@ linear issues list --priority 1 --format full
 
 # Get issues in specific cycle
 linear issues list --cycle 65 --format full
+
+# Get issues in a project milestone
+linear issues list --project "Q3 Launch" --milestone Beta --format full
 
 # Filter by assignee
 linear issues list --assignee me --format full
@@ -166,7 +170,22 @@ linear issues create "Implement feature" \
   --assignee me \
   --estimate 5 \
   --cycle 65 \
+  --project "Q3 Launch" \
+  --milestone Beta \
   --labels "backend,security"
+```
+
+#### Milestone Operations
+```bash
+# List milestones for a project
+linear milestones list --project "Q3 Launch"
+
+# Create and update milestones
+linear milestones create Beta --project "Q3 Launch" --target-date 2026-08-01
+linear milestones update Beta --project "Q3 Launch" --name "Private beta"
+
+# Assign an issue to a milestone
+linear issues update CEN-123 --project "Q3 Launch" --milestone Beta
 ```
 
 #### Working with Team Context

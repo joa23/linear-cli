@@ -84,6 +84,7 @@ linear auth login
   - [Search](#search)
   - [Dependencies](#dependencies)
   - [Projects](#projects)
+  - [Milestones](#milestones)
   - [Cycles](#cycles)
   - [Teams](#teams)
   - [Labels](#labels)
@@ -474,6 +475,9 @@ linear issues list --project "Q1 Release"    # Filter by project name or UUID
 linear search "auth" --project "Q1 Release"  # Works with search too
 linear deps --team ENG --project "Q1 Release" # Works with deps too
 
+# Filter by project milestone
+linear issues list --project "Q1 Release" --milestone "Beta"
+
 # Filter by state (comma-separated)
 linear issues list --state "Backlog,Todo,In Progress" --team ENG
 
@@ -504,6 +508,7 @@ linear issues create "Implement OAuth2 login" \
   --assignee me \
   --estimate 5 \
   --cycle current \
+  --milestone "Beta" \
   --labels "backend,security" \
   --due 2026-03-31
 
@@ -520,6 +525,7 @@ linear issues update ENG-123 \
   --state Done \
   --assignee alice \
   --priority 1 \
+  --milestone "Beta" \
   --labels "urgent,hotfix" \
   --due 2026-02-15
 
@@ -640,6 +646,18 @@ linear projects list --mine                  # Your projects only
 linear projects get PROJECT-ID
 linear projects create "Q1 Release" --team ENG
 linear projects update PROJECT-ID --state completed
+```
+
+### Milestones
+
+Project milestones group issues inside a Linear project:
+
+```bash
+linear milestones list --project "Q1 Release"
+linear milestones get "Beta" --project "Q1 Release"
+linear milestones create "Beta" --project "Q1 Release" --target-date 2026-08-01
+linear milestones update "Beta" --project "Q1 Release" --name "Private beta"
+linear milestones delete MILESTONE-ID --project "Q1 Release"
 ```
 
 ### Cycles
