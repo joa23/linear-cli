@@ -101,14 +101,14 @@ func (u *User) UnmarshalJSON(data []byte) error {
 
 // Team represents a Linear team
 type Team struct {
-	ID                         string   `json:"id"`
-	Name                       string   `json:"name"`
-	Key                        string   `json:"key"`
-	Description                string   `json:"description"`
-	IssueEstimationType        string   `json:"issueEstimationType,omitempty"`        // notUsed, exponential, fibonacci, linear, tShirt
-	IssueEstimationAllowZero   bool     `json:"issueEstimationAllowZero,omitempty"`   // Whether 0 is allowed as estimate
-	IssueEstimationExtended    bool     `json:"issueEstimationExtended,omitempty"`    // Whether extended estimates are enabled
-	DefaultIssueEstimate       *float64 `json:"defaultIssueEstimate,omitempty"`       // Default estimate for new issues
+	ID                       string   `json:"id"`
+	Name                     string   `json:"name"`
+	Key                      string   `json:"key"`
+	Description              string   `json:"description"`
+	IssueEstimationType      string   `json:"issueEstimationType,omitempty"`      // notUsed, exponential, fibonacci, linear, tShirt
+	IssueEstimationAllowZero bool     `json:"issueEstimationAllowZero,omitempty"` // Whether 0 is allowed as estimate
+	IssueEstimationExtended  bool     `json:"issueEstimationExtended,omitempty"`  // Whether extended estimates are enabled
+	DefaultIssueEstimate     *float64 `json:"defaultIssueEstimate,omitempty"`     // Default estimate for new issues
 }
 
 // EstimateScale represents the available estimate values for a team
@@ -191,35 +191,36 @@ type WorkflowState struct {
 
 // Issue represents a Linear issue
 type Issue struct {
-	ID          string                 `json:"id"`
-	Identifier  string                 `json:"identifier"`
-	Title       string                 `json:"title"`
-	Description string                 `json:"description"`
+	ID          string `json:"id"`
+	Identifier  string `json:"identifier"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 	State       struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"state"`
-	Project  *Project               `json:"project,omitempty"`
-	Creator  *User                  `json:"creator,omitempty"`
-	Assignee *User                  `json:"assignee,omitempty"`
-	Delegate *User                  `json:"delegate,omitempty"` // Agent user delegated to work on issue (OAuth apps)
-	Parent   *ParentIssue           `json:"parent,omitempty"`
-	Children ChildrenNodes          `json:"children,omitempty"`
-	Cycle    *CycleReference        `json:"cycle,omitempty"`
-	Labels   *LabelConnection       `json:"labels,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-	Priority  *int                   `json:"priority,omitempty"`
-	Estimate  *float64               `json:"estimate,omitempty"`
-	DueDate   *string                `json:"dueDate,omitempty"`
-	CreatedAt string                 `json:"createdAt"`
-	UpdatedAt string                 `json:"updatedAt"`
-	URL       string                 `json:"url"`
-	
+	Project          *Project               `json:"project,omitempty"`
+	ProjectMilestone *ProjectMilestone      `json:"projectMilestone,omitempty"`
+	Creator          *User                  `json:"creator,omitempty"`
+	Assignee         *User                  `json:"assignee,omitempty"`
+	Delegate         *User                  `json:"delegate,omitempty"` // Agent user delegated to work on issue (OAuth apps)
+	Parent           *ParentIssue           `json:"parent,omitempty"`
+	Children         ChildrenNodes          `json:"children,omitempty"`
+	Cycle            *CycleReference        `json:"cycle,omitempty"`
+	Labels           *LabelConnection       `json:"labels,omitempty"`
+	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	Priority         *int                   `json:"priority,omitempty"`
+	Estimate         *float64               `json:"estimate,omitempty"`
+	DueDate          *string                `json:"dueDate,omitempty"`
+	CreatedAt        string                 `json:"createdAt"`
+	UpdatedAt        string                 `json:"updatedAt"`
+	URL              string                 `json:"url"`
+
 	// Attachment support
-	AttachmentCount int                    `json:"attachmentCount"`  // Total number of attachments
-	HasAttachments  bool                   `json:"hasAttachments"`   // Computed: AttachmentCount > 0
-	Attachments     *AttachmentConnection  `json:"attachments,omitempty"`
-	Comments        *CommentConnection     `json:"comments,omitempty"`
+	AttachmentCount int                   `json:"attachmentCount"` // Total number of attachments
+	HasAttachments  bool                  `json:"hasAttachments"`  // Computed: AttachmentCount > 0
+	Attachments     *AttachmentConnection `json:"attachments,omitempty"`
+	Comments        *CommentConnection    `json:"comments,omitempty"`
 }
 
 // AttachmentConnection represents a paginated collection of attachments
@@ -255,10 +256,10 @@ type IssueCompact struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"state"`
-	Assignee  *User    `json:"assignee,omitempty"`
-	Priority  *int     `json:"priority,omitempty"`
-	CreatedAt string   `json:"createdAt"`
-	UpdatedAt string   `json:"updatedAt"`
+	Assignee  *User  `json:"assignee,omitempty"`
+	Priority  *int   `json:"priority,omitempty"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 	Parent    *struct {
 		ID         string `json:"id"`
 		Identifier string `json:"identifier"`
@@ -341,24 +342,24 @@ func (i *Issue) ToCompact() IssueCompact {
 // Attachment represents a file attachment on an issue
 // Based on Linear's GraphQL schema research
 type Attachment struct {
-	ID               string                 `json:"id"`
-	URL              string                 `json:"url"`
-	Title            string                 `json:"title"`
-	Subtitle         string                 `json:"subtitle,omitempty"`
-	Filename         string                 `json:"filename,omitempty"`        // From UploadFile if available
-	ContentType      string                 `json:"contentType,omitempty"`     // From UploadFile if available  
-	Size             int64                  `json:"size,omitempty"`            // From UploadFile if available
-	CreatedAt        string                 `json:"createdAt"`
-	UpdatedAt        string                 `json:"updatedAt"`
-	ArchivedAt       *string                `json:"archivedAt,omitempty"`
-	Creator          *User                  `json:"creator,omitempty"`
-	ExternalCreator  *ExternalUser          `json:"externalUserCreator,omitempty"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`        // Custom metadata
-	Source           map[string]interface{} `json:"source,omitempty"`          // Source information
-	SourceType       string                 `json:"sourceType,omitempty"`
-	GroupBySource    bool                   `json:"groupBySource"`
-	Issue            *Issue                 `json:"issue,omitempty"`           // Parent issue
-	OriginalIssue    *Issue                 `json:"originalIssue,omitempty"`   // If moved/copied
+	ID              string                 `json:"id"`
+	URL             string                 `json:"url"`
+	Title           string                 `json:"title"`
+	Subtitle        string                 `json:"subtitle,omitempty"`
+	Filename        string                 `json:"filename,omitempty"`    // From UploadFile if available
+	ContentType     string                 `json:"contentType,omitempty"` // From UploadFile if available
+	Size            int64                  `json:"size,omitempty"`        // From UploadFile if available
+	CreatedAt       string                 `json:"createdAt"`
+	UpdatedAt       string                 `json:"updatedAt"`
+	ArchivedAt      *string                `json:"archivedAt,omitempty"`
+	Creator         *User                  `json:"creator,omitempty"`
+	ExternalCreator *ExternalUser          `json:"externalUserCreator,omitempty"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"` // Custom metadata
+	Source          map[string]interface{} `json:"source,omitempty"`   // Source information
+	SourceType      string                 `json:"sourceType,omitempty"`
+	GroupBySource   bool                   `json:"groupBySource"`
+	Issue           *Issue                 `json:"issue,omitempty"`         // Parent issue
+	OriginalIssue   *Issue                 `json:"originalIssue,omitempty"` // If moved/copied
 }
 
 // ExternalUser represents a user from external systems (like Slack)
@@ -387,28 +388,43 @@ type SubIssue struct {
 
 // ParentIssue represents a parent issue
 type ParentIssue struct {
-	ID          string                 `json:"id"`
-	Identifier  string                 `json:"identifier"`
-	Title       string                 `json:"title"`
-	Description string                 `json:"description"`
+	ID          string `json:"id"`
+	Identifier  string `json:"identifier"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 	State       struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"state"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Project represents a Linear project
 type Project struct {
 	ID          string                 `json:"id"`
 	Name        string                 `json:"name"`
-	Description string                 `json:"description"`         // Short description (255 char limit)
-	Content     string                 `json:"content,omitempty"`   // Long markdown content (no limit)
-	State       string                 `json:"state"`               // planned, started, completed, etc.
+	Description string                 `json:"description"`       // Short description (255 char limit)
+	Content     string                 `json:"content,omitempty"` // Long markdown content (no limit)
+	State       string                 `json:"state"`             // planned, started, completed, etc.
 	Issues      *IssueConnection       `json:"issues,omitempty"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt   string                 `json:"createdAt"`
 	UpdatedAt   string                 `json:"updatedAt"`
+}
+
+// ProjectMilestone represents a milestone within a Linear project.
+type ProjectMilestone struct {
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	TargetDate  string           `json:"targetDate,omitempty"`
+	Status      string           `json:"status"`
+	Progress    float64          `json:"progress"`
+	Project     *Project         `json:"project,omitempty"`
+	Issues      *IssueConnection `json:"issues,omitempty"`
+	CreatedAt   string           `json:"createdAt"`
+	UpdatedAt   string           `json:"updatedAt"`
+	ArchivedAt  *string          `json:"archivedAt,omitempty"`
 }
 
 // IssueConnection represents the GraphQL connection for issues
@@ -436,31 +452,46 @@ type ProjectIssue struct {
 	Assignee *User `json:"assignee,omitempty"`
 }
 
+// CreateProjectMilestoneInput represents the input for creating a project milestone.
+type CreateProjectMilestoneInput struct {
+	Name        string
+	Description string
+	ProjectID   string
+	TargetDate  string
+}
+
+// UpdateProjectMilestoneInput represents the input for updating a project milestone.
+type UpdateProjectMilestoneInput struct {
+	Name        *string
+	Description *string
+	TargetDate  *string
+}
+
 // Cycle represents a Linear cycle (sprint/iteration)
 type Cycle struct {
-	ID                         string   `json:"id"`
-	Name                       string   `json:"name"`
-	Number                     int      `json:"number"`
-	Description                string   `json:"description,omitempty"`
-	StartsAt                   string   `json:"startsAt"`
-	EndsAt                     string   `json:"endsAt"`
-	CompletedAt                *string  `json:"completedAt,omitempty"`
-	Progress                   float64  `json:"progress"`
-	Team                       *Team    `json:"team,omitempty"`
-	IsActive                   bool     `json:"isActive"`
-	IsFuture                   bool     `json:"isFuture"`
-	IsPast                     bool     `json:"isPast"`
-	IsNext                     bool     `json:"isNext"`
-	IsPrevious                 bool     `json:"isPrevious"`
-	ScopeHistory               []int    `json:"scopeHistory,omitempty"`
-	CompletedScopeHistory      []int    `json:"completedScopeHistory,omitempty"`
-	CompletedIssueCountHistory []int    `json:"completedIssueCountHistory,omitempty"`
-	InProgressScopeHistory     []int    `json:"inProgressScopeHistory,omitempty"`
-	IssueCountHistory          []int    `json:"issueCountHistory,omitempty"`
-	CreatedAt                  string   `json:"createdAt"`
-	UpdatedAt                  string   `json:"updatedAt"`
-	ArchivedAt                 *string  `json:"archivedAt,omitempty"`
-	AutoArchivedAt             *string  `json:"autoArchivedAt,omitempty"`
+	ID                         string  `json:"id"`
+	Name                       string  `json:"name"`
+	Number                     int     `json:"number"`
+	Description                string  `json:"description,omitempty"`
+	StartsAt                   string  `json:"startsAt"`
+	EndsAt                     string  `json:"endsAt"`
+	CompletedAt                *string `json:"completedAt,omitempty"`
+	Progress                   float64 `json:"progress"`
+	Team                       *Team   `json:"team,omitempty"`
+	IsActive                   bool    `json:"isActive"`
+	IsFuture                   bool    `json:"isFuture"`
+	IsPast                     bool    `json:"isPast"`
+	IsNext                     bool    `json:"isNext"`
+	IsPrevious                 bool    `json:"isPrevious"`
+	ScopeHistory               []int   `json:"scopeHistory,omitempty"`
+	CompletedScopeHistory      []int   `json:"completedScopeHistory,omitempty"`
+	CompletedIssueCountHistory []int   `json:"completedIssueCountHistory,omitempty"`
+	InProgressScopeHistory     []int   `json:"inProgressScopeHistory,omitempty"`
+	IssueCountHistory          []int   `json:"issueCountHistory,omitempty"`
+	CreatedAt                  string  `json:"createdAt"`
+	UpdatedAt                  string  `json:"updatedAt"`
+	ArchivedAt                 *string `json:"archivedAt,omitempty"`
+	AutoArchivedAt             *string `json:"autoArchivedAt,omitempty"`
 }
 
 // CycleMinimal represents a minimal cycle (~30 tokens)
@@ -586,15 +617,15 @@ type CommentWithReplies struct {
 
 // Notification represents a Linear notification
 type Notification struct {
-	ID             string                `json:"id"`
-	Type           string                `json:"type"`
-	CreatedAt      string                `json:"createdAt"`
-	ReadAt         *string               `json:"readAt,omitempty"`
-	ArchivedAt     *string               `json:"archivedAt,omitempty"`
-	SnoozedUntilAt *string               `json:"snoozedUntilAt,omitempty"`
-	User           *User                 `json:"user,omitempty"`
-	Issue          *NotificationIssue    `json:"issue,omitempty"`
-	Comment        *NotificationComment  `json:"comment,omitempty"`
+	ID             string               `json:"id"`
+	Type           string               `json:"type"`
+	CreatedAt      string               `json:"createdAt"`
+	ReadAt         *string              `json:"readAt,omitempty"`
+	ArchivedAt     *string              `json:"archivedAt,omitempty"`
+	SnoozedUntilAt *string              `json:"snoozedUntilAt,omitempty"`
+	User           *User                `json:"user,omitempty"`
+	Issue          *NotificationIssue   `json:"issue,omitempty"`
+	Comment        *NotificationComment `json:"comment,omitempty"`
 }
 
 // NotificationIssue represents issue info in a notification
@@ -613,36 +644,38 @@ type NotificationComment struct {
 // IssueCreateInput represents the input for creating an issue atomically.
 // All optional fields are resolved to UUIDs by the service layer before populating this struct.
 type IssueCreateInput struct {
-	Title       string
-	Description string
-	TeamID      string
-	AssigneeID  string
-	CycleID     string
-	DueDate     string
-	Estimate    *float64
-	LabelIDs    []string
-	ParentID    string
-	Priority    *int
-	ProjectID   string
-	StateID     string
+	Title              string
+	Description        string
+	TeamID             string
+	AssigneeID         string
+	CycleID            string
+	DueDate            string
+	Estimate           *float64
+	LabelIDs           []string
+	ParentID           string
+	Priority           *int
+	ProjectID          string
+	ProjectMilestoneID string
+	StateID            string
 }
 
 // UpdateIssueInput represents the input for updating an issue
 // All fields are optional to support partial updates
 type UpdateIssueInput struct {
-	Title       *string  `json:"title,omitempty"`
-	Description *string  `json:"description,omitempty"`
-	Priority    *int     `json:"priority,omitempty"`    // 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low
-	Estimate    *float64 `json:"estimate,omitempty"`    // Story points estimate
-	DueDate     *string  `json:"dueDate,omitempty"`     // ISO 8601 date format
-	StateID     *string  `json:"stateId,omitempty"`     // Workflow state ID
-	AssigneeID  *string  `json:"assigneeId,omitempty"`  // User ID to assign to (for human users)
-	DelegateID  *string  `json:"delegateId,omitempty"`  // Application ID to delegate to (for OAuth apps)
-	ProjectID   *string  `json:"projectId,omitempty"`   // Project ID to move issue to
-	ParentID    *string  `json:"parentId,omitempty"`    // Parent issue ID for sub-issues
-	TeamID      *string  `json:"teamId,omitempty"`      // Team ID to move issue to
-	CycleID     *string  `json:"cycleId,omitempty"`     // Cycle ID to move issue to
-	LabelIDs    []string `json:"labelIds,omitempty"`    // Label IDs to apply
+	Title              *string  `json:"title,omitempty"`
+	Description        *string  `json:"description,omitempty"`
+	Priority           *int     `json:"priority,omitempty"`           // 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low
+	Estimate           *float64 `json:"estimate,omitempty"`           // Story points estimate
+	DueDate            *string  `json:"dueDate,omitempty"`            // ISO 8601 date format
+	StateID            *string  `json:"stateId,omitempty"`            // Workflow state ID
+	AssigneeID         *string  `json:"assigneeId,omitempty"`         // User ID to assign to (for human users)
+	DelegateID         *string  `json:"delegateId,omitempty"`         // Application ID to delegate to (for OAuth apps)
+	ProjectID          *string  `json:"projectId,omitempty"`          // Project ID to move issue to
+	ProjectMilestoneID *string  `json:"projectMilestoneId,omitempty"` // Project milestone ID
+	ParentID           *string  `json:"parentId,omitempty"`           // Parent issue ID for sub-issues
+	TeamID             *string  `json:"teamId,omitempty"`             // Team ID to move issue to
+	CycleID            *string  `json:"cycleId,omitempty"`            // Cycle ID to move issue to
+	LabelIDs           []string `json:"labelIds,omitempty"`           // Label IDs to apply
 }
 
 // IssueFilter represents filter options for listing issues
@@ -652,12 +685,13 @@ type IssueFilter struct {
 	After string `json:"after,omitempty"` // Cursor for pagination
 
 	// Filters
-	StateIDs   []string `json:"stateIds,omitempty"`   // Filter by workflow state IDs
-	AssigneeID string   `json:"assigneeId,omitempty"` // Filter by assignee user ID
-	LabelIDs   []string `json:"labelIds,omitempty"`   // Filter by label IDs
-	ExcludeLabelIDs []string `json:"excludeLabelIds,omitempty"` // Exclude issues with these label IDs
-	ProjectID  string   `json:"projectId,omitempty"`  // Filter by project ID
-	TeamID     string   `json:"teamId,omitempty"`     // Filter by team ID
+	StateIDs           []string `json:"stateIds,omitempty"`           // Filter by workflow state IDs
+	AssigneeID         string   `json:"assigneeId,omitempty"`         // Filter by assignee user ID
+	LabelIDs           []string `json:"labelIds,omitempty"`           // Filter by label IDs
+	ExcludeLabelIDs    []string `json:"excludeLabelIds,omitempty"`    // Exclude issues with these label IDs
+	ProjectID          string   `json:"projectId,omitempty"`          // Filter by project ID
+	ProjectMilestoneID string   `json:"projectMilestoneId,omitempty"` // Filter by project milestone ID
+	TeamID             string   `json:"teamId,omitempty"`             // Filter by team ID
 
 	// Date filters (ISO-8601 timestamps)
 	CreatedAfter  string `json:"createdAfter,omitempty"`  // Issues created on/after this timestamp
@@ -681,19 +715,20 @@ type ListAllIssuesResult struct {
 
 // IssueWithDetails represents an issue with full details including metadata
 type IssueWithDetails struct {
-	ID          string                  `json:"id"`
-	Identifier  string                  `json:"identifier"`
-	Title       string                  `json:"title"`
-	Description string                  `json:"description"`
-	Priority    int                     `json:"priority"`
-	CreatedAt   string                  `json:"createdAt"`
-	UpdatedAt   string                  `json:"updatedAt"`
-	State       WorkflowState           `json:"state"`
-	Assignee    *User                   `json:"assignee,omitempty"`
-	Labels      []Label                 `json:"labels"`
-	Project     *Project                `json:"project,omitempty"`
-	Team        Team                    `json:"team"`
-	Metadata    *map[string]interface{} `json:"metadata,omitempty"`
+	ID               string                  `json:"id"`
+	Identifier       string                  `json:"identifier"`
+	Title            string                  `json:"title"`
+	Description      string                  `json:"description"`
+	Priority         int                     `json:"priority"`
+	CreatedAt        string                  `json:"createdAt"`
+	UpdatedAt        string                  `json:"updatedAt"`
+	State            WorkflowState           `json:"state"`
+	Assignee         *User                   `json:"assignee,omitempty"`
+	Labels           []Label                 `json:"labels"`
+	Project          *Project                `json:"project,omitempty"`
+	ProjectMilestone *ProjectMilestone       `json:"projectMilestone,omitempty"`
+	Team             Team                    `json:"team"`
+	Metadata         *map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Label represents a Linear label
@@ -738,10 +773,10 @@ type LabelConnection struct {
 type UserFilter struct {
 	// Filter by team membership
 	TeamID string `json:"teamId,omitempty"`
-	
+
 	// Filter by active status (nil means include all)
 	ActiveOnly *bool `json:"activeOnly,omitempty"`
-	
+
 	// Pagination
 	First int    `json:"first"`           // Number of items to fetch (default 50, max 250)
 	After string `json:"after,omitempty"` // Cursor for pagination
@@ -762,6 +797,9 @@ type IssueSearchFilters struct {
 	// Project filter
 	ProjectID string `json:"projectId,omitempty"`
 
+	// Project milestone filter
+	ProjectMilestoneID string `json:"projectMilestoneId,omitempty"`
+
 	// Identifier filter (e.g., "CEN-123")
 	Identifier string `json:"identifier,omitempty"`
 
@@ -769,7 +807,7 @@ type IssueSearchFilters struct {
 	StateIDs []string `json:"stateIds,omitempty"`
 
 	// Label filters
-	LabelIDs []string `json:"labelIds,omitempty"`
+	LabelIDs        []string `json:"labelIds,omitempty"`
 	ExcludeLabelIDs []string `json:"excludeLabelIds,omitempty"`
 
 	// Assignee filter
@@ -813,11 +851,11 @@ type IssueSearchResult struct {
 
 // BatchIssueUpdate represents update fields for batch operations
 type BatchIssueUpdate struct {
-	StateID     string   `json:"stateId,omitempty"`
-	AssigneeID  string   `json:"assigneeId,omitempty"`
-	LabelIDs    []string `json:"labelIds,omitempty"`
-	Priority    *int     `json:"priority,omitempty"`
-	ProjectID   string   `json:"projectId,omitempty"`
+	StateID    string   `json:"stateId,omitempty"`
+	AssigneeID string   `json:"assigneeId,omitempty"`
+	LabelIDs   []string `json:"labelIds,omitempty"`
+	Priority   *int     `json:"priority,omitempty"`
+	ProjectID  string   `json:"projectId,omitempty"`
 }
 
 // BatchIssueUpdateResult represents the result of a batch update operation
@@ -855,14 +893,14 @@ type IssueRelationConnection struct {
 
 // IssueWithRelations extends Issue with relation information
 type IssueWithRelations struct {
-	ID               string                  `json:"id"`
-	Identifier       string                  `json:"identifier"`
-	Title            string                  `json:"title"`
-	State            struct {
+	ID         string `json:"id"`
+	Identifier string `json:"identifier"`
+	Title      string `json:"title"`
+	State      struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"state"`
-	Project          *struct {
+	Project *struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"project"`

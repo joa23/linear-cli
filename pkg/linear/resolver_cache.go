@@ -1,7 +1,6 @@
 package linear
 
 import (
-
 	"sync"
 	"time"
 )
@@ -40,6 +39,9 @@ type resolverCache struct {
 	// Project resolution cache
 	projectByName map[string]*cacheEntry // project name → projectID
 
+	// Project milestone resolution cache (keyed by projectID:name)
+	projectMilestoneByName map[string]*cacheEntry // projectID:name → milestoneID
+
 	mu  sync.RWMutex
 	ttl time.Duration
 }
@@ -47,14 +49,15 @@ type resolverCache struct {
 // newResolverCache creates a new resolver cache with the specified TTL
 func newResolverCache(ttl time.Duration) *resolverCache {
 	cache := &resolverCache{
-		userByEmail:       make(map[string]*cacheEntry),
-		userByName:        make(map[string]*cacheEntry),
-		teamByName:        make(map[string]*cacheEntry),
-		teamByKey:         make(map[string]*cacheEntry),
-		issueByIdentifier: make(map[string]*cacheEntry),
-		labelByName:       make(map[string]*cacheEntry),
-		projectByName:     make(map[string]*cacheEntry),
-		ttl:               ttl,
+		userByEmail:            make(map[string]*cacheEntry),
+		userByName:             make(map[string]*cacheEntry),
+		teamByName:             make(map[string]*cacheEntry),
+		teamByKey:              make(map[string]*cacheEntry),
+		issueByIdentifier:      make(map[string]*cacheEntry),
+		labelByName:            make(map[string]*cacheEntry),
+		projectByName:          make(map[string]*cacheEntry),
+		projectMilestoneByName: make(map[string]*cacheEntry),
+		ttl:                    ttl,
 	}
 
 	// Start background cleanup goroutine
@@ -222,6 +225,31 @@ func (rc *resolverCache) setProjectByName(name, projectID string) {
 	}
 }
 
+// Project milestone cache methods
+
+func (rc *resolverCache) getProjectMilestoneByName(projectID, name string) (string, bool) {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+
+	key := projectID + ":" + name
+	entry, exists := rc.projectMilestoneByName[key]
+	if !exists || entry.isExpired() {
+		return "", false
+	}
+	return entry.value, true
+}
+
+func (rc *resolverCache) setProjectMilestoneByName(projectID, name, milestoneID string) {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+
+	key := projectID + ":" + name
+	rc.projectMilestoneByName[key] = &cacheEntry{
+		value:     milestoneID,
+		expiresAt: time.Now().Add(rc.ttl),
+	}
+}
+
 // Utility methods
 
 // cleanup removes expired entries from the cache
@@ -278,6 +306,13 @@ func (rc *resolverCache) cleanup() {
 			delete(rc.projectByName, name)
 		}
 	}
+
+	// Clean up project milestone cache
+	for key, entry := range rc.projectMilestoneByName {
+		if entry.expiresAt.Before(now) {
+			delete(rc.projectMilestoneByName, key)
+		}
+	}
 }
 
 // runCleanup runs periodic cleanup in a background goroutine
@@ -305,4 +340,5 @@ func (rc *resolverCache) clear() {
 	rc.issueByIdentifier = make(map[string]*cacheEntry)
 	rc.labelByName = make(map[string]*cacheEntry)
 	rc.projectByName = make(map[string]*cacheEntry)
+	rc.projectMilestoneByName = make(map[string]*cacheEntry)
 }
