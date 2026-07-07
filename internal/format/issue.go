@@ -192,6 +192,10 @@ func writeIssueBody(b *strings.Builder, issue *core.Issue) {
 		b.WriteString(fmtSprintf("Project: %s\n", issue.Project.Name))
 	}
 
+	if issue.ProjectMilestone != nil {
+		b.WriteString(fmtSprintf("Milestone: %s\n", issue.ProjectMilestone.Name))
+	}
+
 	if issue.Cycle != nil {
 		b.WriteString(fmtSprintf("Cycle: %s (#%d)\n", issue.Cycle.Name, issue.Cycle.Number))
 	}

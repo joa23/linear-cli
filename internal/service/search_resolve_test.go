@@ -57,6 +57,9 @@ func (m *mockIssueClient) ResolveLabelIdentifier(label, team string) (string, er
 func (m *mockIssueClient) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
 	return m.resolveProjectResult, m.resolveProjectErr
 }
+func (m *mockIssueClient) ResolveProjectMilestoneIdentifier(nameOrID, projectID string) (string, error) {
+	return nameOrID, nil
+}
 func (m *mockIssueClient) CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error {
 	return nil
 }
@@ -102,10 +105,13 @@ func (m *mockSearchClient) ResolveLabelIdentifier(label, team string) (string, e
 func (m *mockSearchClient) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
 	return m.resolveProjectResult, m.resolveProjectErr
 }
-func (m *mockSearchClient) IssueClient() *issues.Client       { return nil }
-func (m *mockSearchClient) ProjectClient() *projects.Client    { return nil }
-func (m *mockSearchClient) TeamClient() *teams.Client          { return nil }
-func (m *mockSearchClient) WorkflowClient() *workflows.Client  { return m.workflowClient }
+func (m *mockSearchClient) ResolveProjectMilestoneIdentifier(nameOrID, projectID string) (string, error) {
+	return nameOrID, nil
+}
+func (m *mockSearchClient) IssueClient() *issues.Client      { return nil }
+func (m *mockSearchClient) ProjectClient() *projects.Client  { return nil }
+func (m *mockSearchClient) TeamClient() *teams.Client        { return nil }
+func (m *mockSearchClient) WorkflowClient() *workflows.Client { return m.workflowClient }
 
 // --- IssueService.Search tests ---
 

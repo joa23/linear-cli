@@ -5,9 +5,9 @@ import (
 	"sort"
 
 	"github.com/joa23/linear-cli/internal/format"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 	"github.com/joa23/linear-cli/pkg/linear/identifiers"
 	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
-	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // IssueService handles issue-related operations
@@ -26,16 +26,17 @@ func NewIssueService(client IssueClientOperations, formatter *format.Formatter) 
 
 // SearchFilters represents filters for searching issues
 type SearchFilters struct {
-	TeamID     string
-	ProjectID  string
-	AssigneeID string
-	CycleID    string
-	StateIDs   []string
-	LabelIDs   []string
+	TeamID          string
+	ProjectID       string
+	MilestoneID     string
+	AssigneeID      string
+	CycleID         string
+	StateIDs        []string
+	LabelIDs        []string
 	ExcludeLabelIDs []string
-	Priority   *int
-	SearchTerm string
-	OrderBy    string
+	Priority        *int
+	SearchTerm      string
+	OrderBy         string
 	// Date filters (RFC3339 timestamps). Set via CLI --created-since/--created-after/--created-before.
 	CreatedAfter  string
 	CreatedBefore string
@@ -101,6 +102,14 @@ func (s *IssueService) Search(filters *SearchFilters) (string, error) {
 			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
 		}
 		linearFilters.ProjectID = projectID
+	}
+
+	if filters.MilestoneID != "" {
+		milestoneID, err := s.client.ResolveProjectMilestoneIdentifier(filters.MilestoneID, linearFilters.ProjectID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve milestone '%s': %w", filters.MilestoneID, err)
+		}
+		linearFilters.ProjectMilestoneID = milestoneID
 	}
 
 	// Resolve assignee identifier if provided
@@ -217,6 +226,14 @@ func (s *IssueService) SearchWithOutput(filters *SearchFilters, verbosity format
 		linearFilters.ProjectID = projectID
 	}
 
+	if filters.MilestoneID != "" {
+		milestoneID, err := s.client.ResolveProjectMilestoneIdentifier(filters.MilestoneID, linearFilters.ProjectID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve milestone '%s': %w", filters.MilestoneID, err)
+		}
+		linearFilters.ProjectMilestoneID = milestoneID
+	}
+
 	// Resolve assignee identifier if provided
 	if filters.AssigneeID != "" {
 		resolved, err := s.client.ResolveUserIdentifier(filters.AssigneeID)
@@ -260,22 +277,6 @@ func (s *IssueService) SearchWithOutput(filters *SearchFilters, verbosity format
 			return "", err
 		}
 		linearFilters.LabelIDs = resolvedLabels
-	}
-
-	// Resolve project identifier if provided
-	if filters.ProjectID != "" {
-		teamID := linearFilters.TeamID
-		if teamID == "" {
-			// Try to resolve team for project lookup
-			if resolvedTeam, err := s.client.ResolveTeamIdentifier(filters.TeamID); err == nil {
-				teamID = resolvedTeam
-			}
-		}
-		projectID, err := s.client.ResolveProjectIdentifier(filters.ProjectID, teamID)
-		if err != nil {
-			return "", fmt.Errorf("failed to resolve project '%s': %w", filters.ProjectID, err)
-		}
-		linearFilters.ProjectID = projectID
 	}
 
 	// Resolve exclude-label names to IDs (requires team)
@@ -407,6 +408,8 @@ func convertIssueDetails(details []core.IssueWithDetails) []core.Issue {
 			}{ID: d.State.ID, Name: d.State.Name},
 			Priority:  &priority,
 			Assignee:  d.Assignee,
+			Project:   d.Project,
+			ProjectMilestone: d.ProjectMilestone,
 			CreatedAt: d.CreatedAt,
 			UpdatedAt: d.UpdatedAt,
 		}
@@ -438,20 +441,21 @@ func sortIssues(issues []core.IssueWithDetails, sortBy, direction string) {
 
 // CreateIssueInput represents input for creating an issue
 type CreateIssueInput struct {
-	Title       string
-	Description string
-	TeamID      string
-	StateID     string
-	AssigneeID  string
-	ProjectID   string
-	ParentID    string
-	CycleID     string
-	Priority    *int
-	Estimate    *float64
-	DueDate     string
-	LabelIDs    []string
-	DependsOn   []string // Issue identifiers this issue depends on (stored in metadata)
-	BlockedBy   []string // Issue identifiers that block this issue (stored in metadata)
+	Title              string
+	Description        string
+	TeamID             string
+	StateID            string
+	AssigneeID         string
+	ProjectID          string
+	ProjectMilestoneID string
+	ParentID           string
+	CycleID            string
+	Priority           *int
+	Estimate           *float64
+	DueDate            string
+	LabelIDs           []string
+	DependsOn          []string // Issue identifiers this issue depends on (stored in metadata)
+	BlockedBy          []string // Issue identifiers that block this issue (stored in metadata)
 }
 
 // Create creates a new issue
@@ -507,6 +511,14 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		createInput.ProjectID = projectID
 	}
 
+	if input.ProjectMilestoneID != "" {
+		milestoneID, err := s.client.ResolveProjectMilestoneIdentifier(input.ProjectMilestoneID, createInput.ProjectID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve milestone '%s': %w", input.ProjectMilestoneID, err)
+		}
+		createInput.ProjectMilestoneID = milestoneID
+	}
+
 	if input.CycleID != "" {
 		cycleID, err := s.client.ResolveCycleIdentifier(input.CycleID, teamID)
 		if err != nil {
@@ -556,22 +568,23 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 
 // UpdateIssueInput represents input for updating an issue
 type UpdateIssueInput struct {
-	Title          *string
-	Description    *string
-	StateID        *string
-	AssigneeID     *string
-	ProjectID      *string
-	ParentID       *string
-	TeamID         *string
-	CycleID        *string
-	Priority       *int
-	Estimate       *float64
-	DueDate        *string
-	LabelIDs       []string // Replace mode: replaces all labels
-	AddLabelIDs    []string // Additive mode: labels to add (names, resolved later)
-	RemoveLabelIDs []string // Subtractive mode: labels to remove (names, resolved later)
-	DependsOn      []string // Issue identifiers this issue depends on (stored in metadata)
-	BlockedBy      []string // Issue identifiers that block this issue (stored in metadata)
+	Title              *string
+	Description        *string
+	StateID            *string
+	AssigneeID         *string
+	ProjectID          *string
+	ProjectMilestoneID *string
+	ParentID           *string
+	TeamID             *string
+	CycleID            *string
+	Priority           *int
+	Estimate           *float64
+	DueDate            *string
+	LabelIDs           []string // Replace mode: replaces all labels
+	AddLabelIDs        []string // Additive mode: labels to add (names, resolved later)
+	RemoveLabelIDs     []string // Subtractive mode: labels to remove (names, resolved later)
+	DependsOn          []string // Issue identifiers this issue depends on (stored in metadata)
+	BlockedBy          []string // Issue identifiers that block this issue (stored in metadata)
 }
 
 // Update updates an existing issue
@@ -645,6 +658,19 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 			return "", fmt.Errorf("failed to resolve project '%s': %w", *input.ProjectID, err)
 		}
 		linearInput.ProjectID = &projectID
+	}
+	if input.ProjectMilestoneID != nil {
+		projectID := ""
+		if linearInput.ProjectID != nil {
+			projectID = *linearInput.ProjectID
+		} else if issue.Project != nil {
+			projectID = issue.Project.ID
+		}
+		milestoneID, err := s.client.ResolveProjectMilestoneIdentifier(*input.ProjectMilestoneID, projectID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve milestone '%s': %w", *input.ProjectMilestoneID, err)
+		}
+		linearInput.ProjectMilestoneID = &milestoneID
 	}
 	if input.ParentID != nil {
 		linearInput.ParentID = input.ParentID
@@ -859,6 +885,7 @@ func hasServiceFieldsToUpdate(input core.UpdateIssueInput) bool {
 		input.AssigneeID != nil ||
 		input.DelegateID != nil ||
 		input.ProjectID != nil ||
+		input.ProjectMilestoneID != nil ||
 		input.ParentID != nil ||
 		input.TeamID != nil ||
 		input.CycleID != nil ||

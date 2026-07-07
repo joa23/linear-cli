@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `milestones list|get|create|update|delete` command group for managing Linear project milestones.
+- `--milestone` / `-m` on `issues list`, `issues create`, and `issues update` to filter or assign issues by project milestone.
+- Issue text and JSON output now includes milestone information when available.
+
 ## [1.9.0] - 2026-05-21
 
 ### Added

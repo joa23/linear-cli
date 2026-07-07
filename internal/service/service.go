@@ -12,6 +12,7 @@ import (
 type Services struct {
 	Issues     *IssueService
 	Projects   *ProjectService
+	Milestones *MilestoneService
 	Cycles     *CycleService
 	Teams      *TeamService
 	Users      *UserService
@@ -31,6 +32,7 @@ func New(client *linear.Client) *Services {
 	return &Services{
 		Issues:     NewIssueService(client, formatter),
 		Projects:   NewProjectService(client, formatter),
+		Milestones: NewMilestoneService(client, formatter),
 		Cycles:     NewCycleService(client, formatter),
 		Teams:      NewTeamService(client, formatter),
 		Users:      NewUserService(client, formatter),

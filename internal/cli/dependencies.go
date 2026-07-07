@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/joa23/linear-cli/pkg/linear"
 	"github.com/joa23/linear-cli/internal/service"
+	"github.com/joa23/linear-cli/pkg/linear"
 )
 
 // Dependencies holds all injectable dependencies for CLI commands
@@ -15,6 +15,7 @@ type Dependencies struct {
 	Issues     service.IssueServiceInterface
 	Cycles     service.CycleServiceInterface
 	Projects   service.ProjectServiceInterface
+	Milestones service.MilestoneServiceInterface
 	Search     service.SearchServiceInterface
 	Teams      service.TeamServiceInterface
 	Users      service.UserServiceInterface
@@ -33,6 +34,7 @@ func NewDependencies(client *linear.Client) *Dependencies {
 		Issues:     services.Issues,
 		Cycles:     services.Cycles,
 		Projects:   services.Projects,
+		Milestones: services.Milestones,
 		Search:     services.Search,
 		Teams:      services.Teams,
 		Users:      services.Users,

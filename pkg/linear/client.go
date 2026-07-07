@@ -6,18 +6,19 @@ import (
 	"os"
 
 	"github.com/joa23/linear-cli/internal/config"
+	"github.com/joa23/linear-cli/internal/oauth"
+	"github.com/joa23/linear-cli/internal/token"
 	"github.com/joa23/linear-cli/pkg/linear/attachments"
 	"github.com/joa23/linear-cli/pkg/linear/comments"
 	"github.com/joa23/linear-cli/pkg/linear/core"
 	"github.com/joa23/linear-cli/pkg/linear/cycles"
 	"github.com/joa23/linear-cli/pkg/linear/identifiers"
 	"github.com/joa23/linear-cli/pkg/linear/issues"
+	"github.com/joa23/linear-cli/pkg/linear/milestones"
 	"github.com/joa23/linear-cli/pkg/linear/projects"
 	"github.com/joa23/linear-cli/pkg/linear/teams"
 	"github.com/joa23/linear-cli/pkg/linear/users"
 	"github.com/joa23/linear-cli/pkg/linear/workflows"
-	"github.com/joa23/linear-cli/internal/oauth"
-	"github.com/joa23/linear-cli/internal/token"
 )
 
 // Client represents the main Linear API client that orchestrates all sub-clients.
@@ -36,6 +37,7 @@ type Client struct {
 	Workflows     *workflows.Client
 	Attachments   *attachments.Client
 	Cycles        *cycles.Client
+	Milestones    *milestones.Client
 
 	// Resolver for human-readable identifier translation
 	resolver *Resolver
@@ -71,6 +73,7 @@ func NewClientWithAuthMode(apiToken string, authMode string) *Client {
 		Workflows:     workflows.NewClient(base),
 		Attachments:   attachments.NewClient(base),
 		Cycles:        cycles.NewClient(base),
+		Milestones:    milestones.NewClient(base),
 		apiToken:      apiToken,
 		authMode:      authMode,
 	}
@@ -150,6 +153,7 @@ func NewClientWithTokenPath(tokenPath string) *Client {
 		Workflows:     workflows.NewClient(base),
 		Attachments:   attachments.NewClient(base),
 		Cycles:        cycles.NewClient(base),
+		Milestones:    milestones.NewClient(base),
 		apiToken:      apiToken,
 		authMode:      authMode,
 	}
@@ -229,6 +233,10 @@ func (c *Client) CycleClient() *cycles.Client {
 
 func (c *Client) ProjectClient() *projects.Client {
 	return c.Projects
+}
+
+func (c *Client) MilestoneClient() *milestones.Client {
+	return c.Milestones
 }
 
 func (c *Client) TeamClient() *teams.Client {
@@ -483,6 +491,27 @@ func (c *Client) RemoveProjectMetadataKey(projectID, key string) error {
 	return c.Projects.RemoveProjectMetadataKey(projectID, key)
 }
 
+// Project milestone operations
+func (c *Client) ListProjectMilestones(projectID string, limit int) ([]core.ProjectMilestone, error) {
+	return c.Milestones.List(projectID, limit)
+}
+
+func (c *Client) GetProjectMilestone(id string) (*core.ProjectMilestone, error) {
+	return c.Milestones.Get(id)
+}
+
+func (c *Client) CreateProjectMilestone(input *core.CreateProjectMilestoneInput) (*core.ProjectMilestone, error) {
+	return c.Milestones.Create(input)
+}
+
+func (c *Client) UpdateProjectMilestone(id string, input *core.UpdateProjectMilestoneInput) (*core.ProjectMilestone, error) {
+	return c.Milestones.Update(id, input)
+}
+
+func (c *Client) DeleteProjectMilestone(id string) error {
+	return c.Milestones.Delete(id)
+}
+
 // Cycle operations
 func (c *Client) GetCycle(cycleID string) (*core.Cycle, error) {
 	return c.Cycles.GetCycle(cycleID)
@@ -668,6 +697,10 @@ func (c *Client) ResolveLabelIdentifier(labelName string, teamID string) (string
 
 func (c *Client) ResolveProjectIdentifier(nameOrID string, teamID string) (string, error) {
 	return c.resolver.ResolveProject(nameOrID, teamID)
+}
+
+func (c *Client) ResolveProjectMilestoneIdentifier(nameOrID string, projectID string) (string, error) {
+	return c.resolver.ResolveProjectMilestone(nameOrID, projectID)
 }
 
 // Issue search operations

@@ -493,6 +493,102 @@ func TestFormatter_CycleList(t *testing.T) {
 	})
 }
 
+func TestFormatter_Milestone(t *testing.T) {
+	f := New()
+
+	milestone := &core.ProjectMilestone{
+		ID:          "milestone-1",
+		Name:        "Beta",
+		Description: "Public beta launch",
+		TargetDate:  "2026-08-01",
+		Status:      "next",
+		Progress:    56.25,
+		Project:     &core.Project{ID: "project-1", Name: "Q3 Launch"},
+	}
+
+	t.Run("nil milestone returns empty string", func(t *testing.T) {
+		result := f.RenderMilestone(nil, VerbosityCompact, OutputText)
+		if result != "" {
+			t.Error("nil milestone should return empty string")
+		}
+	})
+
+	t.Run("text compact contains name status progress and project", func(t *testing.T) {
+		result := f.RenderMilestone(milestone, VerbosityCompact, OutputText)
+		if !strings.Contains(result, "Beta") {
+			t.Error("should contain milestone name")
+		}
+		if !strings.Contains(result, "next") {
+			t.Error("should contain status")
+		}
+		if !strings.Contains(result, "56%") {
+			t.Error("should render progress as a percentage without double-scaling")
+		}
+		if !strings.Contains(result, "Q3 Launch") {
+			t.Error("should contain project name")
+		}
+	})
+
+	t.Run("text full contains description", func(t *testing.T) {
+		result := f.RenderMilestone(milestone, VerbosityFull, OutputText)
+		if !strings.Contains(result, "Public beta launch") {
+			t.Error("should contain description")
+		}
+		if !strings.Contains(result, "Progress: 56.") {
+			t.Error("should render progress with one decimal")
+		}
+		if strings.Contains(result, "5625") {
+			t.Error("progress should not be multiplied by 100 a second time")
+		}
+	})
+
+	t.Run("JSON contains milestone fields", func(t *testing.T) {
+		result := f.RenderMilestone(milestone, VerbosityFull, OutputJSON)
+		if !strings.Contains(result, `"name": "Beta"`) {
+			t.Error("should contain name field")
+		}
+		if !strings.Contains(result, `"status": "next"`) {
+			t.Error("should contain status field")
+		}
+		if !strings.Contains(result, `"progress": 56.25`) {
+			t.Error("should contain raw progress value")
+		}
+	})
+}
+
+func TestFormatter_MilestoneList(t *testing.T) {
+	f := New()
+
+	milestones := []core.ProjectMilestone{
+		{Name: "Alpha", Status: "done", Progress: 100},
+		{Name: "Beta", Status: "next", Progress: 0},
+	}
+
+	t.Run("list with milestones", func(t *testing.T) {
+		result := f.RenderMilestoneList(milestones, VerbosityCompact, OutputText)
+		if !strings.Contains(result, "MILESTONES (2)") {
+			t.Error("should contain count header")
+		}
+		if !strings.Contains(result, "Alpha") {
+			t.Error("should contain first milestone")
+		}
+	})
+
+	t.Run("empty list text", func(t *testing.T) {
+		result := f.RenderMilestoneList([]core.ProjectMilestone{}, VerbosityCompact, OutputText)
+		if result != "No milestones found." {
+			t.Errorf("expected 'No milestones found.', got '%s'", result)
+		}
+	})
+
+	t.Run("empty list JSON", func(t *testing.T) {
+		result := f.RenderMilestoneList([]core.ProjectMilestone{}, VerbosityCompact, OutputJSON)
+		if result != "[]" {
+			t.Errorf("expected '[]', got '%s'", result)
+		}
+	})
+}
+
 func TestFormatter_ProjectList(t *testing.T) {
 	f := New()
 

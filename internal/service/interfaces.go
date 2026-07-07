@@ -47,6 +47,15 @@ type ProjectServiceInterface interface {
 	Update(projectID string, input *UpdateProjectInput) (string, error)
 }
 
+// MilestoneServiceInterface defines the contract for project milestone operations.
+type MilestoneServiceInterface interface {
+	List(input *MilestoneListInput, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	Get(identifier string, projectID string, teamID string, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	Create(input *CreateMilestoneInput, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	Update(identifier string, input *UpdateMilestoneInput, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	Delete(identifier string, projectID string, teamID string) (string, error)
+}
+
 // SearchServiceInterface defines the contract for unified search
 type SearchServiceInterface interface {
 	Search(opts *SearchOptions) (string, error)
@@ -93,6 +102,7 @@ var (
 	_ IssueServiceInterface      = (*IssueService)(nil)
 	_ CycleServiceInterface      = (*CycleService)(nil)
 	_ ProjectServiceInterface    = (*ProjectService)(nil)
+	_ MilestoneServiceInterface  = (*MilestoneService)(nil)
 	_ SearchServiceInterface     = (*SearchService)(nil)
 	_ TeamServiceInterface       = (*TeamService)(nil)
 	_ UserServiceInterface       = (*UserService)(nil)

@@ -46,7 +46,7 @@ type Pagination struct {
 	TotalCount  int  // Total items
 	HasNextPage bool // More results exist
 	// Deprecated: Use offset-based pagination instead
-	EndCursor   string // Cursor for cursor-based pagination
+	EndCursor string // Cursor for cursor-based pagination
 }
 
 // Formatter formats Linear resources as ASCII text or JSON
@@ -97,6 +97,18 @@ func (f *Formatter) RenderProject(project *core.Project, verbosity Verbosity, ou
 func (f *Formatter) RenderProjectList(projects []core.Project, verbosity Verbosity, outputType OutputType, page *Pagination) string {
 	renderer := f.factory.GetRenderer(outputType)
 	return renderer.RenderProjectList(projects, verbosity, page)
+}
+
+// RenderMilestone renders a single project milestone with the specified verbosity and output type.
+func (f *Formatter) RenderMilestone(milestone *core.ProjectMilestone, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderMilestone(milestone, verbosity)
+}
+
+// RenderMilestoneList renders project milestones with the specified verbosity and output type.
+func (f *Formatter) RenderMilestoneList(milestones []core.ProjectMilestone, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderMilestoneList(milestones, verbosity)
 }
 
 // RenderTeam renders a single team with the specified verbosity and output type

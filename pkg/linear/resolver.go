@@ -545,6 +545,93 @@ func (r *Resolver) ResolveProject(nameOrID string, teamID string) (string, error
 	return project.ID, nil
 }
 
+// ResolveProjectMilestone resolves a milestone identifier (name or UUID) to a milestone UUID.
+// Milestone names are scoped to a project, so projectID is required for name resolution.
+func (r *Resolver) ResolveProjectMilestone(nameOrID string, projectID string) (string, error) {
+	if nameOrID == "" {
+		return "", &core.ValidationError{
+			Field:   "milestone",
+			Message: "milestone identifier cannot be empty",
+		}
+	}
+
+	if identifiers.IsUUID(nameOrID) {
+		return nameOrID, nil
+	}
+
+	if projectID == "" {
+		return "", &core.ValidationError{
+			Field:   "project",
+			Message: "project is required to resolve milestone names",
+		}
+	}
+
+	if milestoneID, found := r.cache.getProjectMilestoneByName(projectID, nameOrID); found {
+		return milestoneID, nil
+	}
+
+	milestones, err := r.client.Milestones.List(projectID, 250)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch milestones for resolution: %w", err)
+	}
+
+	var matches []core.ProjectMilestone
+	nameLower := strings.ToLower(nameOrID)
+	for _, milestone := range milestones {
+		if strings.ToLower(milestone.Name) == nameLower {
+			matches = append(matches, milestone)
+		}
+	}
+
+	if len(matches) == 0 {
+		var available []string
+		for _, milestone := range milestones {
+			available = append(available, milestone.Name)
+		}
+
+		return "", &guidance.ErrorWithGuidance{
+			Operation: "Resolve milestone",
+			Reason:    fmt.Sprintf("milestone '%s' not found", nameOrID),
+			Guidance: []string{
+				"Check the milestone name spelling (case-insensitive)",
+				"Use 'linear milestones list --project <project>' to see available milestones",
+				"Use the milestone UUID for exact matching",
+			},
+			Example: fmt.Sprintf("Available milestones: %s", strings.Join(available, ", ")),
+			OriginalErr: &core.NotFoundError{
+				ResourceType: "project milestone",
+				ResourceID:   nameOrID,
+			},
+		}
+	}
+
+	if len(matches) > 1 {
+		var suggestions []string
+		for _, milestone := range matches {
+			suggestions = append(suggestions, fmt.Sprintf("%s (ID: %s)", milestone.Name, milestone.ID))
+		}
+
+		return "", &guidance.ErrorWithGuidance{
+			Operation: "Resolve milestone",
+			Reason:    fmt.Sprintf("multiple milestones match '%s'", nameOrID),
+			Guidance: []string{
+				"Use the milestone UUID for exact matching",
+				"Choose from the suggestions below",
+			},
+			Example: fmt.Sprintf("Matching milestones: %s", strings.Join(suggestions, ", ")),
+			OriginalErr: &core.ValidationError{
+				Field:  "milestone",
+				Value:  nameOrID,
+				Reason: fmt.Sprintf("ambiguous, matches: %s", strings.Join(suggestions, ", ")),
+			},
+		}
+	}
+
+	milestone := matches[0]
+	r.cache.setProjectMilestoneByName(projectID, nameOrID, milestone.ID)
+	return milestone.ID, nil
+}
+
 // ResolveLabel resolves a label name to a label UUID within a specific team
 // Labels are team-scoped, so teamID is required
 //

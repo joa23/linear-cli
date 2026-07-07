@@ -9,6 +9,7 @@ type Renderer interface {
 	RenderIssue(issue *core.Issue, verbosity Verbosity) string
 	RenderCycle(cycle *core.Cycle, verbosity Verbosity) string
 	RenderProject(project *core.Project, verbosity Verbosity) string
+	RenderMilestone(milestone *core.ProjectMilestone, verbosity Verbosity) string
 	RenderTeam(team *core.Team, verbosity Verbosity) string
 	RenderUser(user *core.User, verbosity Verbosity) string
 	RenderComment(comment *core.Comment, verbosity Verbosity) string
@@ -17,6 +18,7 @@ type Renderer interface {
 	RenderIssueList(issues []core.Issue, verbosity Verbosity, page *Pagination) string
 	RenderCycleList(cycles []core.Cycle, verbosity Verbosity, page *Pagination) string
 	RenderProjectList(projects []core.Project, verbosity Verbosity, page *Pagination) string
+	RenderMilestoneList(milestones []core.ProjectMilestone, verbosity Verbosity) string
 	RenderTeamList(teams []core.Team, verbosity Verbosity) string
 	RenderUserList(users []core.User, verbosity Verbosity) string
 	RenderCommentList(comments []core.Comment, verbosity Verbosity) string

@@ -72,6 +72,9 @@ func (m *mockIssueClientForCreate) CreateRelation(issueID, relatedIssueID string
 func (m *mockIssueClientForCreate) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
 	return "project-uuid", nil
 }
+func (m *mockIssueClientForCreate) ResolveProjectMilestoneIdentifier(nameOrID, projectID string) (string, error) {
+	return "milestone-uuid", nil
+}
 func (m *mockIssueClientForCreate) CommentClient() *comments.Client   { return nil }
 func (m *mockIssueClientForCreate) WorkflowClient() *workflows.Client { return nil }
 func (m *mockIssueClientForCreate) IssueClient() *issues.Client       { return nil }

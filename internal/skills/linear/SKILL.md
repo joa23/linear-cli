@@ -58,6 +58,11 @@ linear i react <ID> 👍                   # Add reaction
 linear p list [--mine]                   # List projects
 linear p create <name> [flags]           # Create project
 
+# Milestones (alias: m)
+linear m list --project <name>            # List project milestones
+linear m get <name|ID> --project <name>   # Get milestone details
+linear m create <name> --project <name>   # Create milestone
+
 # Cycles (alias: c)
 linear c list [--active]                 # List cycles
 linear c get <number>                    # Get cycle (requires init)
@@ -109,6 +114,7 @@ linear cycles analyze --team CEN --output json > velocity.json
 - `issues list`, `issues get`
 - `cycles list`, `cycles get`, `cycles analyze`
 - `projects list`, `projects get`
+- `milestones list`, `milestones get`, `milestones create`, `milestones update`
 - `teams list`, `teams get`, `teams labels`, `teams states`
 - `users list`, `users get`, `users me`
 - `search` (all operations)
@@ -192,6 +198,9 @@ linear search --state Backlog --has-blockers --team CEN
 # Customer-facing bugs in current cycle
 linear i list --labels customer,bug --cycle 65 --format full
 
+# Issues in a project milestone
+linear i list --project "Q3 Launch" --milestone Beta --format full
+
 # Unassigned high-priority work
 linear search --priority 1 --assignee none --team CEN
 
@@ -218,10 +227,28 @@ linear i create "Add OAuth integration" \
   --estimate 5 \
   --cycle 65 \
   --project "Auth Revamp" \
+  --milestone Beta \
   --due 2026-02-01
 
 # With description from file
 cat spec.md | linear i create "Feature title" --team CEN -d -
+```
+
+## Milestone Operations
+
+```bash
+# List milestones for a project
+linear m list --project "Q3 Launch"
+
+# Create a milestone with a target date
+linear m create Beta --project "Q3 Launch" --target-date 2026-08-01
+
+# Rename a milestone
+linear m update Beta --project "Q3 Launch" --name "Private beta"
+
+# Assign issues to a milestone
+linear i create "Build invite flow" --project "Q3 Launch" --milestone Beta
+linear i update CEN-123 --project "Q3 Launch" --milestone Beta
 ```
 
 ## Piping Support (Powerful!)
@@ -378,6 +405,7 @@ linear i list --creator me --team CEN
 - `-a, --assignee <email|me>` - Assign to user
 - `-c, --cycle <number>` - Cycle number
 - `-P, --project <name>` - Project name
+- `-m, --milestone <name>` - Project milestone name or UUID
 - `-e, --estimate <points>` - Story points
 - `-l, --labels <list>` - Comma-separated
 - `-d, --description <text|->` - Description (- for stdin)
