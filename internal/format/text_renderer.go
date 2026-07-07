@@ -439,7 +439,10 @@ func (r *TextRenderer) RenderMilestoneList(milestones []core.ProjectMilestone, v
 }
 
 func (r *TextRenderer) milestoneMinimal(milestone *core.ProjectMilestone) string {
-	return fmtSprintf("%s [%s] %s", milestone.Name, milestone.Status, formatDate(milestone.TargetDate))
+	if date := formatDate(milestone.TargetDate); date != "" {
+		return fmtSprintf("%s [%s] %s", milestone.Name, milestone.Status, date)
+	}
+	return fmtSprintf("%s [%s]", milestone.Name, milestone.Status)
 }
 
 func (r *TextRenderer) milestoneCompact(milestone *core.ProjectMilestone) string {
