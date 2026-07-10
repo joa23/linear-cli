@@ -199,3 +199,31 @@ func TestInitializeClientWithTokenPath_LegacyPlainToken(t *testing.T) {
 	require.NotNil(t, client)
 	assert.Equal(t, "", client.GetAuthMode()) // Legacy tokens have no auth mode
 }
+
+func TestIsNoAuthInvocation(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"bare invocation prints help", []string{}, true},
+		{"root help flag", []string{"--help"}, true},
+		{"root short help flag", []string{"-h"}, true},
+		{"version flag", []string{"--version"}, true},
+		{"help subcommand", []string{"help", "issues"}, true},
+		{"completion subcommand", []string{"completion", "zsh"}, true},
+		{"auth login", []string{"auth", "login"}, true},
+		{"auth after global flag", []string{"--workspace", "auth"}, true},
+		{"subcommand help flag", []string{"issues", "create", "--help"}, true},
+		{"real command needs auth", []string{"issues", "list"}, false},
+		{"real command with flags needs auth", []string{"issues", "list", "--limit", "5"}, false},
+		{"search needs auth", []string{"search", "help wanted"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isNoAuthInvocation(tc.args); got != tc.want {
+				t.Errorf("isNoAuthInvocation(%v) = %v, want %v", tc.args, got, tc.want)
+			}
+		})
+	}
+}

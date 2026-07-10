@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/joa23/linear-cli/pkg/linear"
 	"github.com/joa23/linear-cli/internal/token"
+	"github.com/joa23/linear-cli/pkg/linear"
 	"github.com/spf13/cobra"
 )
 
@@ -184,9 +184,9 @@ Configuration:
 
 // Execute runs the CLI with dependency injection
 func Execute() {
-	// Check if this is an auth command (doesn't need client initialization)
-	if isAuthCommand() {
-		// Auth commands handle their own client creation
+	// Auth commands, help/version/completion, and a bare `linear` don't need
+	// client initialization
+	if isNoAuthInvocation(os.Args[1:]) {
 		rootCmd := NewRootCmd()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -217,18 +217,32 @@ func Execute() {
 	}
 }
 
-// isAuthCommand checks if the current command is an auth-related command
-// that doesn't require client initialization
-func isAuthCommand() bool {
-	// Check if "auth" appears in the command arguments
-	// This handles: linear auth login, linear auth logout, linear auth status
-	for _, arg := range os.Args[1:] {
-		if arg == "auth" {
+// isNoAuthInvocation reports whether this invocation must not require
+// credentials: auth subcommands (they handle their own client creation),
+// help/version/completion, `--help`/`-h`/`--version` anywhere (cobra shows
+// help/version regardless of position), and a bare `linear` (prints help).
+// Without this, `linear --help` on a machine with no stored token and no
+// LINEAR_API_KEY exits 1 with "not authenticated" instead of printing usage.
+func isNoAuthInvocation(args []string) bool {
+	if len(args) == 0 {
+		return true // bare `linear` prints help
+	}
+	// Help/version flags trigger cobra's help path from ANY position
+	// (`linear issues create --help` must not require auth either).
+	for _, arg := range args {
+		switch arg {
+		case "-h", "--help", "--version":
 			return true
 		}
-		// Stop at first non-flag argument
+	}
+	// Otherwise the first non-flag argument is the subcommand.
+	for _, arg := range args {
 		if len(arg) > 0 && arg[0] != '-' {
-			break
+			switch arg {
+			case "auth", "help", "version", "completion":
+				return true
+			}
+			return false
 		}
 	}
 	return false
