@@ -27,6 +27,22 @@ func (f *Formatter) Issue(issue *core.Issue, fmt Format) string {
 	}
 }
 
+// IssueCreated formats the confirmation for a freshly created issue: the
+// identifier on the first line, then the URL.
+//
+// It deliberately does NOT echo the description back. `create` used to render
+// the new issue at Full, which re-printed the entire description the caller had
+// just supplied — telling them nothing they did not already know, while burying
+// the one thing they did not: the identifier. Read the tail of that output and a
+// successful create is indistinguishable from a failed one, so callers retried a
+// write that had already landed and filed duplicate issues.
+func (f *Formatter) IssueCreated(issue *core.Issue) string {
+	if issue == nil {
+		return ""
+	}
+	return fmtSprintf("%s: %s\nURL: %s", issue.Identifier, issue.Title, issue.URL)
+}
+
 // IssueList formats a list of issues with optional pagination
 func (f *Formatter) IssueList(issues []core.Issue, fmt Format, page *Pagination) string {
 	if len(issues) == 0 {

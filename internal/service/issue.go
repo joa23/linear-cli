@@ -455,7 +455,7 @@ type CreateIssueInput struct {
 }
 
 // Create creates a new issue
-func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
+func (s *IssueService) Create(input *CreateIssueInput, outputType format.OutputType) (string, error) {
 	if input.Title == "" {
 		return "", fmt.Errorf("title is required")
 	}
@@ -551,7 +551,13 @@ func (s *IssueService) Create(input *CreateIssueInput) (string, error) {
 		}
 	}
 
-	return s.formatter.Issue(issue, format.Full), nil
+	// Report the created issue, never the description it was created with: an
+	// unambiguous `ABC-123: <title>` + URL in text mode, the full issue in JSON
+	// mode for scripted callers that need to read the identifier back reliably.
+	if outputType == format.OutputJSON {
+		return s.formatter.RenderIssue(issue, format.VerbosityFull, outputType), nil
+	}
+	return s.formatter.IssueCreated(issue), nil
 }
 
 // UpdateIssueInput represents input for updating an issue

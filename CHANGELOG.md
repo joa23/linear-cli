@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `issues create --output json` — return the full created issue as JSON so scripted callers can read `.identifier` / `.url` unambiguously instead of scraping text.
+
+### Fixed
+
+- `issues create` no longer echoes the description back. It rendered the new issue at `full` verbosity, which re-printed the entire description the caller had just supplied and buried the identifier on line 1 under it. Reading the tail of that output, a *successful* create was indistinguishable from a failed one — so callers retried a write that had already landed and filed duplicate issues. It now prints the identifier on the first line and the URL, and nothing else.
+
 ## [1.9.1] - 2026-07-13
 
 ### Fixed

@@ -295,6 +295,7 @@ func newIssuesCreateCmd() *cobra.Command {
 		dependsOn   string
 		blockedBy   string
 		attachFiles []string
+		outputType  string
 	)
 
 	cmd := &cobra.Command{
@@ -307,6 +308,10 @@ REQUIRED:
 - Team context (from 'linear init' or --team flag)
 
 OPTIONAL: All other flags (assignee, priority, labels, etc.)
+
+OUTPUT: On success, prints the new issue's identifier on the FIRST line, then its
+URL — and nothing else. The description is not echoed back. On failure it exits
+non-zero. Scripts should use --output json and read .identifier.
 
 TIP: Run 'linear init' first to set default team.`,
 		Example: `  # Minimal - create with just title (requires 'linear init')
@@ -430,7 +435,12 @@ TIP: Run 'linear init' first to set default team.`,
 				input.BlockedBy = parseCommaSeparated(blockedBy)
 			}
 
-			output, err := deps.Issues.Create(input)
+			outType, err := format.ParseOutputType(outputType)
+			if err != nil {
+				return fmt.Errorf("invalid output type: %w", err)
+			}
+
+			output, err := deps.Issues.Create(input, outType)
 			if err != nil {
 				return fmt.Errorf("failed to create issue: %w", err)
 			}
@@ -455,6 +465,7 @@ TIP: Run 'linear init' first to set default team.`,
 	cmd.Flags().StringVar(&dependsOn, "depends-on", "", "Comma-separated issue IDs this depends on")
 	cmd.Flags().StringVar(&blockedBy, "blocked-by", "", "Comma-separated issue IDs blocking this")
 	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
+	cmd.Flags().StringVarP(&outputType, "output", "o", "text", "Output format: text|json (json returns the full created issue)")
 
 	return cmd
 }

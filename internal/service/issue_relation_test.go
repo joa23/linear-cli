@@ -221,7 +221,7 @@ func TestIssueService_Create_DependsOn_CreatesRelation(t *testing.T) {
 		Title:     "New issue",
 		TeamID:    "TEST",
 		DependsOn: []string{"TEST-100"},
-	})
+	}, format.OutputText)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

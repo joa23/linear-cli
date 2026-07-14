@@ -13,7 +13,7 @@ type IssueServiceInterface interface {
 	SearchWithOutput(filters *SearchFilters, verbosity format.Verbosity, outputType format.OutputType) (string, error)
 	ListAssigned(limit int, outputFormat format.Format) (string, error)
 	ListAssignedWithPagination(pagination *core.PaginationInput) (string, error)
-	Create(input *CreateIssueInput) (string, error)
+	Create(input *CreateIssueInput, outputType format.OutputType) (string, error)
 	Update(identifier string, input *UpdateIssueInput) (string, error)
 	GetComments(identifier string) (string, error)
 	AddComment(identifier, body string) (string, error)
