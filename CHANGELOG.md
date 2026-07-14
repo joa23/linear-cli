@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-07-14
+
 ### Added
 
-- `issues create --output json` — return the full created issue as JSON so scripted callers can read `.identifier` / `.url` unambiguously instead of scraping text.
+- `issues create --output json` — return the full created issue as JSON so scripted callers can read `.identifier` / `.url` unambiguously instead of scraping text (#59).
 
 ### Fixed
 
-- `issues create` no longer echoes the description back. It rendered the new issue at `full` verbosity, which re-printed the entire description the caller had just supplied and buried the identifier on line 1 under it. Reading the tail of that output, a *successful* create was indistinguishable from a failed one — so callers retried a write that had already landed and filed duplicate issues. It now prints the identifier on the first line and the URL, and nothing else.
+- `issues create` no longer echoes the description back. It rendered the new issue at `full` verbosity, which re-printed the entire description the caller had just supplied and buried the identifier on line 1 under it. Reading the tail of that output, a *successful* create was indistinguishable from a failed one — so callers retried a write that had already landed and filed duplicate issues. It now prints the identifier on the first line and the URL, and nothing else. The first output line is `ABC-123: <title>` before and after, so scripts parsing the leading identifier keep working (#59).
 
 ## [1.9.1] - 2026-07-13
 
@@ -575,7 +577,8 @@ A token-efficient CLI for Linear.
 - Linux (64-bit)
 - Windows (64-bit)
 
-[Unreleased]: https://github.com/joa23/linear-cli/compare/v1.9.1...HEAD
+[Unreleased]: https://github.com/joa23/linear-cli/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/joa23/linear-cli/compare/v1.9.1...v1.10.0
 [1.9.1]: https://github.com/joa23/linear-cli/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/joa23/linear-cli/compare/v1.8.1...v1.9.0
 [1.6.1]: https://github.com/joa23/linear-cli/compare/v1.6.0...v1.6.1
