@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-07-13
+
+### Fixed
+
+- `linear --help`, `--version`, and `completion` no longer require authentication. The client was initialized eagerly for every non-`auth` command, so on a machine with no stored token and no `LINEAR_API_KEY` (e.g. a CI smoke test running before secrets are in scope), `linear --help` exited 1 with "not authenticated" instead of printing usage. Bare `linear`, `-h`/`--help`/`--version` in any position, and the `help`/`version`/`completion` subcommands now skip client initialization; real commands still fail fast with the auth error (#58).
+
 ## [1.9.0] - 2026-05-21
 
 ### Added
@@ -561,7 +567,8 @@ A token-efficient CLI for Linear.
 - Linux (64-bit)
 - Windows (64-bit)
 
-[Unreleased]: https://github.com/joa23/linear-cli/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/joa23/linear-cli/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/joa23/linear-cli/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/joa23/linear-cli/compare/v1.8.1...v1.9.0
 [1.6.1]: https://github.com/joa23/linear-cli/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/joa23/linear-cli/compare/v1.5.0...v1.6.0
