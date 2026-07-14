@@ -1,7 +1,9 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/joa23/linear-cli/internal/format"
@@ -55,8 +57,8 @@ func (m *mockIssueClientForCreate) ResolveLabelIdentifier(label, team string) (s
 
 // Unused interface methods.
 func (m *mockIssueClientForCreate) GetIssue(id string) (*core.Issue, error) { return nil, nil }
-func (m *mockIssueClientForCreate) UpdateIssueState(id, state string) error  { return nil }
-func (m *mockIssueClientForCreate) AssignIssue(id, assignee string) error    { return nil }
+func (m *mockIssueClientForCreate) UpdateIssueState(id, state string) error { return nil }
+func (m *mockIssueClientForCreate) AssignIssue(id, assignee string) error   { return nil }
 func (m *mockIssueClientForCreate) ListAssignedIssues(limit int) ([]core.Issue, error) {
 	return nil, nil
 }
@@ -94,17 +96,17 @@ func TestIssueService_Create_AtomicFields(t *testing.T) {
 		svc := makeIssueServiceForCreate(mock)
 
 		_, err := svc.Create(&CreateIssueInput{
-			Title:     "My issue",
-			TeamID:    "TL",
+			Title:      "My issue",
+			TeamID:     "TL",
 			AssigneeID: "john@company.com",
-			LabelIDs:  []string{"Bugfix", "Feature"},
-			Priority:  &priority,
-			Estimate:  &estimate,
-			DueDate:   "2026-03-01",
-			ParentID:  "parent-uuid",
-			ProjectID: "project-uuid",
-			CycleID:   "65",
-		})
+			LabelIDs:   []string{"Bugfix", "Feature"},
+			Priority:   &priority,
+			Estimate:   &estimate,
+			DueDate:    "2026-03-01",
+			ParentID:   "parent-uuid",
+			ProjectID:  "project-uuid",
+			CycleID:    "65",
+		}, format.OutputText)
 
 		if err != nil {
 			t.Fatalf("Create() returned unexpected error: %v", err)
@@ -162,7 +164,7 @@ func TestIssueService_Create_AtomicFields(t *testing.T) {
 		_, err := svc.Create(&CreateIssueInput{
 			Title:  "Minimal",
 			TeamID: "TL",
-		})
+		}, format.OutputText)
 
 		if err != nil {
 			t.Fatalf("Create() returned unexpected error: %v", err)
@@ -186,13 +188,80 @@ func TestIssueService_Create_AtomicFields(t *testing.T) {
 			TeamID:   "TL",
 			LabelIDs: []string{"Bugfix"},
 			Priority: &priority,
-		})
+		}, format.OutputText)
 
 		if err == nil {
 			t.Fatal("Create() should have returned an error")
 		}
 		if mock.updateCalled {
 			t.Fatal("UpdateIssue was called after CreateIssue failure — orphaned issue risk")
+		}
+	})
+}
+
+// Create must report the issue it created, never the description it was created
+// with. Rendering the new issue at Full echoed the whole body back and buried the
+// identifier on line 1, so a caller reading the tail of that output saw only its
+// own description and concluded the create had failed — then retried a write that
+// had already landed and filed a duplicate issue.
+func TestIssueService_Create_ReportsIdentifierNotDescription(t *testing.T) {
+	// A body long enough to bury the identifier, carrying the kind of dedupe
+	// marker an automated filer embeds so it can recognize its own issues later.
+	const body = "Filed automatically.\n\n<!-- dedupe:0123456789 -->"
+	const identifier = "ABC-123"
+	const issueURL = "https://linear.app/acme/issue/ABC-123"
+
+	newSvc := func() (*IssueService, *mockIssueClientForCreate) {
+		mock := &mockIssueClientForCreate{
+			createResult: &core.Issue{
+				ID:          "issue-uuid",
+				Identifier:  identifier,
+				Title:       "Fix the thing",
+				Description: body,
+				URL:         issueURL,
+			},
+		}
+		return makeIssueServiceForCreate(mock), mock
+	}
+
+	t.Run("text output leads with the identifier and omits the description", func(t *testing.T) {
+		svc, _ := newSvc()
+
+		out, err := svc.Create(&CreateIssueInput{Title: "t", TeamID: "ABC", Description: body}, format.OutputText)
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		firstLine, _, _ := strings.Cut(out, "\n")
+		if !strings.HasPrefix(firstLine, identifier+":") {
+			t.Errorf("first line = %q, want it to start with the identifier", firstLine)
+		}
+		if strings.Contains(out, "<!-- dedupe:0123456789 -->") || strings.Contains(out, "Filed automatically") {
+			t.Errorf("create echoed the description back:\n%s", out)
+		}
+		if !strings.Contains(out, issueURL) {
+			t.Errorf("create did not report the issue URL:\n%s", out)
+		}
+	})
+
+	t.Run("json output carries the identifier for scripted callers", func(t *testing.T) {
+		svc, _ := newSvc()
+
+		out, err := svc.Create(&CreateIssueInput{Title: "t", TeamID: "ABC", Description: body}, format.OutputJSON)
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		var got struct {
+			Identifier string `json:"identifier"`
+			URL        string `json:"url"`
+		}
+		if err := json.Unmarshal([]byte(out), &got); err != nil {
+			t.Fatalf("create --output json is not valid JSON: %v\n%s", err, out)
+		}
+		if got.Identifier != identifier {
+			t.Errorf("identifier = %q, want %q", got.Identifier, identifier)
+		}
+		if got.URL != issueURL {
+			t.Errorf("url = %q, want the issue URL", got.URL)
 		}
 	})
 }
