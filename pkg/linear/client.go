@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/joa23/linear-cli/internal/config"
+	"github.com/joa23/linear-cli/internal/oauth"
+	"github.com/joa23/linear-cli/internal/token"
 	"github.com/joa23/linear-cli/pkg/linear/attachments"
 	"github.com/joa23/linear-cli/pkg/linear/comments"
 	"github.com/joa23/linear-cli/pkg/linear/core"
@@ -16,8 +18,6 @@ import (
 	"github.com/joa23/linear-cli/pkg/linear/teams"
 	"github.com/joa23/linear-cli/pkg/linear/users"
 	"github.com/joa23/linear-cli/pkg/linear/workflows"
-	"github.com/joa23/linear-cli/internal/oauth"
-	"github.com/joa23/linear-cli/internal/token"
 )
 
 // Client represents the main Linear API client that orchestrates all sub-clients.
@@ -461,14 +461,41 @@ func (c *Client) ListUserProjects(userID string, limit int) ([]core.Project, err
 	return c.Projects.ListUserProjects(userID, limit)
 }
 
-func (c *Client) UpdateProject(projectID string, input interface{}) (*core.Project, error) {
-	// Convert interface{} to the actual type expected by Projects client
-	// This is a temporary solution for Phase 1 to maintain flexibility
-	return c.Projects.UpdateProject(projectID, input.(projects.UpdateProjectInput))
+func (c *Client) ListAllProjectsWithStatus(limit int, statusIDs []string) ([]core.Project, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	return c.Projects.ListAllProjectsWithStatus(limit, statusIDs)
+}
+
+func (c *Client) ListByTeamWithStatus(teamID string, limit int, statusIDs []string) ([]core.Project, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	return c.Projects.ListByTeamWithStatus(teamID, limit, statusIDs)
+}
+
+func (c *Client) ListUserProjectsWithStatus(userID string, limit int, statusIDs []string) ([]core.Project, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	return c.Projects.ListUserProjectsWithStatus(userID, limit, statusIDs)
+}
+
+func (c *Client) ResolveProjectStatusNames(names []string) ([]string, error) {
+	return c.Projects.ResolveProjectStatusNames(names)
+}
+
+func (c *Client) UpdateProject(projectID string, input projects.UpdateProjectInput) (*core.Project, error) {
+	return c.Projects.UpdateProject(projectID, input)
 }
 
 func (c *Client) UpdateProjectState(projectID, state string) error {
 	return c.Projects.UpdateProjectState(projectID, state)
+}
+
+func (c *Client) UpdateProjectStateWithResult(projectID, state string) (*core.Project, error) {
+	return c.Projects.UpdateProjectStateWithResult(projectID, state)
 }
 
 func (c *Client) UpdateProjectDescription(projectID, newDescription string) error {

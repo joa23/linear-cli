@@ -39,10 +39,13 @@ type ProjectServiceInterface interface {
 	GetWithOutput(projectID string, verbosity format.Verbosity, outputType format.OutputType) (string, error)
 	ListAll(limit int) (string, error)
 	ListAllWithOutput(limit int, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	ListAllWithStatusOutput(limit int, status string, verbosity format.Verbosity, outputType format.OutputType) (string, error)
 	ListByTeam(teamID string, limit int) (string, error)
 	ListByTeamWithOutput(teamID string, limit int, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	ListByTeamWithStatusOutput(teamID string, limit int, status string, verbosity format.Verbosity, outputType format.OutputType) (string, error)
 	ListUserProjects(limit int) (string, error)
 	ListUserProjectsWithOutput(limit int, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	ListUserProjectsWithStatusOutput(limit int, status string, verbosity format.Verbosity, outputType format.OutputType) (string, error)
 	Create(input *CreateProjectInput) (string, error)
 	Update(projectID string, input *UpdateProjectInput) (string, error)
 }

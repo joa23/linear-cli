@@ -338,7 +338,7 @@ func (r *TextRenderer) projectFull(project *core.Project) string {
 	b.WriteString("\n")
 
 	// State
-	b.WriteString(fmtSprintf("State: %s\n", project.State))
+	b.WriteString(fmtSprintf("State: %s\n", project.StatusName()))
 
 	// Description
 	if project.Description != "" {
@@ -381,7 +381,7 @@ func (r *TextRenderer) projectCompact(project *core.Project) string {
 	var b strings.Builder
 
 	// Line 1: Name and state
-	b.WriteString(fmtSprintf("%s [%s]\n", project.Name, project.State))
+	b.WriteString(fmtSprintf("%s [%s]\n", project.Name, project.StatusName()))
 
 	// Line 2: Description (if any)
 	if project.Description != "" {

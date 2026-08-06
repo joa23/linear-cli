@@ -398,17 +398,53 @@ type ParentIssue struct {
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
+// ProjectStatus represents a named Linear project status.
+type ProjectStatus struct {
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Type       string  `json:"type"`
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+}
+
 // Project represents a Linear project
 type Project struct {
 	ID          string                 `json:"id"`
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`         // Short description (255 char limit)
 	Content     string                 `json:"content,omitempty"`   // Long markdown content (no limit)
-	State       string                 `json:"state"`               // planned, started, completed, etc.
+	State       string                 `json:"state"`               // Deprecated status type (planned, started, etc.)
+	Status      *ProjectStatus         `json:"status,omitempty"`
 	Issues      *IssueConnection       `json:"issues,omitempty"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt   string                 `json:"createdAt"`
 	UpdatedAt   string                 `json:"updatedAt"`
+}
+
+// UnmarshalJSON preserves the deprecated state alias while preferring the
+// status type whenever the API returns the named project status.
+func (p *Project) UnmarshalJSON(data []byte) error {
+	type projectAlias Project
+	var decoded projectAlias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	if decoded.Status != nil {
+		decoded.State = decoded.Status.Type
+	}
+	*p = Project(decoded)
+	return nil
+}
+
+// StatusName returns the named status, falling back to the deprecated state
+// value for responses produced by older API versions.
+func (p *Project) StatusName() string {
+	if p != nil && p.Status != nil && p.Status.Name != "" {
+		return p.Status.Name
+	}
+	if p == nil {
+		return ""
+	}
+	return p.State
 }
 
 // IssueConnection represents the GraphQL connection for issues
