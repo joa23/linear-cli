@@ -133,30 +133,30 @@ linear_create_issue("Task title", "Description", teams[0].id)`)
 	if input.DueDate != "" {
 		gqlInput["dueDate"] = input.DueDate
 	}
-	if len(input.LabelIDs) > 0 {
+	if input.LabelIDs != nil {
 		gqlInput["labelIds"] = input.LabelIDs
 	}
 
 	variables := map[string]interface{}{
 		"input": gqlInput,
 	}
-	
+
 	var response struct {
 		IssueCreate struct {
-			Success bool  `json:"success"`
+			Success bool       `json:"success"`
 			Issue   core.Issue `json:"issue"`
 		} `json:"issueCreate"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(mutation, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create issue: %w", err)
 	}
-	
+
 	if !response.IssueCreate.Success {
-		return nil, fmt.Errorf("issue creation was not successful")
+		return nil, fmt.Errorf("failed to create issue: mutation was not successful")
 	}
-	
+
 	// Extract metadata from description if present
 	// Why: We store metadata in issue descriptions as hidden markdown.
 	// After creating an issue, we need to extract this metadata to populate
@@ -166,7 +166,7 @@ linear_create_issue("Task title", "Description", teams[0].id)`)
 		response.IssueCreate.Issue.Metadata = metadata
 		response.IssueCreate.Issue.Description = cleanDesc
 	}
-	
+
 	return &response.IssueCreate.Issue, nil
 }
 
@@ -180,7 +180,7 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 	if issueID == "" {
 		return nil, &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
 	}
-	
+
 	const query = `
 		query GetIssue($id: String!) {
 			issue(id: $id) {
@@ -275,11 +275,11 @@ func (ic *Client) GetIssue(issueID string) (*core.Issue, error) {
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"id": issueID,
 	}
-	
+
 	var response struct {
 		Issue core.Issue `json:"issue"`
 	}
@@ -342,7 +342,7 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 	if issueID == "" {
 		return nil, &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
 	}
-	
+
 	const query = `
 		query GetIssueWithProject($id: String!) {
 			issue(id: $id) {
@@ -454,14 +454,14 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue with project context: %w", err)
 	}
-	
+
 	// Extract metadata from issue description
 	if response.Issue.Description != "" {
 		metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.Issue.Description)
 		response.Issue.Metadata = metadata
 		response.Issue.Description = cleanDesc
 	}
-	
+
 	// Extract metadata from project description if project exists
 	// Why: Projects can also have metadata. When fetching project context,
 	// we want to ensure project metadata is also extracted and available.
@@ -470,7 +470,7 @@ func (ic *Client) getIssueWithProjectContextInternal(issueID string) (*core.Issu
 		response.Issue.Project.Metadata = projectMetadata
 		response.Issue.Project.Description = cleanProjectDesc
 	}
-	
+
 	return &response.Issue, nil
 }
 
@@ -500,7 +500,7 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 	if issueID == "" {
 		return nil, &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
 	}
-	
+
 	const query = `
 		query GetIssueWithParent($id: String!) {
 			issue(id: $id) {
@@ -613,14 +613,14 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue with parent context: %w", err)
 	}
-	
+
 	// Extract metadata from issue description
 	if response.Issue.Description != "" {
 		metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.Issue.Description)
 		response.Issue.Metadata = metadata
 		response.Issue.Description = cleanDesc
 	}
-	
+
 	// Extract metadata from parent description if parent exists
 	// Why: Parent issues may contain metadata that provides context for
 	// sub-tasks. Extracting it ensures complete metadata visibility.
@@ -629,7 +629,7 @@ func (ic *Client) getIssueWithParentContextInternal(issueID string) (*core.Issue
 		response.Issue.Parent.Metadata = parentMetadata
 		response.Issue.Parent.Description = cleanParentDesc
 	}
-	
+
 	return &response.Issue, nil
 }
 
@@ -646,7 +646,7 @@ func (ic *Client) UpdateIssueState(issueID, stateID string) error {
 	if stateID == "" {
 		return &core.ValidationError{Field: "stateID", Message: "stateID cannot be empty"}
 	}
-	
+
 	const mutation = `
 		mutation UpdateIssueState($issueId: String!, $stateId: String!) {
 			issueUpdate(
@@ -664,12 +664,12 @@ func (ic *Client) UpdateIssueState(issueID, stateID string) error {
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"issueId": issueID,
 		"stateId": stateID,
 	}
-	
+
 	var response struct {
 		IssueUpdate struct {
 			Success bool `json:"success"`
@@ -682,19 +682,19 @@ func (ic *Client) UpdateIssueState(issueID, stateID string) error {
 			} `json:"issue"`
 		} `json:"issueUpdate"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(mutation, variables, &response)
 	if err != nil {
 		// Check if this is a state ID not found error
 		// Why: The Linear API returns specific error messages when state IDs
 		// are invalid. We want to provide helpful guidance to users.
-		if strings.Contains(err.Error(), "Entity not found in validateAccess: stateId") || 
-		   strings.Contains(err.Error(), "does not exist") && strings.Contains(err.Error(), "state") {
+		if strings.Contains(err.Error(), "Entity not found in validateAccess: stateId") ||
+			strings.Contains(err.Error(), "does not exist") && strings.Contains(err.Error(), "state") {
 			return guidance.InvalidStateIDError(stateID, err)
 		}
 		return guidance.EnhanceGenericError("update issue state", err)
 	}
-	
+
 	if !response.IssueUpdate.Success {
 		return guidance.OperationFailedError("Update issue state", "issue", []string{
 			"Verify the issue ID exists using linear_get_issue",
@@ -702,7 +702,7 @@ func (ic *Client) UpdateIssueState(issueID, stateID string) error {
 			"Ensure you have permission to update this issue",
 		})
 	}
-	
+
 	return nil
 }
 
@@ -713,7 +713,7 @@ func (ic *Client) AssignIssue(issueID, assigneeID string) error {
 	if issueID == "" {
 		return &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
 	}
-	
+
 	const mutation = `
 		mutation AssignIssue($issueId: String!, $assigneeId: String) {
 			issueUpdate(
@@ -752,22 +752,22 @@ func (ic *Client) AssignIssue(issueID, assigneeID string) error {
 		"issueId":    issueID,
 		"assigneeId": assigneeInput,
 	}
-	
+
 	var response struct {
 		IssueUpdate struct {
 			Success bool `json:"success"`
 		} `json:"issueUpdate"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(mutation, variables, &response)
 	if err != nil {
 		return fmt.Errorf("failed to assign issue: %w", err)
 	}
-	
+
 	if !response.IssueUpdate.Success {
 		return fmt.Errorf("issue assignment was not successful")
 	}
-	
+
 	return nil
 }
 
@@ -781,7 +781,7 @@ func (ic *Client) ListAssignedIssues(limit int) ([]core.Issue, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	
+
 	const query = `
 		query ListAssignedIssues($filter: IssueFilter, $first: Int) {
 			issues(filter: $filter, first: $first) {
@@ -831,7 +831,7 @@ func (ic *Client) ListAssignedIssues(limit int) ([]core.Issue, error) {
 			}
 		}
 	`
-	
+
 	// Filter for issues assigned to the current user
 	// Why: The "me" identifier is Linear's way of referring to the
 	// authenticated user without needing to know their specific ID.
@@ -842,23 +842,23 @@ func (ic *Client) ListAssignedIssues(limit int) ([]core.Issue, error) {
 			},
 		},
 	}
-	
+
 	variables := map[string]interface{}{
 		"filter": filter,
 		"first":  limit,
 	}
-	
+
 	var response struct {
 		Issues struct {
 			Nodes []core.Issue `json:"nodes"`
 		} `json:"issues"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list assigned issues: %w", err)
 	}
-	
+
 	// Extract metadata from descriptions
 	// Why: Each issue might have metadata. We extract it here to ensure
 	// consistent metadata access across all retrieval methods.
@@ -869,7 +869,7 @@ func (ic *Client) ListAssignedIssues(limit int) ([]core.Issue, error) {
 			response.Issues.Nodes[i].Description = cleanDesc
 		}
 	}
-	
+
 	return response.Issues.Nodes, nil
 }
 
@@ -884,7 +884,7 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 	if filters.Limit <= 0 {
 		filters.Limit = 10 // Reduced from 50 to minimize token usage
 	}
-	
+
 	const query = `
 		query SearchIssuesEnhanced($filter: IssueFilter, $first: Int, $after: String, $includeArchived: Boolean, $orderBy: PaginationOrderBy) {
 			issues(filter: $filter, first: $first, after: $after, includeArchived: $includeArchived, orderBy: $orderBy) {
@@ -958,7 +958,7 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 
 	// Build filter object
 	filter := make(map[string]interface{})
-	
+
 	// Team filter
 	if filters.TeamID != "" {
 		// Linear's team filter requires IDComparator format
@@ -994,7 +994,7 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 			},
 		}
 	}
-	
+
 	// Label filters (include and/or exclude)
 	hasIncludeLabels := len(filters.LabelIDs) > 0
 	hasExcludeLabels := len(filters.ExcludeLabelIDs) > 0
@@ -1029,7 +1029,7 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 			},
 		}
 	}
-	
+
 	// Assignee filter
 	if filters.AssigneeID != "" {
 		filter["assignee"] = map[string]interface{}{
@@ -1038,7 +1038,7 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 			},
 		}
 	}
-	
+
 	// Priority filter
 	if filters.Priority != nil {
 		filter["priority"] = map[string]interface{}{
@@ -1096,7 +1096,7 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 		}
 		filter["updatedAt"].(map[string]interface{})["lte"] = filters.UpdatedBefore
 	}
-	
+
 	variables := map[string]interface{}{
 		"first": filters.Limit,
 	}
@@ -1113,7 +1113,7 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 
 	// Always include the includeArchived parameter (defaults to false)
 	variables["includeArchived"] = filters.IncludeArchived
-	
+
 	// Add orderBy if specified
 	if filters.OrderBy != "" {
 		variables["orderBy"] = filters.OrderBy
@@ -1128,12 +1128,12 @@ func (ic *Client) SearchIssuesEnhanced(filters *core.IssueSearchFilters) (*core.
 			} `json:"pageInfo"`
 		} `json:"issues"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search issues: %w", err)
 	}
-	
+
 	return &core.IssueSearchResult{
 		Issues:      response.Issues.Nodes,
 		HasNextPage: response.Issues.PageInfo.HasNextPage,
@@ -1148,7 +1148,7 @@ func (ic *Client) BatchUpdateIssues(issueIDs []string, update core.BatchIssueUpd
 	if len(issueIDs) == 0 {
 		return nil, fmt.Errorf("no issue IDs provided")
 	}
-	
+
 	const mutation = `
 		mutation BatchUpdateIssues($issueIds: [String!]!, $input: IssueUpdateInput!) {
 			issueBatchUpdate(ids: $issueIds, input: $input) {
@@ -1191,10 +1191,10 @@ func (ic *Client) BatchUpdateIssues(issueIDs []string, update core.BatchIssueUpd
 			}
 		}
 	`
-	
+
 	// Build the update input
 	input := make(map[string]interface{})
-	
+
 	if update.StateID != "" {
 		input["stateId"] = update.StateID
 	}
@@ -1210,25 +1210,25 @@ func (ic *Client) BatchUpdateIssues(issueIDs []string, update core.BatchIssueUpd
 	if update.ProjectID != "" {
 		input["projectId"] = update.ProjectID
 	}
-	
+
 	if len(input) == 0 {
 		return nil, fmt.Errorf("no update fields provided")
 	}
-	
+
 	variables := map[string]interface{}{
 		"issueIds": issueIDs,
 		"input":    input,
 	}
-	
+
 	var response struct {
 		IssueBatchUpdate core.BatchIssueUpdateResult `json:"issueBatchUpdate"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(mutation, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to batch update issues: %w", err)
 	}
-	
+
 	return &response.IssueBatchUpdate, nil
 }
 
@@ -1240,13 +1240,13 @@ func (ic *Client) GetIssueWithBestContext(issueID string) (*core.Issue, error) {
 	if issueID == "" {
 		return nil, &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
 	}
-	
+
 	// First, get basic issue info to determine what context to fetch
 	issue, err := ic.GetIssue(issueID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue: %w", err)
 	}
-	
+
 	// Determine the best context based on what the issue has
 	if issue.Parent != nil && issue.Parent.ID != "" {
 		// Issue has a parent - fetch with parent context for sibling information
@@ -1256,7 +1256,7 @@ func (ic *Client) GetIssueWithBestContext(issueID string) (*core.Issue, error) {
 			return issue, nil
 		}
 		return parentContextIssue, nil
-		
+
 	} else if issue.Project != nil && issue.Project.ID != "" {
 		// Issue has a project but no parent - fetch with project context
 		projectContextIssue, err := ic.GetIssueWithProjectContext(issueID)
@@ -1266,7 +1266,7 @@ func (ic *Client) GetIssueWithBestContext(issueID string) (*core.Issue, error) {
 		}
 		return projectContextIssue, nil
 	}
-	
+
 	// Standalone issue - we already have all the data we need
 	return issue, nil
 }
@@ -1278,7 +1278,7 @@ func (ic *Client) GetSubIssues(parentIssueID string) ([]core.SubIssue, error) {
 	if parentIssueID == "" {
 		return nil, &core.ValidationError{Field: "parentIssueID", Message: "parentIssueID cannot be empty"}
 	}
-	
+
 	const query = `
 		query GetSubIssues($id: String!) {
 			issue(id: $id) {
@@ -1296,11 +1296,11 @@ func (ic *Client) GetSubIssues(parentIssueID string) ([]core.SubIssue, error) {
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"id": parentIssueID,
 	}
-	
+
 	var response struct {
 		Issue struct {
 			Children struct {
@@ -1308,12 +1308,12 @@ func (ic *Client) GetSubIssues(parentIssueID string) ([]core.SubIssue, error) {
 			} `json:"children"`
 		} `json:"issue"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sub-issues: %w", err)
 	}
-	
+
 	return response.Issue.Children.Nodes, nil
 }
 
@@ -1324,7 +1324,7 @@ func (ic *Client) UpdateIssueDescription(issueID, newDescription string) error {
 	if issueID == "" {
 		return &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
 	}
-	
+
 	// First, get the current issue to preserve metadata
 	// Why: We need to extract existing metadata before updating the description
 	// to ensure we don't lose any stored metadata during the update.
@@ -1332,7 +1332,7 @@ func (ic *Client) UpdateIssueDescription(issueID, newDescription string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get current issue: %w", err)
 	}
-	
+
 	// Preserve existing metadata
 	// Why: The issue.Metadata field contains the extracted metadata from the
 	// current description. We need to inject this back into the new description.
@@ -1340,7 +1340,7 @@ func (ic *Client) UpdateIssueDescription(issueID, newDescription string) error {
 	if issue.Metadata != nil && len(issue.Metadata) > 0 {
 		descriptionWithMetadata = metadata.InjectMetadataIntoDescription(newDescription, issue.Metadata)
 	}
-	
+
 	const mutation = `
 		mutation UpdateIssueDescription($issueId: String!, $description: String!) {
 			issueUpdate(
@@ -1351,27 +1351,27 @@ func (ic *Client) UpdateIssueDescription(issueID, newDescription string) error {
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"issueId":     issueID,
 		"description": descriptionWithMetadata,
 	}
-	
+
 	var response struct {
 		IssueUpdate struct {
 			Success bool `json:"success"`
 		} `json:"issueUpdate"`
 	}
-	
+
 	err = ic.base.ExecuteRequest(mutation, variables, &response)
 	if err != nil {
 		return fmt.Errorf("failed to update issue description: %w", err)
 	}
-	
+
 	if !response.IssueUpdate.Success {
 		return fmt.Errorf("issue description update was not successful")
 	}
-	
+
 	return nil
 }
 
@@ -1396,7 +1396,7 @@ func (ic *Client) UpdateIssueMetadataKey(issueID, key string, value interface{})
 	if err != nil {
 		return fmt.Errorf("failed to get current issue: %w", err)
 	}
-	
+
 	// Initialize metadata if needed and update the key
 	// Why: The issue might not have any metadata yet. We initialize
 	// it as an empty map if needed before adding the new key.
@@ -1404,12 +1404,12 @@ func (ic *Client) UpdateIssueMetadataKey(issueID, key string, value interface{})
 		issue.Metadata = make(map[string]interface{})
 	}
 	issue.Metadata[key] = value
-	
+
 	// Update the description with new metadata
 	// Why: Metadata is stored in the description field. We need to
 	// inject the updated metadata back into the description.
 	descriptionWithMetadata := metadata.InjectMetadataIntoDescription(issue.Description, issue.Metadata)
-	
+
 	const mutation = `
 		mutation UpdateIssueDescription($issueId: String!, $description: String!) {
 			issueUpdate(
@@ -1420,27 +1420,27 @@ func (ic *Client) UpdateIssueMetadataKey(issueID, key string, value interface{})
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"issueId":     issueID,
 		"description": descriptionWithMetadata,
 	}
-	
+
 	var response struct {
 		IssueUpdate struct {
 			Success bool `json:"success"`
 		} `json:"issueUpdate"`
 	}
-	
+
 	err = ic.base.ExecuteRequest(mutation, variables, &response)
 	if err != nil {
 		return fmt.Errorf("failed to update issue metadata: %w", err)
 	}
-	
+
 	if !response.IssueUpdate.Success {
 		return fmt.Errorf("issue metadata update was not successful")
 	}
-	
+
 	return nil
 }
 
@@ -1454,13 +1454,13 @@ func (ic *Client) RemoveIssueMetadataKey(issueID, key string) error {
 	if key == "" {
 		return &core.ValidationError{Field: "key", Message: "key cannot be empty"}
 	}
-	
+
 	// Get current issue
 	issue, err := ic.GetIssue(issueID)
 	if err != nil {
 		return fmt.Errorf("failed to get current issue: %w", err)
 	}
-	
+
 	// Remove the key if metadata exists
 	// Why: We only proceed if there's metadata and the key exists.
 	// No need to update if there's nothing to remove.
@@ -1530,7 +1530,7 @@ func (ic *Client) GetIssueSimplified(issueID string) (*core.Issue, error) {
 	if issueID == "" {
 		return nil, &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
 	}
-	
+
 	const query = `
 		query GetIssueSimplified($id: String!) {
 			issue(id: $id) {
@@ -1591,30 +1591,30 @@ func (ic *Client) GetIssueSimplified(issueID string) (*core.Issue, error) {
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"id": issueID,
 	}
-	
+
 	var response struct {
 		Issue core.Issue `json:"issue"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue (simplified): %w", err)
 	}
-	
+
 	// Extract metadata from description
 	if response.Issue.Description != "" {
 		metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.Issue.Description)
 		response.Issue.Metadata = metadata
 		response.Issue.Description = cleanDesc
 	}
-	
+
 	// Initialize empty children to maintain consistency
 	response.Issue.Children.Nodes = []core.SubIssue{}
-	
+
 	return &response.Issue, nil
 }
 
@@ -1628,7 +1628,7 @@ func (ic *Client) GetIssueWithFallback(issueID string) (*core.Issue, error) {
 	if err == nil {
 		return issue, nil
 	}
-	
+
 	// Check if it's a server error (500) or complexity error
 	// Need to unwrap the error to check for HTTPError
 	var httpErr *core.HTTPError
@@ -1636,7 +1636,7 @@ func (ic *Client) GetIssueWithFallback(issueID string) (*core.Issue, error) {
 		// Try simplified query
 		return ic.GetIssueSimplified(issueID)
 	}
-	
+
 	// For other errors, return the original error
 	return nil, err
 }
@@ -1650,31 +1650,31 @@ func (ic *Client) UpdateIssue(issueID string, input core.UpdateIssueInput) (*cor
 	if issueID == "" {
 		return nil, &core.ValidationError{Field: "issueID", Message: "issueID cannot be empty"}
 	}
-	
+
 	// Check if there are any fields to update
 	if !hasFieldsToUpdate(input) {
 		return nil, &core.ValidationError{Field: "input", Message: "no fields to update"}
 	}
-	
+
 	// Validate priority if provided
 	if input.Priority != nil && (*input.Priority < 0 || *input.Priority > 4) {
 		return nil, &core.ValidationError{Field: "priority", Message: fmt.Sprintf("invalid priority value: %d (must be between 0-4)", *input.Priority)}
 	}
-	
+
 	// If updating description, preserve existing metadata
 	if input.Description != nil {
 		issue, err := ic.GetIssue(issueID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get current issue for metadata preservation: %w", err)
 		}
-		
+
 		// Preserve metadata in the new description
 		if issue.Metadata != nil && len(issue.Metadata) > 0 {
 			descWithMetadata := metadata.InjectMetadataIntoDescription(*input.Description, issue.Metadata)
 			input.Description = &descWithMetadata
 		}
 	}
-	
+
 	// Build the GraphQL mutation
 	const mutation = `
 		mutation UpdateIssue($issueId: String!, $input: IssueUpdateInput!) {
@@ -1737,38 +1737,38 @@ func (ic *Client) UpdateIssue(issueID string, input core.UpdateIssueInput) (*cor
 			}
 		}
 	`
-	
+
 	// Build the input object
 	updateInput := buildUpdateInput(input)
-	
+
 	variables := map[string]interface{}{
 		"issueId": issueID,
 		"input":   updateInput,
 	}
-	
+
 	var response struct {
 		IssueUpdate struct {
-			Success bool  `json:"success"`
+			Success bool       `json:"success"`
 			Issue   core.Issue `json:"issue"`
 		} `json:"issueUpdate"`
 	}
-	
+
 	err := ic.base.ExecuteRequest(mutation, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update issue: %w", err)
 	}
-	
+
 	if !response.IssueUpdate.Success {
-		return nil, fmt.Errorf("issue update was not successful")
+		return nil, fmt.Errorf("failed to update issue: mutation was not successful")
 	}
-	
+
 	// Extract metadata from description if present
 	if response.IssueUpdate.Issue.Description != "" {
 		metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.IssueUpdate.Issue.Description)
 		response.IssueUpdate.Issue.Metadata = metadata
 		response.IssueUpdate.Issue.Description = cleanDesc
 	}
-	
+
 	return &response.IssueUpdate.Issue, nil
 }
 
@@ -1786,7 +1786,7 @@ func hasFieldsToUpdate(input core.UpdateIssueInput) bool {
 		input.ParentID != nil ||
 		input.TeamID != nil ||
 		input.CycleID != nil ||
-		len(input.LabelIDs) > 0
+		input.LabelIDs != nil
 }
 
 // buildUpdateInput builds the GraphQL input object from UpdateIssueInput
@@ -1820,7 +1820,7 @@ func buildUpdateInput(input core.UpdateIssueInput) map[string]interface{} {
 	if input.TeamID != nil {
 		updateInput["teamId"] = *input.TeamID
 	}
-	if len(input.LabelIDs) > 0 {
+	if input.LabelIDs != nil {
 		updateInput["labelIds"] = input.LabelIDs
 	}
 	if input.CycleID != nil {
@@ -1967,20 +1967,20 @@ func (ic *Client) ListAllIssues(filter *core.IssueFilter) (*core.ListAllIssuesRe
 	var response struct {
 		Issues struct {
 			Nodes []struct {
-				ID          string        `json:"id"`
-				Identifier  string        `json:"identifier"`
-				Title       string        `json:"title"`
-				Description string        `json:"description"`
-				Priority    int           `json:"priority"`
-				CreatedAt   string        `json:"createdAt"`
-				UpdatedAt   string        `json:"updatedAt"`
+				ID          string             `json:"id"`
+				Identifier  string             `json:"identifier"`
+				Title       string             `json:"title"`
+				Description string             `json:"description"`
+				Priority    int                `json:"priority"`
+				CreatedAt   string             `json:"createdAt"`
+				UpdatedAt   string             `json:"updatedAt"`
 				State       core.WorkflowState `json:"state"`
 				Assignee    *core.User         `json:"assignee"`
 				Labels      struct {
 					Nodes []core.Label `json:"nodes"`
 				} `json:"labels"`
 				Project *core.Project `json:"project"`
-				Team core.Team     `json:"team"`
+				Team    core.Team     `json:"team"`
 			} `json:"nodes"`
 			PageInfo struct {
 				HasNextPage bool   `json:"hasNextPage"`
@@ -2169,7 +2169,7 @@ func buildOrderByObject(field, direction string) map[string]interface{} {
 func (ic *Client) ListIssueAttachments(issueID string) ([]core.Attachment, error) {
 	// Validate input
 	if issueID == "" {
-		return nil, guidance.ValidationErrorWithExample("issueID", "cannot be empty", 
+		return nil, guidance.ValidationErrorWithExample("issueID", "cannot be empty",
 			`// First get an issue ID
 issue = linear_get_issue("some-issue-id")
 // Then list its attachments

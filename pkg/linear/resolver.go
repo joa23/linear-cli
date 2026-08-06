@@ -6,6 +6,7 @@ import (
 	"github.com/joa23/linear-cli/pkg/linear/identifiers"
 
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -545,65 +546,95 @@ func (r *Resolver) ResolveProject(nameOrID string, teamID string) (string, error
 	return project.ID, nil
 }
 
-// ResolveLabel resolves a label name to a label UUID within a specific team
-// Labels are team-scoped, so teamID is required
-//
-// Returns error if label not found
+// ResolveLabel resolves a label name or UUID to a label UUID within a specific team.
+// Labels are team-scoped, so teamID is required.
 func (r *Resolver) ResolveLabel(labelName string, teamID string) (string, error) {
-	// Validate input
+	label, err := r.ResolveLabelMetadata(labelName, teamID)
+	if err != nil {
+		return "", err
+	}
+	return label.ID, nil
+}
+
+// ResolveLabelMetadata resolves a label and retains its parent metadata for
+// callers that need to validate relationships between labels.
+func (r *Resolver) ResolveLabelMetadata(labelName string, teamID string) (*core.Label, error) {
+	labelName = strings.TrimSpace(labelName)
+	teamID = strings.TrimSpace(teamID)
 	if labelName == "" {
-		return "", &core.ValidationError{
-			Field:   "label",
-			Message: "label name cannot be empty",
-		}
+		return nil, &core.ValidationError{Field: "label", Message: "label name cannot be empty"}
 	}
-
 	if teamID == "" {
-		return "", &core.ValidationError{
-			Field:   "teamId",
-			Message: "team ID is required for label resolution",
+		return nil, &core.ValidationError{Field: "teamId", Message: "team ID is required for label resolution"}
+	}
+
+	if identifiers.IsUUID(labelName) {
+		if label, found := r.cache.getLabelByID(teamID, labelName); found {
+			return &label, nil
+		}
+	} else if labelID, found := r.cache.getLabelByName(teamID, labelName); found {
+		if label, found := r.cache.getLabelByID(teamID, labelID); found {
+			return &label, nil
 		}
 	}
 
-	// Check cache first
-	if labelID, found := r.cache.getLabelByName(teamID, labelName); found {
-		return labelID, nil
-	}
-
-	// Fetch labels for the team
 	labels, err := r.client.Teams.ListLabels(teamID)
 	if err != nil {
-		return "", fmt.Errorf("failed to list labels for resolution: %w", err)
+		return nil, fmt.Errorf("failed to list labels for resolution: %w", err)
 	}
+	r.cache.setLabels(teamID, labels)
 
-	// Find matching label by name (case-insensitive)
-	nameLower := strings.ToLower(labelName)
-	for _, label := range labels {
-		if strings.ToLower(label.Name) == nameLower {
-			// Cache and return
-			r.cache.setLabelByName(teamID, labelName, label.ID)
-			return label.ID, nil
+	var matches []core.Label
+	if identifiers.IsUUID(labelName) {
+		for _, label := range labels {
+			if strings.EqualFold(label.ID, labelName) {
+				matches = append(matches, label)
+				break
+			}
+		}
+	} else {
+		nameLower := strings.ToLower(labelName)
+		for _, label := range labels {
+			if strings.ToLower(label.Name) == nameLower {
+				matches = append(matches, label)
+			}
 		}
 	}
 
-	// No match found - build helpful error with suggestions
-	var availableLabels []string
-	for _, label := range labels {
-		availableLabels = append(availableLabels, label.Name)
+	if len(matches) == 0 {
+		availableLabels := make([]string, 0, len(labels))
+		for _, label := range labels {
+			availableLabels = append(availableLabels, label.Name)
+		}
+		return nil, &guidance.ErrorWithGuidance{
+			Operation: "Resolve label",
+			Reason:    fmt.Sprintf("label '%s' not found in team", labelName),
+			Guidance: []string{
+				"Check the label name spelling",
+				"Use 'linear teams labels <TEAM>' to see available labels",
+				"Create the label in Linear if it doesn't exist",
+			},
+			Example:     fmt.Sprintf("Available labels: %s", strings.Join(availableLabels, ", ")),
+			OriginalErr: &core.NotFoundError{ResourceType: "label", ResourceID: labelName},
+		}
+	}
+	if len(matches) > 1 {
+		matching := make([]string, 0, len(matches))
+		for _, label := range matches {
+			matching = append(matching, fmt.Sprintf("%s (ID: %s)", label.Name, label.ID))
+		}
+		sort.Strings(matching)
+		return nil, &guidance.ErrorWithGuidance{
+			Operation: "Resolve label",
+			Reason:    fmt.Sprintf("multiple labels match '%s'", labelName),
+			Guidance:  []string{"Use the label UUID for exact matching", "Choose from the matching labels below"},
+			Example:   fmt.Sprintf("Matching labels: %s", strings.Join(matching, ", ")),
+			OriginalErr: &core.ValidationError{
+				Field: "label", Value: labelName, Reason: "ambiguous label name",
+			},
+		}
 	}
 
-	return "", &guidance.ErrorWithGuidance{
-		Operation: "Resolve label",
-		Reason:    fmt.Sprintf("label '%s' not found in team", labelName),
-		Guidance: []string{
-			"Check the label name spelling",
-			"Use 'linear teams labels <TEAM>' to see available labels",
-			"Create the label in Linear if it doesn't exist",
-		},
-		Example: fmt.Sprintf("Available labels: %s", strings.Join(availableLabels, ", ")),
-		OriginalErr: &core.NotFoundError{
-			ResourceType: "label",
-			ResourceID:   labelName,
-		},
-	}
+	label := matches[0]
+	return &label, nil
 }

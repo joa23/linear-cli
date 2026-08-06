@@ -36,10 +36,6 @@ func (s *LabelService) List(teamID string, verbosity format.Verbosity, outputTyp
 		return "", fmt.Errorf("failed to list labels: %w", err)
 	}
 
-	if len(labels) == 0 {
-		return "No labels found.", nil
-	}
-
 	// JSON output
 	if outputType.IsJSON() {
 		data, err := json.MarshalIndent(labels, "", "  ")
@@ -49,16 +45,11 @@ func (s *LabelService) List(teamID string, verbosity format.Verbosity, outputTyp
 		return string(data), nil
 	}
 
-	// Text output
-	output := fmt.Sprintf("LABELS (%d)\n────────────────────────────────────────\n", len(labels))
-	for _, label := range labels {
-		output += fmt.Sprintf("  %-30s %s  %s\n", label.Name, label.Color, label.ID)
-		if label.Description != "" {
-			output += fmt.Sprintf("    %s\n", label.Description)
-		}
+	if len(labels) == 0 {
+		return "No labels found.", nil
 	}
 
-	return output, nil
+	return s.formatter.LabelList(labels, true), nil
 }
 
 // errLabelMutationRequiresUser is returned when label mutations are attempted in agent mode

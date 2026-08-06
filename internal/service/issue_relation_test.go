@@ -80,6 +80,9 @@ func (m *mockIssueClientForRelation) ResolveCycleIdentifier(num, team string) (s
 func (m *mockIssueClientForRelation) ResolveLabelIdentifier(label, team string) (string, error) {
 	return "label-uuid", nil
 }
+func (m *mockIssueClientForRelation) ResolveLabelMetadata(label, team string) (*core.Label, error) {
+	return &core.Label{ID: "label-uuid", Name: label}, nil
+}
 func (m *mockIssueClientForRelation) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
 	return "project-uuid", nil
 }

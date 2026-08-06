@@ -2,6 +2,10 @@ package teams
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/joa23/linear-cli/pkg/linear/core"
@@ -75,4 +79,39 @@ func TestListLabelsResponseStruct_ParentField(t *testing.T) {
 	if second.Parent != nil {
 		t.Errorf("nodes[1].Parent = %+v, want nil", second.Parent)
 	}
+}
+
+func TestListLabelsPaginatesAllPages(t *testing.T) {
+	responses := []string{
+		`{"data":{"team":{"labels":{"nodes":[{"id":"one","name":"One"}],"pageInfo":{"hasNextPage":true,"endCursor":"cursor-1"}}}}}`,
+		`{"data":{"team":{"labels":{"nodes":[{"id":"two","name":"Two"}],"pageInfo":{"hasNextPage":false,"endCursor":"cursor-2"}}}}}`,
+	}
+	calls := 0
+	base := core.NewBaseClient("token")
+	base.SetHTTPClient(&http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if calls >= len(responses) {
+			return nil, fmt.Errorf("unexpected request")
+		}
+		body := responses[calls]
+		calls++
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Header:     make(http.Header),
+		}, nil
+	})})
+
+	labels, err := NewClient(base).ListLabels("team-1")
+	if err != nil {
+		t.Fatalf("ListLabels() returned error: %v", err)
+	}
+	if calls != 2 || len(labels) != 2 || labels[1].ID != "two" {
+		t.Fatalf("calls = %d, labels = %#v; want two pages and both labels", calls, labels)
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }

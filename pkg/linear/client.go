@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/joa23/linear-cli/internal/config"
+	"github.com/joa23/linear-cli/internal/oauth"
+	"github.com/joa23/linear-cli/internal/token"
 	"github.com/joa23/linear-cli/pkg/linear/attachments"
 	"github.com/joa23/linear-cli/pkg/linear/comments"
 	"github.com/joa23/linear-cli/pkg/linear/core"
@@ -16,8 +18,6 @@ import (
 	"github.com/joa23/linear-cli/pkg/linear/teams"
 	"github.com/joa23/linear-cli/pkg/linear/users"
 	"github.com/joa23/linear-cli/pkg/linear/workflows"
-	"github.com/joa23/linear-cli/internal/oauth"
-	"github.com/joa23/linear-cli/internal/token"
 )
 
 // Client represents the main Linear API client that orchestrates all sub-clients.
@@ -664,6 +664,10 @@ func (c *Client) ResolveCycleIdentifier(numberOrNameOrID string, teamID string) 
 
 func (c *Client) ResolveLabelIdentifier(labelName string, teamID string) (string, error) {
 	return c.resolver.ResolveLabel(labelName, teamID)
+}
+
+func (c *Client) ResolveLabelMetadata(labelName string, teamID string) (*core.Label, error) {
+	return c.resolver.ResolveLabelMetadata(labelName, teamID)
 }
 
 func (c *Client) ResolveProjectIdentifier(nameOrID string, teamID string) (string, error) {

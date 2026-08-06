@@ -5,9 +5,9 @@ import (
 	"sort"
 
 	"github.com/joa23/linear-cli/internal/format"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 	"github.com/joa23/linear-cli/pkg/linear/identifiers"
 	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
-	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // IssueService handles issue-related operations
@@ -26,16 +26,16 @@ func NewIssueService(client IssueClientOperations, formatter *format.Formatter) 
 
 // SearchFilters represents filters for searching issues
 type SearchFilters struct {
-	TeamID     string
-	ProjectID  string
-	AssigneeID string
-	CycleID    string
-	StateIDs   []string
-	LabelIDs   []string
+	TeamID          string
+	ProjectID       string
+	AssigneeID      string
+	CycleID         string
+	StateIDs        []string
+	LabelIDs        []string
 	ExcludeLabelIDs []string
-	Priority   *int
-	SearchTerm string
-	OrderBy    string
+	Priority        *int
+	SearchTerm      string
+	OrderBy         string
 	// Date filters (RFC3339 timestamps). Set via CLI --created-since/--created-after/--created-before.
 	CreatedAfter  string
 	CreatedBefore string
@@ -516,21 +516,20 @@ func (s *IssueService) Create(input *CreateIssueInput, outputType format.OutputT
 	}
 
 	if len(input.LabelIDs) > 0 {
-		resolvedLabelIDs := make([]string, 0, len(input.LabelIDs))
-		for _, labelName := range input.LabelIDs {
-			labelID, err := s.client.ResolveLabelIdentifier(labelName, teamID)
-			if err != nil {
-				return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
-			}
-			resolvedLabelIDs = append(resolvedLabelIDs, labelID)
+		resolvedLabels, err := s.resolveLabelMetadata(input.LabelIDs, teamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to create issue: %w", err)
 		}
-		createInput.LabelIDs = resolvedLabelIDs
+		if err := validateLabelSelection(resolvedLabels); err != nil {
+			return "", fmt.Errorf("failed to create issue: %w", err)
+		}
+		createInput.LabelIDs = labelIDs(resolvedLabels)
 	}
 
 	// Single atomic API call — if this fails, no orphaned issue is created.
 	issue, err := s.client.CreateIssue(&createInput)
 	if err != nil {
-		return "", fmt.Errorf("failed to create issue: %w", err)
+		return "", err
 	}
 
 	// Create native relations for dependencies
@@ -694,22 +693,20 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 		}
 		linearInput.CycleID = &cycleID
 	}
-	hasLabelChanges := len(input.LabelIDs) > 0 || len(input.AddLabelIDs) > 0 || len(input.RemoveLabelIDs) > 0
+	hasLabelChanges := input.LabelIDs != nil || len(input.AddLabelIDs) > 0 || len(input.RemoveLabelIDs) > 0
 	if hasLabelChanges {
-		// Resolve team ID for label resolution
+		// Resolve team ID for label resolution.
 		var teamIDForLabels string
 		var err error
-
 		if input.TeamID != nil && *input.TeamID != "" {
 			teamIDForLabels, err = s.client.ResolveTeamIdentifier(*input.TeamID)
 			if err != nil {
 				return "", fmt.Errorf("could not resolve team '%s': %w", *input.TeamID, err)
 			}
 		} else {
-			// Extract from issue identifier
-			teamKey, _, err := identifiers.ParseIssueIdentifier(issue.Identifier)
-			if err != nil {
-				return "", fmt.Errorf("invalid issue identifier '%s': %w", issue.Identifier, err)
+			teamKey, _, parseErr := identifiers.ParseIssueIdentifier(issue.Identifier)
+			if parseErr != nil {
+				return "", fmt.Errorf("invalid issue identifier '%s': %w", issue.Identifier, parseErr)
 			}
 			teamIDForLabels, err = s.client.ResolveTeamIdentifier(teamKey)
 			if err != nil {
@@ -717,51 +714,71 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 			}
 		}
 
-		if len(input.LabelIDs) > 0 {
-			// Replace mode: resolve label names to IDs and set directly
-			resolvedLabelIDs := make([]string, 0, len(input.LabelIDs))
-			for _, labelName := range input.LabelIDs {
-				labelID, err := s.client.ResolveLabelIdentifier(labelName, teamIDForLabels)
-				if err != nil {
-					return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
-				}
-				resolvedLabelIDs = append(resolvedLabelIDs, labelID)
+		if input.TeamID != nil && *input.TeamID != "" && (len(input.AddLabelIDs) > 0 || len(input.RemoveLabelIDs) > 0) {
+			teamKey, _, parseErr := identifiers.ParseIssueIdentifier(issue.Identifier)
+			if parseErr != nil {
+				return "", fmt.Errorf("failed to update issue: cannot determine current team: %w", parseErr)
 			}
-			linearInput.LabelIDs = resolvedLabelIDs
+			currentTeamID, resolveErr := s.client.ResolveTeamIdentifier(teamKey)
+			if resolveErr != nil {
+				return "", fmt.Errorf("failed to update issue: cannot determine current team: %w", resolveErr)
+			}
+			if currentTeamID != teamIDForLabels {
+				return "", fmt.Errorf("failed to update issue: cannot add or remove labels while changing an issue's team; use --labels to replace all labels")
+			}
+		}
+
+		if input.LabelIDs != nil {
+			resolvedLabels, err := s.resolveLabelMetadata(input.LabelIDs, teamIDForLabels)
+			if err != nil {
+				return "", fmt.Errorf("failed to update issue: %w", err)
+			}
+			if err := validateLabelSelection(resolvedLabels); err != nil {
+				return "", fmt.Errorf("failed to update issue: %w", err)
+			}
+			linearInput.LabelIDs = labelIDs(resolvedLabels)
 		} else {
-			// Additive/subtractive mode: fetch current labels, merge/remove, then set
-			currentLabelIDs := s.extractCurrentLabelIDs(issue)
-
-			// Build a set from current labels for efficient merge/remove
-			labelSet := make(map[string]bool, len(currentLabelIDs))
-			for _, id := range currentLabelIDs {
-				labelSet[id] = true
+			currentLabels, err := s.currentLabelMetadata(issue, teamIDForLabels, len(input.AddLabelIDs) > 0)
+			if err != nil {
+				return "", fmt.Errorf("failed to update issue: %w", err)
+			}
+			labelSet := make(map[string]core.Label, len(currentLabels))
+			for _, label := range currentLabels {
+				labelSet[label.ID] = label
 			}
 
-			// Add new labels
 			for _, labelName := range input.AddLabelIDs {
-				labelID, err := s.client.ResolveLabelIdentifier(labelName, teamIDForLabels)
+				label, err := s.client.ResolveLabelMetadata(labelName, teamIDForLabels)
 				if err != nil {
-					return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
+					return "", fmt.Errorf("failed to update issue: failed to resolve label '%s': %w", labelName, err)
 				}
-				labelSet[labelID] = true
+				if label == nil {
+					return "", fmt.Errorf("failed to update issue: failed to resolve label '%s': resolver returned no label", labelName)
+				}
+				labelSet[label.ID] = *label
 			}
-
-			// Remove labels
 			for _, labelName := range input.RemoveLabelIDs {
-				labelID, err := s.client.ResolveLabelIdentifier(labelName, teamIDForLabels)
+				label, err := s.client.ResolveLabelMetadata(labelName, teamIDForLabels)
 				if err != nil {
-					return "", fmt.Errorf("failed to resolve label '%s': %w", labelName, err)
+					return "", fmt.Errorf("failed to update issue: failed to resolve label '%s': %w", labelName, err)
 				}
-				delete(labelSet, labelID)
+				if label == nil {
+					return "", fmt.Errorf("failed to update issue: failed to resolve label '%s': resolver returned no label", labelName)
+				}
+				delete(labelSet, label.ID)
 			}
 
-			// Convert set back to slice
-			finalLabelIDs := make([]string, 0, len(labelSet))
-			for id := range labelSet {
-				finalLabelIDs = append(finalLabelIDs, id)
+			finalLabels := make([]core.Label, 0, len(labelSet))
+			for _, label := range labelSet {
+				finalLabels = append(finalLabels, label)
 			}
-			linearInput.LabelIDs = finalLabelIDs
+			finalLabels = sortLabels(finalLabels)
+			if len(input.AddLabelIDs) > 0 {
+				if err := validateLabelSelection(finalLabels); err != nil {
+					return "", fmt.Errorf("failed to update issue: %w", err)
+				}
+			}
+			linearInput.LabelIDs = labelIDs(finalLabels)
 		}
 	}
 
@@ -770,7 +787,7 @@ func (s *IssueService) Update(identifier string, input *UpdateIssueInput) (strin
 	if hasServiceFieldsToUpdate(linearInput) {
 		updatedIssue, err = s.client.UpdateIssue(issue.ID, linearInput)
 		if err != nil {
-			return "", fmt.Errorf("failed to update issue: %w", err)
+			return "", err
 		}
 	}
 
@@ -868,7 +885,7 @@ func hasServiceFieldsToUpdate(input core.UpdateIssueInput) bool {
 		input.ParentID != nil ||
 		input.TeamID != nil ||
 		input.CycleID != nil ||
-		len(input.LabelIDs) > 0
+		input.LabelIDs != nil
 }
 
 // extractCurrentLabelIDs extracts the current label IDs from an issue
@@ -881,6 +898,45 @@ func (s *IssueService) extractCurrentLabelIDs(issue *core.Issue) []string {
 		ids[i] = label.ID
 	}
 	return ids
+}
+
+func labelIDs(labels []core.Label) []string {
+	labels = sortLabels(labels)
+	ids := make([]string, 0, len(labels))
+	for _, label := range labels {
+		ids = append(ids, label.ID)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func (s *IssueService) resolveLabelMetadata(names []string, teamID string) ([]core.Label, error) {
+	resolved := make([]core.Label, 0, len(names))
+	for _, name := range names {
+		label, err := s.client.ResolveLabelMetadata(name, teamID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve label '%s': %w", name, err)
+		}
+		if label == nil {
+			return nil, fmt.Errorf("failed to resolve label '%s': resolver returned no label", name)
+		}
+		resolved = append(resolved, *label)
+	}
+	return sortLabels(resolved), nil
+}
+
+func (s *IssueService) currentLabelMetadata(issue *core.Issue, teamID string, hydrate bool) ([]core.Label, error) {
+	if issue.Labels == nil {
+		return nil, nil
+	}
+	labels := make([]core.Label, 0, len(issue.Labels.Nodes))
+	for _, label := range issue.Labels.Nodes {
+		// The issue query requests parent metadata. A nil parent is authoritative
+		// for standalone labels, while a non-nil parent with an empty ID is
+		// rejected by validateLabelSelection as incomplete metadata.
+		labels = append(labels, label)
+	}
+	return sortLabels(labels), nil
 }
 
 // resolveStateID resolves a state name to a valid state ID

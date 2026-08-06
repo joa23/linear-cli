@@ -78,7 +78,7 @@ func (bc *BaseClient) GetToken() (string, error) {
 func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, error) {
 	const maxRetries = 5
 	const baseDelay = 100 * time.Millisecond
-	
+
 	// Store the original body so we can recreate the request for retries
 	// Why: HTTP request bodies can only be read once. Since we might retry
 	// the request multiple times, we need to preserve the original body data
@@ -92,7 +92,7 @@ func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, e
 		}
 		req.Body.Close()
 	}
-	
+
 	// Set Content-Type header once
 	req.Header.Set("Content-Type", "application/json")
 
@@ -118,7 +118,7 @@ func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, e
 		}
 
 		resp, err := bc.HTTPClient.Do(req)
-		
+
 		// Handle network errors with retry logic
 		// Why: Network errors are often transient (e.g., connection reset,
 		// DNS failures, timeouts). Retrying with backoff gives the network
@@ -144,7 +144,7 @@ func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, e
 			}
 			return nil, fmt.Errorf("network error: %w", err)
 		}
-		
+
 		// Success - return the response
 		// Why: 2xx status codes indicate successful API calls that don't
 		// need retry logic. We return immediately to avoid unnecessary delays.
@@ -209,7 +209,7 @@ func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, e
 				continue
 			}
 		}
-		
+
 		// Handle server errors (5xx) with retry
 		// Why: Server errors are often temporary (e.g., deployments, database
 		// issues, load problems). Retrying gives the server time to recover
@@ -218,19 +218,19 @@ func (bc *BaseClient) makeRequestWithRetry(req *http.Request) (*http.Response, e
 			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			lastErr = fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-			
+
 			delay := time.Duration(math.Pow(2, float64(attempt))) * baseDelay
 			time.Sleep(delay)
 			continue
 		}
-		
+
 		// For client errors or final attempt, return the response
 		// Why: 4xx errors (except 429) indicate client issues that won't
 		// be fixed by retrying. We return these immediately to let the
 		// caller handle the error appropriately.
 		return resp, nil
 	}
-	
+
 	if lastErr != nil {
 		return nil, fmt.Errorf("request failed after %d retries: %w", maxRetries, lastErr)
 	}
@@ -251,12 +251,12 @@ func (bc *BaseClient) ExecuteRequest(query string, variables map[string]interfac
 	if variables != nil {
 		payload["variables"] = variables
 	}
-	
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	// Create the HTTP request
 	// Why: We need to construct a proper HTTP POST request with the
 	// GraphQL payload to send to Linear's API endpoint.
@@ -264,7 +264,7 @@ func (bc *BaseClient) ExecuteRequest(query string, variables map[string]interfac
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// Execute the request with retry logic
 	// Why: We delegate to our retry-aware method to handle transient
 	// failures gracefully without failing the entire operation.
@@ -273,7 +273,7 @@ func (bc *BaseClient) ExecuteRequest(query string, variables map[string]interfac
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// Read the response body
 	// Why: We need to consume the entire response to check for errors
 	// and decode the result, even if the status code indicates failure.
@@ -281,7 +281,7 @@ func (bc *BaseClient) ExecuteRequest(query string, variables map[string]interfac
 	if err != nil {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	// Check for non-2xx status codes
 	// Why: Even though makeRequestWithRetry handles retries, it still
 	// returns error responses that we need to handle appropriately.
@@ -291,39 +291,28 @@ func (bc *BaseClient) ExecuteRequest(query string, variables map[string]interfac
 			Body:       string(respBody),
 		}
 	}
-	
+
 	// Decode the GraphQL response
 	// Why: GraphQL responses have a standard structure with "data" and
 	// "errors" fields. We need to decode this to extract the actual result.
 	var graphQLResp struct {
 		Data   json.RawMessage `json:"data"`
-		Errors []struct {
-			Message string `json:"message"`
-		} `json:"errors"`
+		Errors []GraphQLError  `json:"errors"`
 	}
-	
+
 	if err := json.Unmarshal(respBody, &graphQLResp); err != nil {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
-	
+
 	// Check for GraphQL errors
 	// Why: GraphQL can return a 200 OK status but still contain errors
 	// in the response. We need to check for these and surface them.
 	if len(graphQLResp.Errors) > 0 {
-		// Enhanced error with query context for better debugging
-		errMsg := graphQLResp.Errors[0].Message
-		
-		// Add query context for debugging
-		queryPreview := query
-		if len(queryPreview) > 100 {
-			queryPreview = queryPreview[:100] + "..."
-		}
-		
-		return &GraphQLError{
-			Message: fmt.Sprintf("%s (query: %s)", errMsg, queryPreview),
-		}
+		// Keep the API-provided message and extensions, but do not include the
+		// request query because it may contain sensitive input or implementation details.
+		return &graphQLResp.Errors[0]
 	}
-	
+
 	// Decode the data portion into the result
 	// Why: The actual query result is nested under the "data" field.
 	// We decode this into the caller's provided result structure.
@@ -332,7 +321,7 @@ func (bc *BaseClient) ExecuteRequest(query string, variables map[string]interfac
 			return fmt.Errorf("failed to decode response data: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
