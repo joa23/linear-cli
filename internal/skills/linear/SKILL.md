@@ -226,7 +226,11 @@ cat spec.md | linear i create "Feature title" --team CEN -d -
 
 ## Piping Support (Powerful!)
 
-**All description and body flags support stdin via `-`:**
+**Description and body flags support stdin only when their value is `-`:**
+
+Pass `--description -` (or `-d -`) for issue and project descriptions, and
+`--body -` (or `-b -`) for comments and replies. An unadorned pipe is not read;
+surrounding whitespace is trimmed.
 
 ```bash
 # Pipe Claude plan into ticket description

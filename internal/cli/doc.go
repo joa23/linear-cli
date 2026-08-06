@@ -25,18 +25,18 @@ has its own file:
 ## Team Resolution
 
 Commands that require team context follow a consistent resolution order:
-  1. Explicit --team flag
-  2. Default team from .linear.yaml (set via 'linear init')
-  3. Error if neither is provided
+ 1. Explicit --team flag
+ 2. Default team from .linear.yaml (set via 'linear init')
+ 3. Error if neither is provided
 
 Use [GetDefaultTeam] to retrieve the configured default team.
 
 ## Project Resolution
 
 Commands that accept a --project flag follow a consistent resolution order:
-  1. Explicit --project flag
-  2. Default project from .linear.yaml (manually configured)
-  3. No project filter (all projects shown)
+ 1. Explicit --project flag
+ 2. Default project from .linear.yaml (manually configured)
+ 3. No project filter (all projects shown)
 
 Use [GetDefaultProject] to retrieve the configured default project.
 
@@ -64,12 +64,13 @@ Reusable flag descriptions are centralized in flags.go:
 ## Helpers
 
 Common utilities in helpers.go:
-  - [readStdin]                       - Read from stdin
-  - [parseCommaSeparated]             - Parse comma-separated values
-  - [getDescriptionFromFlagOrStdin]   - Get text from flag or stdin (use "-" for stdin)
-  - [uploadAndAppendAttachments]      - Upload files and generate markdown
-  - [validateAndNormalizeLimit]       - Validate --limit flags
-  - [looksLikeCycleNumber]            - Detect numeric cycle IDs
+  - [readStdinFrom]                         - Read and trim from an injected reader
+  - [getDescriptionFromFlagOrStdinWithReader] - Resolve a flag or explicit "-" stdin input
+  - [getDescriptionFromFlagOrStdin]         - Resolve a flag or process stdin for standalone callers
+  - [parseCommaSeparated]                   - Parse comma-separated values
+  - [uploadAndAppendAttachments]            - Upload files and generate markdown
+  - [validateAndNormalizeLimit]             - Validate --limit flags
+  - [looksLikeCycleNumber]                  - Detect numeric cycle IDs
 
 # Dependency Management
 
@@ -105,10 +106,10 @@ Services are obtained via helper functions:
 # State Management
 
 The CLI is stateless between invocations. Each command:
-  1. Creates a fresh linear.Client from stored OAuth tokens
-  2. Constructs service layer instances as needed
-  3. Executes the operation
-  4. Exits
+ 1. Creates a fresh linear.Client from stored OAuth tokens
+ 2. Constructs service layer instances as needed
+ 3. Executes the operation
+ 4. Exits
 
 State persisted between runs:
   - OAuth tokens (via token.Storage in ~/.linear/)

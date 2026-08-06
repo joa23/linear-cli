@@ -112,7 +112,7 @@ func runOnboard() error {
 	fmt.Println("  linear auth status                    Check login status")
 	fmt.Println()
 	fmt.Println("Create issue (full example):")
-	fmt.Println("  cat feature.md | linear i create \"Add user authentication\" \\")
+	fmt.Println("  cat feature.md | linear i create \"Add user authentication\" --description - \\")
 	fmt.Println("    -t CEN \\")
 	fmt.Println("    -s \"In Progress\" \\")
 	fmt.Println("    -p 1 \\")

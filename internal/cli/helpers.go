@@ -21,9 +21,18 @@ const (
 	MaxLimit = 250
 )
 
-// readStdin reads all piped content from stdin
+// readStdin reads all content from the process stdin.
+// Commands should use getDescriptionFromFlagOrStdinWithReader so stdin remains injectable.
 func readStdin() (string, error) {
-	reader := bufio.NewReader(os.Stdin)
+	return readStdinFrom(os.Stdin)
+}
+
+// readStdinFrom reads all content from reader and trims surrounding whitespace.
+func readStdinFrom(input io.Reader) (string, error) {
+	if input == nil {
+		return "", fmt.Errorf("stdin reader is not configured")
+	}
+	reader := bufio.NewReader(input)
 	var builder strings.Builder
 
 	for {
@@ -60,11 +69,18 @@ func parseCommaSeparated(s string) []string {
 	return result
 }
 
-// getDescriptionFromFlagOrStdin returns description from flag or stdin
-// Use "-" as flagValue to explicitly read from stdin (e.g., -d -)
+// getDescriptionFromFlagOrStdin returns the flag value, or reads process stdin when
+// the flag is exactly "-". Commands use the reader-injected variant below.
 func getDescriptionFromFlagOrStdin(flagValue string) (string, error) {
+	return getDescriptionFromFlagOrStdinWithReader(flagValue, os.Stdin)
+}
+
+// getDescriptionFromFlagOrStdinWithReader resolves command body input through an
+// injected reader. A nil reader is an invalid dependency and returns an error;
+// it never falls back to process stdin.
+func getDescriptionFromFlagOrStdinWithReader(flagValue string, input io.Reader) (string, error) {
 	if flagValue == "-" {
-		return readStdin()
+		return readStdinFrom(input)
 	}
 
 	return flagValue, nil

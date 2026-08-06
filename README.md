@@ -534,6 +534,7 @@ linear issues update ENG-123 --attach /tmp/additional-context.png
 linear issues comment ENG-123 --body "Here's the screenshot:" --attach /tmp/bug.png
 
 # Piping content (powerful!)
+# Stdin is read only with the explicit - value; surrounding whitespace is trimmed.
 cat .claude/plans/feature-plan.md | linear issues create "Implementation plan" --team ENG -d -
 cat prd.md | linear issues create "Feature: OAuth" --team ENG --description -
 cat bug-report.txt | linear issues comment ENG-123 --body -

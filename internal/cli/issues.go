@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/joa23/linear-cli/internal/format"
-	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
 	"github.com/joa23/linear-cli/internal/service"
+	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
 	"github.com/spf13/cobra"
 )
 
@@ -40,21 +40,21 @@ func newIssuesCmd() *cobra.Command {
 
 func newIssuesListCmd() *cobra.Command {
 	var (
-		teamID     string
-		project    string
-		state      string
-		priority   string
-		assignee   string
-		cycle      string
-		labels     string
+		teamID        string
+		project       string
+		state         string
+		priority      string
+		assignee      string
+		cycle         string
+		labels        string
 		excludeLabels string
-		sortBy     string
+		sortBy        string
 		createdSince  string
 		createdAfter  string
 		createdBefore string
-		limit      int
-		formatStr  string
-		outputType string
+		limit         int
+		formatStr     string
+		outputType    string
 	)
 
 	cmd := &cobra.Command{
@@ -243,7 +243,7 @@ Images in the description (uploads.linear.app/...) require auth — use:
 
   # Download a private image from the issue description
   linear attachments download "https://uploads.linear.app/..."`,
-		Args:  cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
 
@@ -313,7 +313,10 @@ OUTPUT: On success, prints the new issue's identifier on the FIRST line, then it
 URL — and nothing else. The description is not echoed back. On failure it exits
 non-zero. Scripts should use --output json and read .identifier.
 
-TIP: Run 'linear init' first to set default team.`,
+TIP: Run 'linear init' first to set default team.
+
+STDIN: To read a description from a pipe, pass --description -. Stdin is not
+read unless the flag value is exactly '-'; surrounding whitespace is trimmed.`,
 		Example: `  # Minimal - create with just title (requires 'linear init')
   linear issues create "Fix login bug"
 
@@ -373,7 +376,7 @@ TIP: Run 'linear init' first to set default team.`,
 			}
 
 			// Get description from flag or stdin
-			desc, err := getDescriptionFromFlagOrStdin(description)
+			desc, err := getDescriptionFromFlagOrStdinWithReader(description, deps.Stdin)
 			if err != nil {
 				return fmt.Errorf("failed to read description: %w", err)
 			}
@@ -452,7 +455,7 @@ TIP: Run 'linear init' first to set default team.`,
 
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Issue description (or pipe to stdin)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Issue description (use --description - to read from stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Workflow state name (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().StringVarP(&priority, "priority", "p", "", "Priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().Float64VarP(&estimate, "estimate", "e", 0, "Story points estimate")
@@ -502,7 +505,10 @@ LABEL MODES:
   --remove-labels  Remove specific labels without affecting others
 
   --add-labels and --remove-labels can be used together.
-  --labels cannot be combined with --add-labels or --remove-labels.`,
+  --labels cannot be combined with --add-labels or --remove-labels.
+
+STDIN: To read a description from a pipe, pass --description -. Stdin is not
+read unless the flag value is exactly '-'; surrounding whitespace is trimmed.`,
 		Example: `  # Update state and priority
   linear issues update CEN-123 --state Done --priority 0
 
@@ -534,7 +540,7 @@ LABEL MODES:
 				return err
 			}
 
-// Get team from flag or config (for cycle resolution)
+			// Get team from flag or config (for cycle resolution)
 			if team == "" {
 				team = GetDefaultTeam()
 			}
@@ -558,7 +564,7 @@ LABEL MODES:
 			}
 
 			// Get description from flag or stdin
-			desc, err := getDescriptionFromFlagOrStdin(description)
+			desc, err := getDescriptionFromFlagOrStdinWithReader(description, deps.Stdin)
 			if err != nil {
 				return fmt.Errorf("failed to read description: %w", err)
 			}
@@ -646,7 +652,7 @@ LABEL MODES:
 
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&title, "title", "T", "", "Update issue title")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Update description (or pipe to stdin)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Update description (use --description - to read from stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Update workflow state name (e.g., 'In Progress', 'Backlog')")
 	cmd.Flags().StringVarP(&priority, "priority", "p", "", "Priority: 0-4 or none/urgent/high/normal/low")
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "Update story points estimate")
@@ -675,15 +681,15 @@ func newIssuesCommentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "comment <issue-id>",
 		Short: "Add a comment to an issue",
-		Long:  `Add a comment to an issue. Comment body can be provided via --body flag or piped from stdin.`,
+		Long:  `Add a comment to an issue. Provide the body with --body, or pass --body - to read it from stdin. Stdin is not read unless the flag value is exactly '-'. Surrounding whitespace is trimmed.`,
 		Example: `  # Add a simple comment
   linear issues comment CEN-123 --body "This is a comment"
 
   # Comment with screenshot attachment
   linear issues comment CEN-123 --body "Bug screenshot:" --attach /tmp/screenshot.png
 
-  # Pipe content from file
-  cat notes.md | linear issues comment CEN-123`,
+  # Pipe content from file (use --body -)
+  cat notes.md | linear issues comment CEN-123 --body -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
@@ -695,7 +701,7 @@ func newIssuesCommentCmd() *cobra.Command {
 			}
 
 			// Get body from flag or stdin
-			commentBody, err := getDescriptionFromFlagOrStdin(body)
+			commentBody, err := getDescriptionFromFlagOrStdinWithReader(body, deps.Stdin)
 			if err != nil {
 				return fmt.Errorf("failed to read comment body: %w", err)
 			}
@@ -709,7 +715,7 @@ func newIssuesCommentCmd() *cobra.Command {
 			}
 
 			if commentBody == "" {
-				return fmt.Errorf("comment body is required. Use --body flag or pipe content to stdin")
+				return fmt.Errorf("comment body is required. Use --body <text> or --body - to read content from stdin")
 			}
 
 			// Get the issue first to get its ID (comments need issue ID, not identifier)
@@ -732,7 +738,7 @@ func newIssuesCommentCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&body, "body", "b", "", "Comment body (or pipe to stdin)")
+	cmd.Flags().StringVarP(&body, "body", "b", "", "Comment body (use --body - to read from stdin)")
 	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 
 	return cmd
@@ -864,15 +870,15 @@ func newIssuesReplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reply <issue-id> <comment-id>",
 		Short: "Reply to a comment",
-		Long:  `Reply to an existing comment on an issue. Reply body can be provided via --body flag or piped from stdin.`,
+		Long:  `Reply to an existing comment on an issue. Provide the body with --body, or pass --body - to read it from stdin. Stdin is not read unless the flag value is exactly '-'. Surrounding whitespace is trimmed.`,
 		Example: `  # Reply to a comment
   linear issues reply CEN-123 abc-comment-id --body "Thanks for the feedback!"
 
   # Reply with attachment
   linear issues reply CEN-123 abc-comment-id --body "Here's the fix:" --attach /tmp/screenshot.png
 
-  # Pipe content from file
-  cat response.md | linear issues reply CEN-123 abc-comment-id`,
+  # Pipe content from file (use --body -)
+  cat response.md | linear issues reply CEN-123 abc-comment-id --body -`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
@@ -883,7 +889,7 @@ func newIssuesReplyCmd() *cobra.Command {
 			}
 
 			// Get body from flag or stdin
-			replyBody, err := getDescriptionFromFlagOrStdin(body)
+			replyBody, err := getDescriptionFromFlagOrStdinWithReader(body, deps.Stdin)
 			if err != nil {
 				return fmt.Errorf("failed to read reply body: %w", err)
 			}
@@ -897,7 +903,7 @@ func newIssuesReplyCmd() *cobra.Command {
 			}
 
 			if replyBody == "" {
-				return fmt.Errorf("reply body is required. Use --body flag or pipe content to stdin")
+				return fmt.Errorf("reply body is required. Use --body <text> or --body - to read content from stdin")
 			}
 
 			comment, err := deps.Issues.ReplyToComment(issueID, commentID, replyBody)
@@ -912,7 +918,7 @@ func newIssuesReplyCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&body, "body", "b", "", "Reply body (or pipe to stdin)")
+	cmd.Flags().StringVarP(&body, "body", "b", "", "Reply body (use --body - to read from stdin)")
 	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Embed file as inline image in body (repeatable); for sidebar cards use: attachments create")
 
 	return cmd

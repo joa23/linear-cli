@@ -1,8 +1,11 @@
 package cli
 
 import (
-	"github.com/joa23/linear-cli/pkg/linear"
+	"io"
+	"os"
+
 	"github.com/joa23/linear-cli/internal/service"
+	"github.com/joa23/linear-cli/pkg/linear"
 )
 
 // Dependencies holds all injectable dependencies for CLI commands
@@ -11,14 +14,18 @@ type Dependencies struct {
 	// Client is the Linear API client
 	Client *linear.Client
 
+	// Stdin is read only when a body or description flag is exactly "-".
+	// Commands return an error if explicit stdin is requested without a reader.
+	Stdin io.Reader
+
 	// Services provide business logic and formatting
-	Issues     service.IssueServiceInterface
-	Cycles     service.CycleServiceInterface
-	Projects   service.ProjectServiceInterface
-	Search     service.SearchServiceInterface
-	Teams      service.TeamServiceInterface
-	Users      service.UserServiceInterface
-	Labels     service.LabelServiceInterface
+	Issues      service.IssueServiceInterface
+	Cycles      service.CycleServiceInterface
+	Projects    service.ProjectServiceInterface
+	Search      service.SearchServiceInterface
+	Teams       service.TeamServiceInterface
+	Users       service.UserServiceInterface
+	Labels      service.LabelServiceInterface
 	TaskExport  service.TaskExportServiceInterface
 	Attachments service.AttachmentServiceInterface
 	IssueExport service.IssueExportServiceInterface
@@ -29,14 +36,15 @@ func NewDependencies(client *linear.Client) *Dependencies {
 	services := service.New(client)
 
 	return &Dependencies{
-		Client:     client,
-		Issues:     services.Issues,
-		Cycles:     services.Cycles,
-		Projects:   services.Projects,
-		Search:     services.Search,
-		Teams:      services.Teams,
-		Users:      services.Users,
-		Labels:     services.Labels,
+		Client:      client,
+		Stdin:       os.Stdin,
+		Issues:      services.Issues,
+		Cycles:      services.Cycles,
+		Projects:    services.Projects,
+		Search:      services.Search,
+		Teams:       services.Teams,
+		Users:       services.Users,
+		Labels:      services.Labels,
 		TaskExport:  services.TaskExport,
 		Attachments: services.Attachments,
 		IssueExport: services.IssueExport,
