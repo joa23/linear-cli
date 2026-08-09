@@ -450,8 +450,8 @@ type CreateIssueInput struct {
 	Estimate    *float64
 	DueDate     string
 	LabelIDs    []string
-	DependsOn   []string // Issue identifiers this issue depends on (stored in metadata)
-	BlockedBy   []string // Issue identifiers that block this issue (stored in metadata)
+	DependsOn   []string // Issue identifiers this issue depends on (native "blocks" relations)
+	BlockedBy   []string // Issue identifiers that block this issue (native "blocks" relations)
 }
 
 // Create creates a new issue
@@ -576,8 +576,8 @@ type UpdateIssueInput struct {
 	LabelIDs       []string // Replace mode: replaces all labels
 	AddLabelIDs    []string // Additive mode: labels to add (names, resolved later)
 	RemoveLabelIDs []string // Subtractive mode: labels to remove (names, resolved later)
-	DependsOn      []string // Issue identifiers this issue depends on (stored in metadata)
-	BlockedBy      []string // Issue identifiers that block this issue (stored in metadata)
+	DependsOn      []string // Issue identifiers this issue depends on (native "blocks" relations)
+	BlockedBy      []string // Issue identifiers that block this issue (native "blocks" relations)
 }
 
 // Update updates an existing issue

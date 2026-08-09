@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `projects create --summary` and `projects update --summary` — write the short line shown under the project title in the Linear UI. It was previously unreachable under its own name, and is validated against Linear's 255-character cap locally instead of failing with an opaque GraphQL error.
+
+### Changed
+
+- **Breaking:** `projects create -d/--description` and `projects update -d/--description` now write the project's full description document, not the short summary. Previously the only writable field was the 255-character summary, so `cat spec.md | linear projects create ... -d -` failed on any real spec. Scripts passing a short blurb to `--description` should switch to `--summary`; nothing errors if they don't, the text just lands in the description instead.
+- **Breaking:** project JSON renames `description` to `summary` and `content` to `description`, matching the flags and the Linear UI. `jq '.description'` on a project now returns the long document; use `.summary` for the short line.
+- Project text output labels the two fields `Summary:` and `DESCRIPTION` (was `Description:` and `CONTENT`).
+
+### Fixed
+
+- `issues blocked-by` and `issues blocking` now read Linear's native issue relations, the same source as `deps`. Both read a metadata block in the issue description that nothing has written since `63fc213`, first released in v1.5.0; `blocking` never had a writer in any version. `blocked-by` answered `check description or Linear UI for blocking issues` whenever the description was non-empty and `none` when it was not — so its answer turned on whether the description happened to be blank, never on the relations. Output is now one line per issue as `ABC-123 [State] Title`, replacing the Go slice syntax (`[DEV-12 DEV-9]`) the old code would have printed, and still `none` when there is nothing to report. Blockers in a completed state are listed with their state rather than hidden, since omitting a real relation is how the old commands misled in the first place.
+
+### Removed
+
+- `issues dependencies` — it read a metadata block in the issue description that nothing has written since `63fc213`, first released in v1.5.0, moved dependency writes to Linear's native `issueRelationCreate`. It reported `none` for every issue, including issues with real relations, so its output read as "unblocked" when it was really "not implemented". `deps <issue-id>` reads the native relations and covers the same ground.
+
+- **Breaking (library):** the description-embedded metadata store is gone. This removes the `pkg/linear/metadata` package, `Client.UpdateIssueMetadataKey` / `RemoveIssueMetadataKey` / `UpdateProjectMetadataKey` / `RemoveProjectMetadataKey` and their sub-client methods, `validation.IsValidMetadataKey`, and the `Metadata` field on `core.Issue`, `core.ParentIssue`, `core.Project` and `core.IssueWithDetails`. `core.Attachment.Metadata` is untouched — that one is Linear's own `Attachment.metadata` field, not this store.
+
+  It stored structured data by appending a `<details><summary>` block to the description. Linear's editor has no raw-HTML passthrough, so that block rendered as literal visible text rather than the collapsible section the code claimed; the only feature it offered over a plain description was one it did not have. `issues create/update --depends-on` and `--blocked-by` wrote to it up to and including v1.4.1; v1.5.0 moved those flags to native relations and nothing has written to it since. The last readers went with `issues dependencies`.
+
+  Two behaviour changes fall out. Extraction used to run on every issue and project read to strip these blocks out of displayed descriptions, so an issue written by v1.4.1 or earlier will now show its block in CLI output. Linear's own UI has always displayed that block, so this makes the CLI agree with the web UI rather than exposing anything new. And `UpdateIssue` no longer issues an extra `GetIssue` before every description update, since it has no metadata left to preserve — one fewer API round-trip per description edit.
+
 ## [1.10.0] - 2026-07-14
 
 ### Added

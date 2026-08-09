@@ -31,14 +31,10 @@
 //
 // # Special Format Validation
 //
-// Validate emoji and metadata key formats:
+// Validate emoji format:
 //
 //	if !validation.IsValidEmoji("👍") {
 //	    return errors.New("invalid emoji")
-//	}
-//
-//	if !validation.IsValidMetadataKey("my-key_123") {
-//	    return errors.New("key must be alphanumeric with hyphens/underscores")
 //	}
 //
 // # Design Principles

@@ -345,16 +345,8 @@ func (c *Client) UpdateIssueDescription(issueID, newDescription string) error {
 	return c.Issues.UpdateIssueDescription(issueID, newDescription)
 }
 
-func (c *Client) UpdateIssueMetadataKey(issueID, key string, value interface{}) error {
-	return c.Issues.UpdateIssueMetadataKey(issueID, key, value)
-}
-
 func (c *Client) CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error {
 	return c.Issues.CreateRelation(issueID, relatedIssueID, relationType)
-}
-
-func (c *Client) RemoveIssueMetadataKey(issueID, key string) error {
-	return c.Issues.RemoveIssueMetadataKey(issueID, key)
 }
 
 // GetIssueSimplified retrieves basic issue information using a simplified query
@@ -422,7 +414,7 @@ func (c *Client) ListAllIssues(filter *core.IssueFilter) (*core.ListAllIssuesRes
 }
 
 // Project operations
-func (c *Client) CreateProject(name, description, teamKeyOrName string) (*core.Project, error) {
+func (c *Client) CreateProject(name, summary, description, teamKeyOrName string) (*core.Project, error) {
 	// Resolve team name/key to UUID if needed
 	teamID := teamKeyOrName
 	if !identifiers.IsUUID(teamKeyOrName) {
@@ -433,7 +425,7 @@ func (c *Client) CreateProject(name, description, teamKeyOrName string) (*core.P
 		teamID = resolvedID
 	}
 
-	return c.Projects.CreateProject(name, description, teamID)
+	return c.Projects.CreateProject(name, summary, description, teamID)
 }
 
 func (c *Client) GetProject(projectID string) (*core.Project, error) {
@@ -473,14 +465,6 @@ func (c *Client) UpdateProjectState(projectID, state string) error {
 
 func (c *Client) UpdateProjectDescription(projectID, newDescription string) error {
 	return c.Projects.UpdateProjectDescription(projectID, newDescription)
-}
-
-func (c *Client) UpdateProjectMetadataKey(projectID, key string, value interface{}) error {
-	return c.Projects.UpdateProjectMetadataKey(projectID, key, value)
-}
-
-func (c *Client) RemoveProjectMetadataKey(projectID, key string) error {
-	return c.Projects.RemoveProjectMetadataKey(projectID, key)
 }
 
 // Cycle operations

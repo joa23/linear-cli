@@ -642,6 +642,18 @@ linear projects create "Q1 Release" --team ENG
 linear projects update PROJECT-ID --state completed
 ```
 
+A project carries two pieces of prose, named as they are in the Linear UI:
+
+- `--summary` — the short line under the project title, capped at 255 characters
+- `--description` — the full project document, no length limit
+
+```bash
+linear projects update PROJECT-ID --summary "Ship the new pipeline"
+cat spec.md | linear projects update PROJECT-ID -d -   # replace the description
+```
+
+JSON output uses those same two names (`.summary` and `.description`).
+
 ### Cycles
 
 ```bash

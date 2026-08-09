@@ -152,7 +152,8 @@ func (s *ProjectService) ListUserProjectsWithOutput(limit int, verbosity format.
 // CreateProjectInput represents input for creating a project
 type CreateProjectInput struct {
 	Name        string
-	Description string
+	Summary     string // Short summary shown under the project title (255 char limit)
+	Description string // Long-form project document (no length limit)
 	TeamID      string
 	State       string // planned, started, paused, completed, canceled
 	LeadID      string // Project lead user ID
@@ -175,7 +176,7 @@ func (s *ProjectService) Create(input *CreateProjectInput) (string, error) {
 		return "", fmt.Errorf("failed to resolve team '%s': %w", input.TeamID, err)
 	}
 
-	project, err := s.client.CreateProject(input.Name, input.Description, teamID)
+	project, err := s.client.CreateProject(input.Name, input.Summary, input.Description, teamID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create project: %w", err)
 	}
@@ -219,7 +220,8 @@ func (s *ProjectService) Create(input *CreateProjectInput) (string, error) {
 // UpdateProjectInput represents input for updating a project
 type UpdateProjectInput struct {
 	Name        *string
-	Description *string
+	Summary     *string // Short summary shown under the project title (255 char limit)
+	Description *string // Long-form project document (no length limit)
 	State       *string // planned, started, paused, completed, canceled
 	LeadID      *string // Project lead user ID
 	StartDate   *string // Start date YYYY-MM-DD
@@ -233,6 +235,9 @@ func (s *ProjectService) Update(projectID string, input *UpdateProjectInput) (st
 
 	if input.Name != nil {
 		linearInput.Name = input.Name
+	}
+	if input.Summary != nil {
+		linearInput.Summary = input.Summary
 	}
 	if input.Description != nil {
 		linearInput.Description = input.Description

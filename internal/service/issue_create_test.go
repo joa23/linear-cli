@@ -65,9 +65,6 @@ func (m *mockIssueClientForCreate) ListAssignedIssues(limit int) ([]core.Issue, 
 func (m *mockIssueClientForCreate) SearchIssues(filters *core.IssueSearchFilters) (*core.IssueSearchResult, error) {
 	return nil, nil
 }
-func (m *mockIssueClientForCreate) UpdateIssueMetadataKey(id, key string, val interface{}) error {
-	return nil
-}
 func (m *mockIssueClientForCreate) CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error {
 	return nil
 }

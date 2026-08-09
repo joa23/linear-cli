@@ -6,7 +6,6 @@ import (
 
 	"github.com/joa23/linear-cli/pkg/linear/core"
 	"github.com/joa23/linear-cli/pkg/linear/guidance"
-	"github.com/joa23/linear-cli/pkg/linear/metadata"
 )
 
 // ProjectClient handles all project-related operations for the Linear API.
@@ -24,7 +23,8 @@ func NewClient(base *core.BaseClient) *Client {
 // CreateProject creates a new project in Linear
 // Why: Projects are containers for organizing related issues. This method
 // enables project creation with proper team assignment.
-func (pc *Client) CreateProject(name, description, teamID string) (*core.Project, error) {
+// The summary is capped at 255 characters by Linear; the description is not.
+func (pc *Client) CreateProject(name, summary, description, teamID string) (*core.Project, error) {
 	// Validate required inputs
 	// Why: Name and teamID are mandatory for project creation. Early
 	// validation provides clearer error messages than API errors.
@@ -43,6 +43,7 @@ func (pc *Client) CreateProject(name, description, teamID string) (*core.Project
 					id
 					name
 					description
+					content
 					state
 					createdAt
 					updatedAt
@@ -59,15 +60,18 @@ func (pc *Client) CreateProject(name, description, teamID string) (*core.Project
 	`
 	
 	// Build the input object
-	// Why: Linear's API expects specific fields. We conditionally include
-	// description only if provided to avoid sending empty strings.
+	// Why: Linear's API expects specific fields. We conditionally include the
+	// text fields only if provided to avoid sending empty strings.
 	// Note: Linear API requires teamIds (plural, array) not teamId (singular).
 	input := map[string]interface{}{
 		"name":    name,
 		"teamIds": []string{teamID},
 	}
+	if summary != "" {
+		input["description"] = summary
+	}
 	if description != "" {
-		input["description"] = description
+		input["content"] = description
 	}
 	
 	variables := map[string]interface{}{
@@ -89,22 +93,13 @@ func (pc *Client) CreateProject(name, description, teamID string) (*core.Project
 	if !response.ProjectCreate.Success {
 		return nil, fmt.Errorf("project creation was not successful")
 	}
-	
-	// Extract metadata from description if present
-	// Why: Projects can have metadata stored in descriptions. We extract
-	// it immediately after creation for consistent access.
-	if response.ProjectCreate.Project.Description != "" {
-		metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.ProjectCreate.Project.Description)
-		response.ProjectCreate.Project.Metadata = metadata
-		response.ProjectCreate.Project.Description = cleanDesc
-	}
-	
+
 	return &response.ProjectCreate.Project, nil
 }
 
 // GetProject retrieves a single project by ID
 // Why: This is the primary method for fetching detailed project information
-// including associated issues and metadata.
+// including associated issues.
 func (pc *Client) GetProject(projectID string) (*core.Project, error) {
 	// Validate input
 	// Why: Empty project ID would cause the query to fail with unclear
@@ -188,21 +183,6 @@ linear_get_project(correctProject.id)`),
 		}
 	}
 
-	// Extract metadata from content (or fallback to description for backwards compatibility)
-	// Why: Metadata is embedded in project content as hidden markdown.
-	// Content is preferred over description as it has no character limit.
-	// Extracting it here ensures consistent access across all retrieval methods.
-	if response.Project.Content != "" {
-		metadata, cleanContent := metadata.ExtractMetadataFromDescription(response.Project.Content)
-		response.Project.Metadata = metadata
-		response.Project.Content = cleanContent
-	} else if response.Project.Description != "" {
-		// Fallback: check description for backwards compatibility with old metadata storage
-		metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.Project.Description)
-		response.Project.Metadata = metadata
-		response.Project.Description = cleanDesc
-	}
-
 	return &response.Project, nil
 }
 
@@ -246,22 +226,6 @@ func (pc *Client) ListAllProjects(limit int) ([]core.Project, error) {
 	err := pc.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list projects: %w", err)
-	}
-
-	// Extract metadata from content (or fallback to description)
-	// Why: Each project might have metadata. We extract it here to ensure
-	// users can access metadata without additional calls.
-	for i := range response.Projects.Nodes {
-		if response.Projects.Nodes[i].Content != "" {
-			metadata, cleanContent := metadata.ExtractMetadataFromDescription(response.Projects.Nodes[i].Content)
-			response.Projects.Nodes[i].Metadata = metadata
-			response.Projects.Nodes[i].Content = cleanContent
-		} else if response.Projects.Nodes[i].Description != "" {
-			// Fallback to description for backwards compatibility
-			metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.Projects.Nodes[i].Description)
-			response.Projects.Nodes[i].Metadata = metadata
-			response.Projects.Nodes[i].Description = cleanDesc
-		}
 	}
 
 	return response.Projects.Nodes, nil
@@ -314,19 +278,6 @@ func (pc *Client) ListByTeam(teamID string, limit int) ([]core.Project, error) {
 	err := pc.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list projects by team: %w", err)
-	}
-
-	// Extract metadata from content (or fallback to description)
-	for i := range response.Team.Projects.Nodes {
-		if response.Team.Projects.Nodes[i].Content != "" {
-			metadata, cleanContent := metadata.ExtractMetadataFromDescription(response.Team.Projects.Nodes[i].Content)
-			response.Team.Projects.Nodes[i].Metadata = metadata
-			response.Team.Projects.Nodes[i].Content = cleanContent
-		} else if response.Team.Projects.Nodes[i].Description != "" {
-			metadata, cleanDesc := metadata.ExtractMetadataFromDescription(response.Team.Projects.Nodes[i].Description)
-			response.Team.Projects.Nodes[i].Metadata = metadata
-			response.Team.Projects.Nodes[i].Description = cleanDesc
-		}
 	}
 
 	return response.Team.Projects.Nodes, nil
@@ -410,28 +361,14 @@ func (pc *Client) ListUserProjects(userID string, limit int) ([]core.Project, er
 		}
 	}
 
-	// Extract metadata from content (or fallback to description)
-	for i := range filteredProjects {
-		if filteredProjects[i].Content != "" {
-			metadata, cleanContent := metadata.ExtractMetadataFromDescription(filteredProjects[i].Content)
-			filteredProjects[i].Metadata = metadata
-			filteredProjects[i].Content = cleanContent
-		} else if filteredProjects[i].Description != "" {
-			// Fallback to description for backwards compatibility
-			metadata, cleanDesc := metadata.ExtractMetadataFromDescription(filteredProjects[i].Description)
-			filteredProjects[i].Metadata = metadata
-			filteredProjects[i].Description = cleanDesc
-		}
-	}
-
 	return filteredProjects, nil
 }
 
 // UpdateProjectInput represents the input for updating a project
 type UpdateProjectInput struct {
 	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
-	Content     *string `json:"content,omitempty"`
+	Summary     *string `json:"description,omitempty"`
+	Description *string `json:"content,omitempty"`
 	State       *string `json:"state,omitempty"`
 	LeadID      *string `json:"leadId,omitempty"`
 	StartDate   *string `json:"startDate,omitempty"`
@@ -439,7 +376,7 @@ type UpdateProjectInput struct {
 }
 
 // UpdateProject updates a project with the provided input
-// Supports updating name, description, state, lead, start date, and target date
+// Supports updating name, summary, description, state, lead, start date, and target date
 func (pc *Client) UpdateProject(projectID string, input UpdateProjectInput) (*core.Project, error) {
 	if projectID == "" {
 		return nil, &core.ValidationError{Field: "projectID", Message: "projectID cannot be empty"}
@@ -470,11 +407,11 @@ func (pc *Client) UpdateProject(projectID string, input UpdateProjectInput) (*co
 	if input.Name != nil {
 		inputMap["name"] = *input.Name
 	}
-	if input.Description != nil {
-		inputMap["description"] = *input.Description
+	if input.Summary != nil {
+		inputMap["description"] = *input.Summary
 	}
-	if input.Content != nil {
-		inputMap["content"] = *input.Content
+	if input.Description != nil {
+		inputMap["content"] = *input.Description
 	}
 	if input.State != nil {
 		inputMap["state"] = *input.State
@@ -573,9 +510,7 @@ func (pc *Client) UpdateProjectState(projectID, state string) error {
 	return nil
 }
 
-// UpdateProjectDescription updates a project's content while preserving metadata
-// Why: Project content may contain both user content and metadata. This
-// method ensures metadata is preserved during content updates.
+// UpdateProjectDescription replaces a project's content.
 // Note: Linear has two fields - 'description' (255 char limit) and 'content' (no limit).
 // We use 'content' for longer text to avoid the character limit.
 func (pc *Client) UpdateProjectDescription(projectID, newContent string) error {
@@ -583,22 +518,6 @@ func (pc *Client) UpdateProjectDescription(projectID, newContent string) error {
 		return &core.ValidationError{Field: "projectID", Message: "projectID cannot be empty"}
 	}
 
-	// First, get the current project to preserve metadata
-	// Why: We need to extract existing metadata before updating to ensure
-	// it's not lost during the content update.
-	project, err := pc.GetProject(projectID)
-	if err != nil {
-		return fmt.Errorf("failed to get current project: %w", err)
-	}
-
-	// Preserve existing metadata
-	// Why: The project.Metadata field contains extracted metadata that
-	// needs to be injected back into the new content.
-	contentWithMetadata := newContent
-	if project.Metadata != nil && len(project.Metadata) > 0 {
-		contentWithMetadata = metadata.InjectMetadataIntoDescription(newContent, project.Metadata)
-	}
-
 	const mutation = `
 		mutation UpdateProjectContent($projectId: String!, $content: String!) {
 			projectUpdate(
@@ -612,7 +531,7 @@ func (pc *Client) UpdateProjectDescription(projectID, newContent string) error {
 
 	variables := map[string]interface{}{
 		"projectId": projectID,
-		"content":   contentWithMetadata,
+		"content":   newContent,
 	}
 
 	var response struct {
@@ -621,159 +540,13 @@ func (pc *Client) UpdateProjectDescription(projectID, newContent string) error {
 		} `json:"projectUpdate"`
 	}
 
-	err = pc.base.ExecuteRequest(mutation, variables, &response)
+	err := pc.base.ExecuteRequest(mutation, variables, &response)
 	if err != nil {
 		return fmt.Errorf("failed to update project content: %w", err)
 	}
 
 	if !response.ProjectUpdate.Success {
 		return fmt.Errorf("project content update was not successful")
-	}
-
-	return nil
-}
-
-// UpdateProjectMetadataKey updates a specific metadata key for a project
-// Why: Granular metadata updates allow changing individual values without
-// affecting other metadata. This is more efficient than full replacements.
-// Note: Uses 'content' field instead of 'description' to avoid 255 char limit.
-func (pc *Client) UpdateProjectMetadataKey(projectID, key string, value interface{}) error {
-	if projectID == "" {
-		return &core.ValidationError{Field: "projectID", Message: "projectID cannot be empty"}
-	}
-	if key == "" {
-		return &core.ValidationError{Field: "key", Message: "key cannot be empty"}
-	}
-
-	// Get current project to access existing metadata
-	// Why: We need to merge the new key-value with existing metadata
-	// to preserve other metadata entries.
-	project, err := pc.GetProject(projectID)
-	if err != nil {
-		return fmt.Errorf("failed to get current project: %w", err)
-	}
-
-	// Special handling for projects with null/empty content
-	// Linear's API may reject updates to projects with null content
-	// For now, we'll work around this by ensuring we always have content
-	if project.Content == "" {
-		// Set a minimal placeholder that won't be visible in Linear UI
-		// but ensures the API accepts our update
-		project.Content = " " // Single space
-	}
-
-	// Initialize metadata if needed and update the key
-	// Why: The project might not have metadata yet. We initialize it
-	// before adding the new key-value pair.
-	if project.Metadata == nil {
-		project.Metadata = make(map[string]interface{})
-	}
-	project.Metadata[key] = value
-
-	// Update the content with new metadata
-	contentWithMetadata := metadata.InjectMetadataIntoDescription(project.Content, project.Metadata)
-
-	const mutation = `
-		mutation UpdateProjectContent($projectId: String!, $content: String!) {
-			projectUpdate(
-				id: $projectId,
-				input: { content: $content }
-			) {
-				success
-			}
-		}
-	`
-
-	variables := map[string]interface{}{
-		"projectId": projectID,
-		"content":   contentWithMetadata,
-	}
-
-	var response struct {
-		ProjectUpdate struct {
-			Success bool `json:"success"`
-		} `json:"projectUpdate"`
-	}
-
-	err = pc.base.ExecuteRequest(mutation, variables, &response)
-	if err != nil {
-		// Add more context for debugging
-		return fmt.Errorf("failed to update project metadata (projectID: %s, key: %s, content length: %d): %w",
-			projectID, key, len(contentWithMetadata), err)
-	}
-
-	if !response.ProjectUpdate.Success {
-		return fmt.Errorf("project metadata update was not successful")
-	}
-
-	return nil
-}
-
-// RemoveProjectMetadataKey removes a specific metadata key from a project
-// Why: Metadata keys may become obsolete. This method allows selective
-// removal without affecting other metadata.
-// Note: Uses 'content' field instead of 'description' to avoid 255 char limit.
-func (pc *Client) RemoveProjectMetadataKey(projectID, key string) error {
-	if projectID == "" {
-		return &core.ValidationError{Field: "projectID", Message: "projectID cannot be empty"}
-	}
-	if key == "" {
-		return &core.ValidationError{Field: "key", Message: "key cannot be empty"}
-	}
-
-	// Get current project
-	project, err := pc.GetProject(projectID)
-	if err != nil {
-		return fmt.Errorf("failed to get current project: %w", err)
-	}
-
-	// Remove the key if metadata exists
-	// Why: We only update if there's metadata and the key exists.
-	// No API call needed if there's nothing to remove.
-	if project.Metadata != nil {
-		delete(project.Metadata, key)
-
-		// Update content with modified metadata
-		// Why: After removing the key, we either update with remaining
-		// metadata or remove the metadata section entirely if empty.
-		var contentWithMetadata string
-		if len(project.Metadata) > 0 {
-			contentWithMetadata = metadata.InjectMetadataIntoDescription(project.Content, project.Metadata)
-		} else {
-			// No metadata left, just use the clean content
-			contentWithMetadata = project.Content
-		}
-
-		const mutation = `
-			mutation UpdateProjectContent($projectId: String!, $content: String!) {
-				projectUpdate(
-					id: $projectId,
-					input: { content: $content }
-				) {
-					success
-				}
-			}
-		`
-
-		variables := map[string]interface{}{
-			"projectId": projectID,
-			"content":   contentWithMetadata,
-		}
-
-		var response struct {
-			ProjectUpdate struct {
-				Success bool `json:"success"`
-			} `json:"projectUpdate"`
-		}
-
-		err = pc.base.ExecuteRequest(mutation, variables, &response)
-		if err != nil {
-			return fmt.Errorf("failed to update project content: %w", err)
-		}
-
-		if !response.ProjectUpdate.Success {
-			return fmt.Errorf("project metadata removal was not successful")
-		}
 	}
 
 	return nil

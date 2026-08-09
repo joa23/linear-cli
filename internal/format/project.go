@@ -22,21 +22,21 @@ func (f *Formatter) Project(project *core.Project) string {
 	// State
 	b.WriteString(fmtSprintf("State: %s\n", project.State))
 
-	// Description
-	if project.Description != "" {
-		b.WriteString(fmtSprintf("Description: %s\n", truncate(project.Description, 100)))
+	// Summary
+	if project.Summary != "" {
+		b.WriteString(fmtSprintf("Summary: %s\n", truncate(project.Summary, 100)))
 	}
 
 	// Timestamps
 	b.WriteString(fmtSprintf("Created: %s\n", formatDateTime(project.CreatedAt)))
 	b.WriteString(fmtSprintf("Updated: %s\n", formatDateTime(project.UpdatedAt)))
 
-	// Content (long description) - truncated for display
-	if project.Content != "" {
-		b.WriteString("\nCONTENT\n")
+	// Description - truncated for display
+	if project.Description != "" {
+		b.WriteString("\nDESCRIPTION\n")
 		b.WriteString(line(40))
 		b.WriteString("\n")
-		b.WriteString(truncate(cleanDescription(project.Content), 500))
+		b.WriteString(truncate(cleanDescription(project.Description), 500))
 		b.WriteString("\n")
 	}
 
@@ -94,9 +94,9 @@ func (f *Formatter) projectCompact(project *core.Project) string {
 	// Line 1: Name and state
 	b.WriteString(fmtSprintf("%s [%s]\n", project.Name, project.State))
 
-	// Line 2: Description (if any)
-	if project.Description != "" {
-		b.WriteString(fmtSprintf("  %s\n", truncate(project.Description, 80)))
+	// Line 2: Summary (if any)
+	if project.Summary != "" {
+		b.WriteString(fmtSprintf("  %s\n", truncate(project.Summary, 80)))
 	}
 
 	// Line 3: Issue count (if available)

@@ -2,8 +2,7 @@
 // GraphQL support, automatic rate limiting, and robust error handling.
 //
 // The client supports all major Linear operations including issue management,
-// comments, notifications, team operations, and custom metadata storage using
-// a description-based approach.
+// comments, notifications, and team operations.
 //
 // # Authentication
 //
@@ -36,26 +35,6 @@
 // Update issue state:
 //
 //	err := client.UpdateIssueState("issue-id", "state-id")
-//	if err != nil {
-//	    log.Fatal(err)
-//	}
-//
-// # Metadata Management
-//
-// This client supports storing custom metadata in Linear issue and project
-// descriptions using a collapsible markdown format. Metadata is automatically
-// extracted when fetching issues/projects and preserved when updating descriptions.
-//
-// Update metadata for an issue:
-//
-//	err := client.UpdateIssueMetadataKey("issue-id", "priority", "high")
-//	if err != nil {
-//	    log.Fatal(err)
-//	}
-//
-// Remove metadata:
-//
-//	err := client.RemoveIssueMetadataKey("issue-id", "priority")
 //	if err != nil {
 //	    log.Fatal(err)
 //	}

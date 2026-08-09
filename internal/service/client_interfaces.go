@@ -34,9 +34,6 @@ type IssueClientOperations interface {
 	// Relation operations
 	CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error
 
-	// Metadata operations (kept in Phase 2)
-	UpdateIssueMetadataKey(issueID, key string, value interface{}) error
-
 	// Sub-client access (Phase 2 - use sub-clients directly)
 	CommentClient() *comments.Client
 	WorkflowClient() *workflows.Client
@@ -63,7 +60,7 @@ type CycleClientOperations interface {
 // ProjectClientOperations defines the minimal interface needed by ProjectService
 type ProjectClientOperations interface {
 	// Smart resolver-aware methods (kept in Phase 2)
-	CreateProject(name, description, teamKeyOrName string) (*core.Project, error)
+	CreateProject(name, summary, description, teamKeyOrName string) (*core.Project, error)
 
 	// Resolver operations
 	ResolveTeamIdentifier(keyOrName string) (string, error)
