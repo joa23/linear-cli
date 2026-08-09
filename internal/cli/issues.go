@@ -30,7 +30,6 @@ func newIssuesCmd() *cobra.Command {
 		newIssuesExportCmd(),
 		newIssuesReplyCmd(),
 		newIssuesReactCmd(),
-		newIssuesDependenciesCmd(),
 		newIssuesBlockedByCmd(),
 		newIssuesBlockingCmd(),
 	)
@@ -955,45 +954,6 @@ func newIssuesReactCmd() *cobra.Command {
 			}
 
 			fmt.Printf("Added %s reaction\n", emoji)
-			return nil
-		},
-	}
-}
-
-func newIssuesDependenciesCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "dependencies <issue-id>",
-		Short: "List issue dependencies (what it depends on)",
-		Long:  "Show compressed list of issues this ticket depends on. Uses metadata or URL references.",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			issueID := args[0]
-			deps, err := getDeps(cmd)
-			if err != nil {
-				return err
-			}
-
-			issue, err := deps.Client.Issues.GetIssue(issueID)
-			if err != nil {
-				return fmt.Errorf("failed to get issue: %w", err)
-			}
-
-			// Check metadata for dependency info
-			depIssues := []string{}
-			if metadata, ok := issue.Metadata["dependencies"].([]interface{}); ok {
-				for _, dep := range metadata {
-					if depStr, ok := dep.(string); ok {
-						depIssues = append(depIssues, depStr)
-					}
-				}
-			}
-
-			if len(depIssues) == 0 {
-				fmt.Println("none")
-				return nil
-			}
-
-			fmt.Printf("%v\n", depIssues)
 			return nil
 		},
 	}

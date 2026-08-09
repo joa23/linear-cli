@@ -73,7 +73,7 @@ func TestIssuesSubcommands(t *testing.T) {
 	require.NotNil(t, issuesCmd)
 
 	// Only test subcommands that are actually implemented
-	expectedSubCmds := []string{"list", "get", "dependencies", "blocked-by", "blocking"}
+	expectedSubCmds := []string{"list", "get", "blocked-by", "blocking"}
 	for _, subCmdName := range expectedSubCmds {
 		found := false
 		for _, c := range issuesCmd.Commands() {

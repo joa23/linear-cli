@@ -247,9 +247,6 @@ linear issues blocked-by <ISSUE-ID>
 
 # Check what an issue blocks
 linear issues blocking <ISSUE-ID>
-
-# List issue dependencies
-linear issues dependencies <ISSUE-ID>
 ```
 
 ## Example Workflow

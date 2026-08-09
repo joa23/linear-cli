@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- `issues dependencies` — it read a metadata block in the issue description that nothing has written since `63fc213`, first released in v1.5.0, moved dependency writes to Linear's native `issueRelationCreate`. It reported `none` for every issue, including issues with real relations, so its output read as "unblocked" when it was really "not implemented". `deps <issue-id>` reads the native relations and covers the same ground.
+
 ## [1.10.0] - 2026-07-14
 
 ### Added
