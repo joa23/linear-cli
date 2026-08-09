@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `issues blocked-by` and `issues blocking` now read Linear's native issue relations, the same source as `deps`. Both read a metadata block in the issue description that nothing has written since `63fc213`, first released in v1.5.0; `blocking` never had a writer in any version. `blocked-by` answered `check description or Linear UI for blocking issues` whenever the description was non-empty and `none` when it was not — so its answer turned on whether the description happened to be blank, never on the relations. Output is now one line per issue as `ABC-123 [State] Title`, replacing the Go slice syntax (`[DEV-12 DEV-9]`) the old code would have printed, and still `none` when there is nothing to report. Blockers in a completed state are listed with their state rather than hidden, since omitting a real relation is how the old commands misled in the first place.
+
 ### Removed
 
 - `issues dependencies` — it read a metadata block in the issue description that nothing has written since `63fc213`, first released in v1.5.0, moved dependency writes to Linear's native `issueRelationCreate`. It reported `none` for every issue, including issues with real relations, so its output read as "unblocked" when it was really "not implemented". `deps <issue-id>` reads the native relations and covers the same ground.
