@@ -23,7 +23,8 @@ func NewClient(base *core.BaseClient) *Client {
 // CreateProject creates a new project in Linear
 // Why: Projects are containers for organizing related issues. This method
 // enables project creation with proper team assignment.
-func (pc *Client) CreateProject(name, description, teamID string) (*core.Project, error) {
+// The summary is capped at 255 characters by Linear; the description is not.
+func (pc *Client) CreateProject(name, summary, description, teamID string) (*core.Project, error) {
 	// Validate required inputs
 	// Why: Name and teamID are mandatory for project creation. Early
 	// validation provides clearer error messages than API errors.
@@ -42,6 +43,7 @@ func (pc *Client) CreateProject(name, description, teamID string) (*core.Project
 					id
 					name
 					description
+					content
 					state
 					createdAt
 					updatedAt
@@ -58,15 +60,18 @@ func (pc *Client) CreateProject(name, description, teamID string) (*core.Project
 	`
 	
 	// Build the input object
-	// Why: Linear's API expects specific fields. We conditionally include
-	// description only if provided to avoid sending empty strings.
+	// Why: Linear's API expects specific fields. We conditionally include the
+	// text fields only if provided to avoid sending empty strings.
 	// Note: Linear API requires teamIds (plural, array) not teamId (singular).
 	input := map[string]interface{}{
 		"name":    name,
 		"teamIds": []string{teamID},
 	}
+	if summary != "" {
+		input["description"] = summary
+	}
 	if description != "" {
-		input["description"] = description
+		input["content"] = description
 	}
 	
 	variables := map[string]interface{}{
@@ -362,8 +367,8 @@ func (pc *Client) ListUserProjects(userID string, limit int) ([]core.Project, er
 // UpdateProjectInput represents the input for updating a project
 type UpdateProjectInput struct {
 	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
-	Content     *string `json:"content,omitempty"`
+	Summary     *string `json:"description,omitempty"`
+	Description *string `json:"content,omitempty"`
 	State       *string `json:"state,omitempty"`
 	LeadID      *string `json:"leadId,omitempty"`
 	StartDate   *string `json:"startDate,omitempty"`
@@ -371,7 +376,7 @@ type UpdateProjectInput struct {
 }
 
 // UpdateProject updates a project with the provided input
-// Supports updating name, description, state, lead, start date, and target date
+// Supports updating name, summary, description, state, lead, start date, and target date
 func (pc *Client) UpdateProject(projectID string, input UpdateProjectInput) (*core.Project, error) {
 	if projectID == "" {
 		return nil, &core.ValidationError{Field: "projectID", Message: "projectID cannot be empty"}
@@ -402,11 +407,11 @@ func (pc *Client) UpdateProject(projectID string, input UpdateProjectInput) (*co
 	if input.Name != nil {
 		inputMap["name"] = *input.Name
 	}
-	if input.Description != nil {
-		inputMap["description"] = *input.Description
+	if input.Summary != nil {
+		inputMap["description"] = *input.Summary
 	}
-	if input.Content != nil {
-		inputMap["content"] = *input.Content
+	if input.Description != nil {
+		inputMap["content"] = *input.Description
 	}
 	if input.State != nil {
 		inputMap["state"] = *input.State

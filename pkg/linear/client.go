@@ -414,7 +414,7 @@ func (c *Client) ListAllIssues(filter *core.IssueFilter) (*core.ListAllIssuesRes
 }
 
 // Project operations
-func (c *Client) CreateProject(name, description, teamKeyOrName string) (*core.Project, error) {
+func (c *Client) CreateProject(name, summary, description, teamKeyOrName string) (*core.Project, error) {
 	// Resolve team name/key to UUID if needed
 	teamID := teamKeyOrName
 	if !identifiers.IsUUID(teamKeyOrName) {
@@ -425,7 +425,7 @@ func (c *Client) CreateProject(name, description, teamKeyOrName string) (*core.P
 		teamID = resolvedID
 	}
 
-	return c.Projects.CreateProject(name, description, teamID)
+	return c.Projects.CreateProject(name, summary, description, teamID)
 }
 
 func (c *Client) GetProject(projectID string) (*core.Project, error) {

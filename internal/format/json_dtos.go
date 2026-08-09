@@ -116,9 +116,9 @@ type CycleFullDTO struct {
 type ProjectDTO struct {
 	ID          string          `json:"id"`
 	Name        string          `json:"name"`
-	Description string          `json:"description"`
+	Summary     string          `json:"summary"`
 	State       string          `json:"state"`
-	Content     string          `json:"content"`
+	Description string          `json:"description"`
 	Issues      []IssueRefDTO   `json:"issues"`
 	CreatedAt   string          `json:"createdAt"`
 	UpdatedAt   string          `json:"updatedAt"`
@@ -474,9 +474,9 @@ func ProjectToDTO(project *core.Project) ProjectDTO {
 	dto := ProjectDTO{
 		ID:          project.ID,
 		Name:        project.Name,
-		Description: project.Description,
+		Summary:     project.Summary,
 		State:       project.State,
-		Content:     project.Content,
+		Description: project.Description,
 		CreatedAt:   project.CreatedAt,
 		UpdatedAt:   project.UpdatedAt,
 	}

@@ -397,11 +397,15 @@ type ParentIssue struct {
 }
 
 // Project represents a Linear project
+//
+// The struct tags are the only place Linear's own names for the two text fields
+// appear: its "description" is the short summary under the project title, its
+// "content" is the long-form document.
 type Project struct {
 	ID          string                 `json:"id"`
 	Name        string                 `json:"name"`
-	Description string                 `json:"description"`         // Short description (255 char limit)
-	Content     string                 `json:"content,omitempty"`   // Long markdown content (no limit)
+	Summary     string                 `json:"description"`         // 255 char limit
+	Description string                 `json:"content,omitempty"`   // no length limit
 	State       string                 `json:"state"`               // planned, started, completed, etc.
 	Issues      *IssueConnection       `json:"issues,omitempty"`
 	CreatedAt   string                 `json:"createdAt"`

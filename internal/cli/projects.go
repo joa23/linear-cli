@@ -6,6 +6,7 @@ import (
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/internal/service"
+	"github.com/joa23/linear-cli/pkg/linear/validation"
 	"github.com/spf13/cobra"
 )
 
@@ -153,9 +154,33 @@ func newProjectsGetCmd() *cobra.Command {
 	return cmd
 }
 
+// projectSummaryMaxLength is the cap Linear puts on a project summary.
+const projectSummaryMaxLength = 255
+
+// validateProjectSummary rejects an over-long summary before it reaches the API,
+// which would otherwise fail with "Argument Validation Error" naming no field.
+// Measuring the limit is validation's job; what is added here is the way out,
+// since only this layer knows the longer text has a flag of its own. The error is
+// rewritten rather than wrapped because ValidateStringLength puts the offending
+// value in its message, which for a summary means printing the whole over-long
+// line back at the user.
+//
+// ValidateStringLength counts bytes today, so a summary of 255 Japanese
+// characters is refused even though the API accepts it — Linear counts code
+// points. DEV-18 tracks that fix; the wording below names no unit, so it stays
+// true both before and after.
+func validateProjectSummary(summary string) error {
+	if err := validation.ValidateStringLength(summary, "summary", projectSummaryMaxLength); err != nil {
+		return fmt.Errorf("summary is too long, the limit is %d; use --description for longer text",
+			projectSummaryMaxLength)
+	}
+	return nil
+}
+
 func newProjectsCreateCmd() *cobra.Command {
 	var (
 		team        string
+		summary     string
 		description string
 		state       string
 		lead        string
@@ -166,12 +191,18 @@ func newProjectsCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <name>",
 		Short: "Create a new project",
-		Long:  `Create a new project. States: planned, started, paused, completed, canceled.`,
+		Long: `Create a new project. States: planned, started, paused, completed, canceled.
+
+A project has two pieces of prose, matching the Linear UI: a short summary shown
+under the title (255 characters max) and a full description document.`,
 		Example: `  # Create a simple project
   linear projects create "Q1 Release" --team CEN
 
-  # Create with description from stdin
-  cat project-spec.md | linear projects create "Q1 Release" --team CEN
+  # Create with a summary
+  linear projects create "Q1 Release" --team CEN --summary "Ship the new pipeline"
+
+  # Create with the description read from stdin
+  cat project-spec.md | linear projects create "Q1 Release" --team CEN -d -
 
   # Create with all options
   linear projects create "Q1 Release" --team CEN --state started --lead Stefan`,
@@ -197,10 +228,15 @@ func newProjectsCreateCmd() *cobra.Command {
 				return fmt.Errorf("failed to read description: %w", err)
 			}
 
+			if err := validateProjectSummary(summary); err != nil {
+				return err
+			}
+
 			// Build create input
 			input := &service.CreateProjectInput{
 				Name:        name,
 				TeamID:      team,
+				Summary:     summary,
 				Description: desc,
 			}
 
@@ -235,7 +271,8 @@ func newProjectsCreateCmd() *cobra.Command {
 
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description (or pipe to stdin)")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short summary shown under the title (255 chars max)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description document (use - to read stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Project state: planned, started, paused, completed, canceled")
 	cmd.Flags().StringVarP(&lead, "lead", "l", "", "Project lead name (use 'me' for yourself)")
 	cmd.Flags().StringVar(&startDate, "start-date", "", "Start date YYYY-MM-DD")
@@ -247,6 +284,7 @@ func newProjectsCreateCmd() *cobra.Command {
 func newProjectsUpdateCmd() *cobra.Command {
 	var (
 		name        string
+		summary     string
 		description string
 		state       string
 		lead        string
@@ -257,15 +295,21 @@ func newProjectsUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <project-id>",
 		Short: "Update an existing project",
-		Long:  `Update an existing project. Only provided flags are changed.`,
+		Long: `Update an existing project. Only provided flags are changed.
+
+A project has two pieces of prose, matching the Linear UI: a short summary shown
+under the title (255 characters max) and a full description document.`,
 		Example: `  # Update project state
   linear projects update PROJ-123 --state completed
 
   # Update project lead
   linear projects update PROJ-123 --lead john@example.com
 
-  # Update description from stdin
-  cat updated-spec.md | linear projects update PROJ-123`,
+  # Rewrite the summary
+  linear projects update PROJ-123 --summary "Ship the new pipeline"
+
+  # Replace the description from stdin
+  cat updated-spec.md | linear projects update PROJ-123 -d -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID := args[0]
@@ -275,7 +319,7 @@ func newProjectsUpdateCmd() *cobra.Command {
 			}
 
 			// Check if any updates provided (description="-" means stdin)
-			hasFlags := name != "" || description != "" || state != "" ||
+			hasFlags := name != "" || summary != "" || description != "" || state != "" ||
 				lead != "" || startDate != "" || endDate != ""
 
 			if !hasFlags {
@@ -288,11 +332,18 @@ func newProjectsUpdateCmd() *cobra.Command {
 				return fmt.Errorf("failed to read description: %w", err)
 			}
 
+			if err := validateProjectSummary(summary); err != nil {
+				return err
+			}
+
 			// Build update input
 			input := &service.UpdateProjectInput{}
 
 			if name != "" {
 				input.Name = &name
+			}
+			if summary != "" {
+				input.Summary = &summary
 			}
 			if desc != "" {
 				input.Description = &desc
@@ -327,7 +378,8 @@ func newProjectsUpdateCmd() *cobra.Command {
 
 	// Add flags (with short versions for common flags)
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Update project name")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Update description (or pipe to stdin)")
+	cmd.Flags().StringVar(&summary, "summary", "", "Update the short summary (255 chars max)")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Update the description document (use - to read stdin)")
 	cmd.Flags().StringVarP(&state, "state", "s", "", "Update state: planned, started, paused, completed, canceled")
 	cmd.Flags().StringVarP(&lead, "lead", "l", "", "Update project lead (use 'me' for yourself)")
 	cmd.Flags().StringVar(&startDate, "start-date", "", "Update start date YYYY-MM-DD")

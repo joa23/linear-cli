@@ -60,7 +60,7 @@ type CycleClientOperations interface {
 // ProjectClientOperations defines the minimal interface needed by ProjectService
 type ProjectClientOperations interface {
 	// Smart resolver-aware methods (kept in Phase 2)
-	CreateProject(name, description, teamKeyOrName string) (*core.Project, error)
+	CreateProject(name, summary, description, teamKeyOrName string) (*core.Project, error)
 
 	// Resolver operations
 	ResolveTeamIdentifier(keyOrName string) (string, error)
