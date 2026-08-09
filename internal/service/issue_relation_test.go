@@ -83,9 +83,6 @@ func (m *mockIssueClientForRelation) ResolveLabelIdentifier(label, team string) 
 func (m *mockIssueClientForRelation) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
 	return "project-uuid", nil
 }
-func (m *mockIssueClientForRelation) UpdateIssueMetadataKey(id, key string, val interface{}) error {
-	return nil
-}
 func (m *mockIssueClientForRelation) CommentClient() *comments.Client   { return nil }
 func (m *mockIssueClientForRelation) WorkflowClient() *workflows.Client { return nil }
 func (m *mockIssueClientForRelation) IssueClient() *issues.Client       { return nil }

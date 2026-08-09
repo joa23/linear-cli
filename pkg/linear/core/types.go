@@ -207,7 +207,6 @@ type Issue struct {
 	Children ChildrenNodes          `json:"children,omitempty"`
 	Cycle    *CycleReference        `json:"cycle,omitempty"`
 	Labels   *LabelConnection       `json:"labels,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
 	Priority  *int                   `json:"priority,omitempty"`
 	Estimate  *float64               `json:"estimate,omitempty"`
 	DueDate   *string                `json:"dueDate,omitempty"`
@@ -395,7 +394,6 @@ type ParentIssue struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"state"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Project represents a Linear project
@@ -406,7 +404,6 @@ type Project struct {
 	Content     string                 `json:"content,omitempty"`   // Long markdown content (no limit)
 	State       string                 `json:"state"`               // planned, started, completed, etc.
 	Issues      *IssueConnection       `json:"issues,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt   string                 `json:"createdAt"`
 	UpdatedAt   string                 `json:"updatedAt"`
 }
@@ -679,7 +676,7 @@ type ListAllIssuesResult struct {
 	TotalCount  int                `json:"totalCount"`
 }
 
-// IssueWithDetails represents an issue with full details including metadata
+// IssueWithDetails represents an issue with full details
 type IssueWithDetails struct {
 	ID          string                  `json:"id"`
 	Identifier  string                  `json:"identifier"`
@@ -693,7 +690,6 @@ type IssueWithDetails struct {
 	Labels      []Label                 `json:"labels"`
 	Project     *Project                `json:"project,omitempty"`
 	Team        Team                    `json:"team"`
-	Metadata    *map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Label represents a Linear label

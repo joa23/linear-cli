@@ -4,8 +4,6 @@ import (
 	"github.com/joa23/linear-cli/pkg/linear/core"
 
 	"fmt"
-	"regexp"
-	"unicode"
 )
 
 // Constants for validation limits
@@ -17,27 +15,6 @@ const (
 	// MaxNotificationLimit is the maximum number of notifications that can be fetched
 	MaxNotificationLimit = 100
 )
-
-// isValidMetadataKey validates that a metadata key follows proper naming conventions
-// Valid keys must:
-// - Not be empty
-// - Start with a letter or underscore
-// - Contain only letters, numbers, underscores, or hyphens
-func IsValidMetadataKey(key string) bool {
-	if key == "" {
-		return false
-	}
-	
-	// Must start with letter or underscore
-	firstRune := rune(key[0])
-	if !unicode.IsLetter(firstRune) && firstRune != '_' {
-		return false
-	}
-	
-	// Rest must be alphanumeric, underscore, or hyphen
-	validKeyRegex := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_-]*$`)
-	return validKeyRegex.MatchString(key)
-}
 
 // isValidEmoji checks if a string is a single valid emoji
 func IsValidEmoji(emoji string) bool {

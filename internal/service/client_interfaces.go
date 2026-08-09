@@ -34,9 +34,6 @@ type IssueClientOperations interface {
 	// Relation operations
 	CreateRelation(issueID, relatedIssueID string, relationType core.IssueRelationType) error
 
-	// Metadata operations (kept in Phase 2)
-	UpdateIssueMetadataKey(issueID, key string, value interface{}) error
-
 	// Sub-client access (Phase 2 - use sub-clients directly)
 	CommentClient() *comments.Client
 	WorkflowClient() *workflows.Client

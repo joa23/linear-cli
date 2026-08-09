@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/joa23/linear-cli/internal/format"
+	"github.com/joa23/linear-cli/pkg/linear/core"
 	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
 	"github.com/joa23/linear-cli/internal/service"
 	"github.com/spf13/cobra"
@@ -30,7 +31,6 @@ func newIssuesCmd() *cobra.Command {
 		newIssuesExportCmd(),
 		newIssuesReplyCmd(),
 		newIssuesReactCmd(),
-		newIssuesDependenciesCmd(),
 		newIssuesBlockedByCmd(),
 		newIssuesBlockingCmd(),
 	)
@@ -960,42 +960,50 @@ func newIssuesReactCmd() *cobra.Command {
 	}
 }
 
-func newIssuesDependenciesCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "dependencies <issue-id>",
-		Short: "List issue dependencies (what it depends on)",
-		Long:  "Show compressed list of issues this ticket depends on. Uses metadata or URL references.",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			issueID := args[0]
-			deps, err := getDeps(cmd)
-			if err != nil {
-				return err
-			}
+// relationTitleWidth bounds the title in blocked-by/blocking output. Wider than
+// the graph in `deps`, which spends its width on tree indentation.
+const relationTitleWidth = 60
 
-			issue, err := deps.Client.Issues.GetIssue(issueID)
-			if err != nil {
-				return fmt.Errorf("failed to get issue: %w", err)
-			}
+// blockerLines lists the issues blocking the queried issue, one line each.
+//
+// Linear stores a blocker as "blocker blocks queried", so the queried issue is
+// on the inverse side and rel.Issue is the blocker. Both connections also carry
+// related/duplicate/similar relations, which say nothing about blocking.
+func blockerLines(issue *core.IssueWithRelations) []string {
+	lines := make([]string, 0, len(issue.InverseRelations.Nodes))
+	for _, rel := range issue.InverseRelations.Nodes {
+		if rel.Type == core.RelationBlocks && rel.Issue != nil {
+			lines = append(lines, relationLine(rel.Issue))
+		}
+	}
+	return lines
+}
 
-			// Check metadata for dependency info
-			depIssues := []string{}
-			if metadata, ok := issue.Metadata["dependencies"].([]interface{}); ok {
-				for _, dep := range metadata {
-					if depStr, ok := dep.(string); ok {
-						depIssues = append(depIssues, depStr)
-					}
-				}
-			}
+// blockedLines lists the issues the queried issue blocks, one line each.
+func blockedLines(issue *core.IssueWithRelations) []string {
+	lines := make([]string, 0, len(issue.Relations.Nodes))
+	for _, rel := range issue.Relations.Nodes {
+		if rel.Type == core.RelationBlocks && rel.RelatedIssue != nil {
+			lines = append(lines, relationLine(rel.RelatedIssue))
+		}
+	}
+	return lines
+}
 
-			if len(depIssues) == 0 {
-				fmt.Println("none")
-				return nil
-			}
+// relationLine renders one related issue as "ABC-123 [State] Title". The state
+// is not decoration: a blocker that is already Done does not block anything,
+// and the identifier alone cannot tell you that.
+func relationLine(issue *core.IssueMinimal) string {
+	return fmt.Sprintf("%s [%s] %s", issue.Identifier, issue.State.Name, truncateTitle(issue.Title, relationTitleWidth))
+}
 
-			fmt.Printf("%v\n", depIssues)
-			return nil
-		},
+func printRelationLines(lines []string) {
+	if len(lines) == 0 {
+		fmt.Println("none")
+		return
+	}
+	for _, line := range lines {
+		fmt.Println(line)
 	}
 }
 
@@ -1003,43 +1011,24 @@ func newIssuesBlockedByCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "blocked-by <issue-id>",
 		Short: "List issues blocking this one",
-		Long:  "Show compressed list of issues that are blocking this ticket.",
-		Args:  cobra.ExactArgs(1),
+		Long: `Show the issues blocking this ticket, one per line, as "ABC-123 [State] Title".
+
+Reads Linear's native issue relations, the same source as 'linear deps'. Prints
+"none" when nothing blocks the issue. Blockers already in a completed state are
+listed too — their state is shown so you can tell them apart.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			issueID := args[0]
 			deps, err := getDeps(cmd)
 			if err != nil {
 				return err
 			}
 
-			issue, err := deps.Client.Issues.GetIssue(issueID)
+			issue, err := deps.Client.Issues.GetIssueWithRelations(args[0])
 			if err != nil {
 				return fmt.Errorf("failed to get issue: %w", err)
 			}
 
-			// Check if blocked in metadata or description
-			blockedIssues := []string{}
-			if blockList, ok := issue.Metadata["blocked_by"].([]interface{}); ok {
-				for _, blocker := range blockList {
-					if blockerStr, ok := blocker.(string); ok {
-						blockedIssues = append(blockedIssues, blockerStr)
-					}
-				}
-			}
-
-			// Check description for "Blocked by:" mentions
-			if len(blockedIssues) == 0 && issue.Description != "" {
-				// Simple extraction - in practice would be more sophisticated
-				fmt.Println("check description or Linear UI for blocking issues")
-				return nil
-			}
-
-			if len(blockedIssues) == 0 {
-				fmt.Println("none")
-				return nil
-			}
-
-			fmt.Printf("%v\n", blockedIssues)
+			printRelationLines(blockerLines(issue))
 			return nil
 		},
 	}
@@ -1049,36 +1038,23 @@ func newIssuesBlockingCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "blocking <issue-id>",
 		Short: "List issues blocked by this one",
-		Long:  "Show compressed list of issues that are blocked by this ticket.",
-		Args:  cobra.ExactArgs(1),
+		Long: `Show the issues this ticket blocks, one per line, as "ABC-123 [State] Title".
+
+Reads Linear's native issue relations, the same source as 'linear deps'. Prints
+"none" when the issue blocks nothing.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			issueID := args[0]
 			deps, err := getDeps(cmd)
 			if err != nil {
 				return err
 			}
 
-			issue, err := deps.Client.Issues.GetIssue(issueID)
+			issue, err := deps.Client.Issues.GetIssueWithRelations(args[0])
 			if err != nil {
 				return fmt.Errorf("failed to get issue: %w", err)
 			}
 
-			// Check metadata for blocked issues
-			blockingIssues := []string{}
-			if blockList, ok := issue.Metadata["blocking"].([]interface{}); ok {
-				for _, blocked := range blockList {
-					if blockedStr, ok := blocked.(string); ok {
-						blockingIssues = append(blockingIssues, blockedStr)
-					}
-				}
-			}
-
-			if len(blockingIssues) == 0 {
-				fmt.Println("none")
-				return nil
-			}
-
-			fmt.Printf("%v\n", blockingIssues)
+			printRelationLines(blockedLines(issue))
 			return nil
 		},
 	}
