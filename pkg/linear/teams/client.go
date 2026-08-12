@@ -18,13 +18,25 @@ func NewClient(base *core.BaseClient) *Client {
 	return &Client{base: base}
 }
 
+// teamsPageSize is the number of teams requested per page when paginating
+// through the full team list. Linear's API defaults to 50 per page for
+// unpaginated connection queries, which silently truncates results for
+// workspaces with more than 50 teams (see joa23/linear-cli#71). We paginate
+// explicitly to ensure GetTeams always returns the complete list.
+const teamsPageSize = 50
+
 // GetTeams retrieves all teams in the workspace
 // Why: Teams are the primary organizational unit in Linear. Users need
 // to discover available teams for issue creation and assignment.
+//
+// This walks the full teams connection using cursor-based pagination
+// (first/after + pageInfo.hasNextPage/endCursor) so that workspaces with
+// more than one page of teams (>50) are not silently truncated. See
+// https://github.com/joa23/linear-cli/issues/71.
 func (tc *Client) GetTeams() ([]core.Team, error) {
 	const query = `
-		query GetTeams {
-			teams {
+		query GetTeams($first: Int!, $after: String) {
+			teams(first: $first, after: $after) {
 				nodes {
 					id
 					name
@@ -35,22 +47,49 @@ func (tc *Client) GetTeams() ([]core.Team, error) {
 					issueEstimationExtended
 					defaultIssueEstimate
 				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
 		}
 	`
-	
-	var response struct {
-		Teams struct {
-			Nodes []core.Team `json:"nodes"`
-		} `json:"teams"`
+
+	var allTeams []core.Team
+	var after string
+
+	for {
+		variables := map[string]interface{}{
+			"first": teamsPageSize,
+		}
+		if after != "" {
+			variables["after"] = after
+		}
+
+		var response struct {
+			Teams struct {
+				Nodes    []core.Team `json:"nodes"`
+				PageInfo struct {
+					HasNextPage bool   `json:"hasNextPage"`
+					EndCursor   string `json:"endCursor"`
+				} `json:"pageInfo"`
+			} `json:"teams"`
+		}
+
+		err := tc.base.ExecuteRequest(query, variables, &response)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get teams: %w", err)
+		}
+
+		allTeams = append(allTeams, response.Teams.Nodes...)
+
+		if !response.Teams.PageInfo.HasNextPage || response.Teams.PageInfo.EndCursor == "" {
+			break
+		}
+		after = response.Teams.PageInfo.EndCursor
 	}
-	
-	err := tc.base.ExecuteRequest(query, nil, &response)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get teams: %w", err)
-	}
-	
-	return response.Teams.Nodes, nil
+
+	return allTeams, nil
 }
 
 // GetTeam retrieves a single team by ID with estimate settings
