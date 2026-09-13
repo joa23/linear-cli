@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-09-13
+
+### Added
+
+- `documents` command (alias `docs`) — full CRUD for Linear documents: `list`, `get`, `create`, `update`, `delete`. Documents live under exactly one parent: `--project`, `--issue`, or `--team` (`create` falls back to the `.linear.yaml` default project, then team). `get`/`update`/`delete` accept a UUID, a slug, or the full Linear document URL. Content comes from `--content "text"`, `--content -` (stdin), or `--content-file <path>`. `list` filters by parent and `--query` (title match), supports `--include-archived`, and never returns bodies; `get` does. `update` with a parent flag moves the document and clears the old parent. All subcommands support `--output json` and `--format minimal|compact|detailed|full`. `delete` moves the document to trash (Linear does not hard-delete documents).
+
 ## [1.10.0] - 2026-07-14
 
 ### Added
