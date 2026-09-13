@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/joa23/linear-cli/internal/token"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,9 +23,10 @@ func TestRootCmdHasSubcommands(t *testing.T) {
 
 	// Only test commands that are actually registered
 	expectedCommands := map[string]bool{
-		"onboard": false,
-		"auth":    false,
-		"issues":  false,
+		"onboard":   false,
+		"auth":      false,
+		"issues":    false,
+		"documents": false,
 	}
 
 	for _, subCmd := range cmd.Commands() {
@@ -226,4 +228,90 @@ func TestIsNoAuthInvocation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDocumentsSubcommands(t *testing.T) {
+	cmd := NewRootCmd()
+	docsCmd, _, _ := cmd.Find([]string{"documents"})
+	require.NotNil(t, docsCmd)
+	assert.Contains(t, docsCmd.Aliases, "docs")
+
+	expectedSubCmds := []string{"list", "get", "create", "update", "delete"}
+	for _, subCmdName := range expectedSubCmds {
+		sub, _, err := cmd.Find([]string{"documents", subCmdName})
+		require.NoError(t, err)
+		assert.Equal(t, subCmdName, sub.Name())
+	}
+
+	createCmd, _, _ := cmd.Find([]string{"documents", "create"})
+	for _, flag := range []string{"title", "content", "content-file", "project", "issue", "team", "output", "format"} {
+		assert.NotNil(t, createCmd.Flags().Lookup(flag), "create should have --%s", flag)
+	}
+
+	listCmd, _, _ := cmd.Find([]string{"documents", "list"})
+	for _, flag := range []string{"project", "issue", "team", "query", "include-archived", "limit", "output", "format"} {
+		assert.NotNil(t, listCmd.Flags().Lookup(flag), "list should have --%s", flag)
+	}
+}
+
+func TestReadContentFlags(t *testing.T) {
+	file := t.TempDir() + "/body.md"
+	require.NoError(t, os.WriteFile(file, []byte("# From file\n"), 0o644))
+
+	newCmd := func() *cobra.Command {
+		c := &cobra.Command{Use: "x", Run: func(*cobra.Command, []string) {}}
+		c.Flags().String("content", "", "")
+		c.Flags().String("content-file", "", "")
+		return c
+	}
+
+	t.Run("neither", func(t *testing.T) {
+		c := newCmd()
+		require.NoError(t, c.ParseFlags(nil))
+		body, set, err := readContentFlags(c, "", "")
+		require.NoError(t, err)
+		assert.False(t, set)
+		assert.Equal(t, "", body)
+	})
+
+	t.Run("content flag", func(t *testing.T) {
+		c := newCmd()
+		require.NoError(t, c.ParseFlags([]string{"--content", "hi"}))
+		body, set, err := readContentFlags(c, "hi", "")
+		require.NoError(t, err)
+		assert.True(t, set)
+		assert.Equal(t, "hi", body)
+	})
+
+	t.Run("explicit empty content counts as set", func(t *testing.T) {
+		c := newCmd()
+		require.NoError(t, c.ParseFlags([]string{"--content", ""}))
+		_, set, err := readContentFlags(c, "", "")
+		require.NoError(t, err)
+		assert.True(t, set)
+	})
+
+	t.Run("content file", func(t *testing.T) {
+		c := newCmd()
+		require.NoError(t, c.ParseFlags([]string{"--content-file", file}))
+		body, set, err := readContentFlags(c, "", file)
+		require.NoError(t, err)
+		assert.True(t, set)
+		assert.Equal(t, "# From file\n", body)
+	})
+
+	t.Run("both is an error", func(t *testing.T) {
+		c := newCmd()
+		require.NoError(t, c.ParseFlags([]string{"--content", "a", "--content-file", file}))
+		_, _, err := readContentFlags(c, "a", file)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "mutually exclusive")
+	})
+
+	t.Run("missing file", func(t *testing.T) {
+		c := newCmd()
+		require.NoError(t, c.ParseFlags([]string{"--content-file", "/nonexistent/x.md"}))
+		_, _, err := readContentFlags(c, "", "/nonexistent/x.md")
+		require.Error(t, err)
+	})
 }

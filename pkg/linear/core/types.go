@@ -361,6 +361,25 @@ type Attachment struct {
 	OriginalIssue    *Issue                 `json:"originalIssue,omitempty"`   // If moved/copied
 }
 
+// Document represents a Linear document attached to a project, issue, or team
+type Document struct {
+	ID         string   `json:"id"`
+	SlugID     string   `json:"slugId"`
+	Title      string   `json:"title"`
+	Content    string   `json:"content,omitempty"` // Markdown body (omitted in list queries)
+	Icon       string   `json:"icon,omitempty"`
+	Color      string   `json:"color,omitempty"`
+	URL        string   `json:"url"`
+	CreatedAt  string   `json:"createdAt"`
+	UpdatedAt  string   `json:"updatedAt"`
+	ArchivedAt *string  `json:"archivedAt,omitempty"`
+	Creator    *User    `json:"creator,omitempty"`
+	UpdatedBy  *User    `json:"updatedBy,omitempty"`
+	Project    *Project `json:"project,omitempty"` // Parent project (if any)
+	Issue      *Issue   `json:"issue,omitempty"`   // Parent issue (if any)
+	Team       *Team    `json:"team,omitempty"`    // Parent team (if any)
+}
+
 // ExternalUser represents a user from external systems (like Slack)
 type ExternalUser struct {
 	ID          string `json:"id"`

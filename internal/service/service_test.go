@@ -31,6 +31,9 @@ func TestNew(t *testing.T) {
 	if services.Users == nil {
 		t.Error("Users service is nil")
 	}
+	if services.Documents == nil {
+		t.Error("Documents service is nil")
+	}
 }
 
 func TestNewIssueService(t *testing.T) {

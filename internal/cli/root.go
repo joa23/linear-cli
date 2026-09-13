@@ -118,6 +118,15 @@ Attachments (alias: att) — sidebar cards (GitHub PRs, Slack threads, files, UR
   Create flags: --url, --file, --title, --subtitle
   NOTE: --attach on issues/comments embeds inline images; att create makes sidebar cards
 
+Documents (alias: docs) — long-form markdown on a project, issue, or team:
+  docs list [flags]            List documents (-P project, -i issue, -t team, -q query)
+  docs get <ID|slug|URL>       Get document with content
+  docs create --title <t>      Create document (--project | --issue | --team)
+  docs update <ID> [flags]     Update title, content, or parent
+  docs delete <ID>             Move document to trash
+
+  Content flags: --content "text" | --content - (stdin) | --content-file <path>
+
 Users (alias: u):
   u list [--team <ID>]         List users
   u get <ID>                   Get user details
@@ -167,6 +176,7 @@ Configuration:
 		newLabelsCmd(),
 		newNotificationsCmd(),
 		newAttachmentsCmd(),
+		newDocumentsCmd(),
 
 		// Analysis
 		newDepsCmd(),

@@ -686,6 +686,123 @@ func (r *TextRenderer) RenderAttachmentList(atts []core.Attachment, verbosity Ve
 	return b.String()
 }
 
+// --- Document Rendering ---
+
+// documentContentPreviewLen caps the body shown at detailed verbosity.
+const documentContentPreviewLen = 500
+
+func (r *TextRenderer) RenderDocument(doc *core.Document, verbosity Verbosity) string {
+	if doc == nil {
+		return ""
+	}
+
+	var b strings.Builder
+
+	b.WriteString(fmtSprintf("%s\n", doc.Title))
+
+	if verbosity < VerbosityCompact {
+		b.WriteString(fmtSprintf("  ID: %s\n", doc.ID))
+		return b.String()
+	}
+
+	b.WriteString(fmtSprintf("  ID: %s\n", doc.ID))
+	if doc.SlugID != "" {
+		b.WriteString(fmtSprintf("  Slug: %s\n", doc.SlugID))
+	}
+	b.WriteString(fmtSprintf("  Parent: %s\n", documentParentLabel(doc)))
+	b.WriteString(fmtSprintf("  Updated: %s\n", formatDate(doc.UpdatedAt)))
+	if doc.ArchivedAt != nil {
+		b.WriteString(fmtSprintf("  Archived: %s\n", formatDate(*doc.ArchivedAt)))
+	}
+	if doc.URL != "" {
+		b.WriteString(fmtSprintf("  URL: %s\n", doc.URL))
+	}
+
+	if verbosity < VerbosityDetailed {
+		return b.String()
+	}
+
+	created := formatDate(doc.CreatedAt)
+	if doc.Creator != nil {
+		created += " by " + userLabel(doc.Creator)
+	}
+	b.WriteString(fmtSprintf("  Created: %s\n", created))
+
+	if doc.Content != "" {
+		b.WriteString("\n")
+		if verbosity >= VerbosityFull {
+			b.WriteString(doc.Content)
+		} else {
+			b.WriteString(truncate(doc.Content, documentContentPreviewLen))
+		}
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+func (r *TextRenderer) RenderDocumentList(docs []core.Document, verbosity Verbosity, page *Pagination) string {
+	if len(docs) == 0 {
+		return "No documents found.\n"
+	}
+
+	var b strings.Builder
+	b.WriteString(fmtSprintf("DOCUMENTS (%d)\n", len(docs)))
+	b.WriteString(line(40))
+	b.WriteString("\n")
+
+	for _, doc := range docs {
+		if verbosity >= VerbosityDetailed {
+			b.WriteString(r.RenderDocument(&doc, verbosity))
+			b.WriteString("\n")
+			continue
+		}
+		b.WriteString(fmtSprintf("%s  %s  [%s]  %s\n",
+			documentShortRef(&doc), doc.Title, documentParentLabel(&doc), formatDate(doc.UpdatedAt)))
+	}
+
+	if page != nil && page.HasNextPage && page.EndCursor != "" {
+		b.WriteString(line(40))
+		b.WriteString("\n")
+		b.WriteString(fmtSprintf("Next: cursor=%s\n", page.EndCursor))
+	}
+
+	return b.String()
+}
+
+// documentParentLabel describes the document's parent: project, issue, or team.
+func documentParentLabel(doc *core.Document) string {
+	switch {
+	case doc.Project != nil:
+		return "Project " + doc.Project.Name
+	case doc.Issue != nil:
+		return "Issue " + doc.Issue.Identifier
+	case doc.Team != nil:
+		return "Team " + doc.Team.Key
+	default:
+		return "-"
+	}
+}
+
+// documentShortRef returns the slug, or the first 8 chars of the ID when no slug exists.
+func documentShortRef(doc *core.Document) string {
+	if doc.SlugID != "" {
+		return doc.SlugID
+	}
+	if len(doc.ID) > 8 {
+		return doc.ID[:8]
+	}
+	return doc.ID
+}
+
+// userLabel prefers the display name, falling back to name.
+func userLabel(u *core.User) string {
+	if u.DisplayName != "" {
+		return u.DisplayName
+	}
+	return u.Name
+}
+
 func (r *TextRenderer) commentCompact(comment *core.Comment) string {
 	var b strings.Builder
 

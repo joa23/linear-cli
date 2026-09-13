@@ -98,4 +98,5 @@ var (
 	_ UserServiceInterface       = (*UserService)(nil)
 	_ LabelServiceInterface      = (*LabelService)(nil)
 	_ TaskExportServiceInterface = (*TaskExportService)(nil)
+	_ DocumentServiceInterface   = (*DocumentService)(nil)
 )

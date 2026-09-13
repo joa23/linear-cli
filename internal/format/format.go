@@ -147,6 +147,18 @@ func (f *Formatter) RenderAttachmentList(atts []core.Attachment, verbosity Verbo
 	return renderer.RenderAttachmentList(atts, verbosity)
 }
 
+// RenderDocument renders a single document
+func (f *Formatter) RenderDocument(doc *core.Document, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderDocument(doc, verbosity)
+}
+
+// RenderDocumentList renders a list of documents
+func (f *Formatter) RenderDocumentList(docs []core.Document, verbosity Verbosity, outputType OutputType, page *Pagination) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderDocumentList(docs, verbosity, page)
+}
+
 // --- Utility functions ---
 
 // line creates a horizontal separator line

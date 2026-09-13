@@ -24,4 +24,8 @@ type Renderer interface {
 	// Attachment rendering
 	RenderAttachment(att *core.Attachment, verbosity Verbosity) string
 	RenderAttachmentList(atts []core.Attachment, verbosity Verbosity) string
+
+	// Document rendering
+	RenderDocument(doc *core.Document, verbosity Verbosity) string
+	RenderDocumentList(docs []core.Document, verbosity Verbosity, page *Pagination) string
 }

@@ -47,7 +47,7 @@ team: CEN
 project: my-project  # optional — used when --project flag is omitted
 ```
 
-When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `search`, `deps`) will use this default. Explicit `--project` flags always override it.
+When set, commands with `--project` (`issues list`, `issues create`, `issues update`, `search`, `deps`, `documents create`) will use this default. Explicit `--project` flags always override it.
 
 ### Authentication Modes
 
@@ -113,6 +113,7 @@ linear issues get CEN-123 --format minimal --output json
 - `users list`, `users get`, `users me`
 - `search` (all search operations)
 - `attachments list`, `attachments create`, `attachments update`
+- `documents list`, `documents get`, `documents create`, `documents update`
 - `deps` (dependency graph)
 
 ### Common Patterns
@@ -246,6 +247,35 @@ linear attachments delete <uuid>
 
 # Embed file as inline image in description (NOT a sidebar card)
 linear issues create "Bug" --attach /tmp/screenshot.png
+```
+
+#### Documents
+
+Documents are long-form markdown (specs, PRDs, runbooks) with exactly one parent: a project, an issue, or a team.
+References accept a UUID, a slug (trailing token of the Linear URL), or the full URL.
+
+```bash
+# List (bodies are never included — use get)
+linear documents list --team CEN
+linear documents list --project my-project --team CEN
+linear documents list --issue CEN-123
+linear documents list --query "runbook" --output json
+
+# Read full content
+linear documents get my-spec-abc123def456
+linear documents get https://linear.app/acme/document/my-spec-abc123def456 --output json
+
+# Create — parent from --project | --issue | --team, else .linear.yaml default project, then team
+linear documents create --title "API Spec" --project my-project --content-file spec.md
+cat notes.md | linear documents create --title "Notes" --issue CEN-123 --content -
+
+# Update title, content, or move to another parent
+linear documents update my-spec-abc123def456 --title "API Spec v2"
+linear documents update my-spec-abc123def456 --content-file spec.md
+linear documents update my-spec-abc123def456 --issue CEN-124
+
+# Delete (moves to trash; restore in the Linear UI)
+linear documents delete my-spec-abc123def456
 ```
 
 ### Skills Usage

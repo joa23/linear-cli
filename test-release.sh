@@ -5,7 +5,7 @@ set -e
 # Tests output formats (text/json) and verbosity levels against TEST team
 
 BINARY="./bin/linear"
-TEAM="TEST"
+TEAM="${TEAM:-TEST}"
 
 echo "=================================================="
 echo "Linear CLI Release Test"
@@ -113,6 +113,20 @@ section "10. Test Projects - Text vs JSON"
 
 test_cmd "$BINARY projects list --limit 3"
 test_cmd "$BINARY projects list --output json --limit 3"
+
+section "10b. Test Documents - CRUD (Text vs JSON)"
+
+DOC_JSON=$($BINARY documents create --title "Release Test Doc $(date +%s)" --team $TEAM --content "# Release test" --output json)
+DOC_ID=$(echo "$DOC_JSON" | jq -r '.id')
+DOC_SLUG=$(echo "$DOC_JSON" | jq -r '.slugId')
+echo -e "${GREEN}Created document: $DOC_ID (slug $DOC_SLUG)${NC}"
+
+test_cmd "$BINARY documents list --team $TEAM --limit 3"
+test_cmd "$BINARY documents list --team $TEAM --limit 3 --output json"
+test_cmd "$BINARY documents get $DOC_SLUG"
+test_cmd "$BINARY documents get $DOC_ID --output json"
+test_cmd "$BINARY documents update $DOC_SLUG --title \"Release Test Doc (updated)\" --content \"# Updated\""
+test_cmd "$BINARY documents delete $DOC_SLUG"
 
 section "11. Test JSON Piping to jq"
 

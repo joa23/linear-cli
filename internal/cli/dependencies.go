@@ -22,6 +22,7 @@ type Dependencies struct {
 	TaskExport  service.TaskExportServiceInterface
 	Attachments service.AttachmentServiceInterface
 	IssueExport service.IssueExportServiceInterface
+	Documents   service.DocumentServiceInterface
 }
 
 // NewDependencies creates dependencies with real implementations
@@ -40,5 +41,6 @@ func NewDependencies(client *linear.Client) *Dependencies {
 		TaskExport:  services.TaskExport,
 		Attachments: services.Attachments,
 		IssueExport: services.IssueExport,
+		Documents:   services.Documents,
 	}
 }

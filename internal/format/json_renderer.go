@@ -219,6 +219,27 @@ func (r *JSONRenderer) RenderAttachmentList(atts []core.Attachment, verbosity Ve
 	return r.marshal(dtos)
 }
 
+// --- Document Rendering ---
+
+func (r *JSONRenderer) RenderDocument(doc *core.Document, verbosity Verbosity) string {
+	if doc == nil {
+		return r.renderError("Document is nil")
+	}
+	return r.marshal(DocumentToDTO(doc, true))
+}
+
+func (r *JSONRenderer) RenderDocumentList(docs []core.Document, verbosity Verbosity, page *Pagination) string {
+	if len(docs) == 0 {
+		return "[]"
+	}
+	includeContent := verbosity >= VerbosityDetailed
+	dtos := make([]DocumentDTO, len(docs))
+	for i, doc := range docs {
+		dtos[i] = DocumentToDTO(&doc, includeContent)
+	}
+	return r.marshal(dtos)
+}
+
 // --- Helper methods ---
 
 // marshal converts an object to pretty-printed JSON

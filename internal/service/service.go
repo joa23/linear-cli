@@ -20,6 +20,7 @@ type Services struct {
 	TaskExport  *TaskExportService
 	Attachments *AttachmentService
 	IssueExport *IssueExportService
+	Documents   *DocumentService
 
 	client *linear.Client // Store original client for backward compatibility
 }
@@ -39,6 +40,7 @@ func New(client *linear.Client) *Services {
 		TaskExport:  NewTaskExportService(client),
 		Attachments: NewAttachmentService(client, formatter),
 		IssueExport: NewIssueExportService(client),
+		Documents:   NewDocumentService(client, formatter),
 		client:      client,
 	}
 }

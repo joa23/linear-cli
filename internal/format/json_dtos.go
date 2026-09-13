@@ -219,6 +219,39 @@ type AttachmentDTO struct {
 	CreatedAt  string `json:"createdAt"`
 }
 
+// DocumentDTO represents a document
+type DocumentDTO struct {
+	ID         string         `json:"id"`
+	SlugID     string         `json:"slugId"`
+	Title      string         `json:"title"`
+	URL        string         `json:"url"`
+	Content    string         `json:"content,omitempty"`
+	Icon       string         `json:"icon,omitempty"`
+	Color      string         `json:"color,omitempty"`
+	CreatedAt  string         `json:"createdAt"`
+	UpdatedAt  string         `json:"updatedAt"`
+	ArchivedAt *string        `json:"archivedAt,omitempty"`
+	Creator    *UserRefDTO    `json:"creator,omitempty"`
+	UpdatedBy  *UserRefDTO    `json:"updatedBy,omitempty"`
+	Project    *ProjectRefDTO `json:"project,omitempty"`
+	Issue      *IssueRefDTO   `json:"issue,omitempty"`
+	Team       *TeamRefDTO    `json:"team,omitempty"`
+}
+
+// UserRefDTO is a minimal user reference
+type UserRefDTO struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName,omitempty"`
+}
+
+// TeamRefDTO is a minimal team reference with ID
+type TeamRefDTO struct {
+	ID   string `json:"id"`
+	Key  string `json:"key"`
+	Name string `json:"name"`
+}
+
 // CommentRefDTO is a minimal comment reference
 type CommentRefDTO struct {
 	ID string `json:"id"`
@@ -555,6 +588,40 @@ func AttachmentToDTO(att *core.Attachment) AttachmentDTO {
 		SourceType: att.SourceType,
 		CreatedAt:  att.CreatedAt,
 	}
+}
+
+// DocumentToDTO converts a document to DTO. Content is included only when requested.
+func DocumentToDTO(doc *core.Document, includeContent bool) DocumentDTO {
+	dto := DocumentDTO{
+		ID:         doc.ID,
+		SlugID:     doc.SlugID,
+		Title:      doc.Title,
+		URL:        doc.URL,
+		Icon:       doc.Icon,
+		Color:      doc.Color,
+		CreatedAt:  doc.CreatedAt,
+		UpdatedAt:  doc.UpdatedAt,
+		ArchivedAt: doc.ArchivedAt,
+	}
+	if includeContent {
+		dto.Content = doc.Content
+	}
+	if doc.Creator != nil {
+		dto.Creator = &UserRefDTO{ID: doc.Creator.ID, Name: doc.Creator.Name, DisplayName: doc.Creator.DisplayName}
+	}
+	if doc.UpdatedBy != nil {
+		dto.UpdatedBy = &UserRefDTO{ID: doc.UpdatedBy.ID, Name: doc.UpdatedBy.Name, DisplayName: doc.UpdatedBy.DisplayName}
+	}
+	if doc.Project != nil {
+		dto.Project = &ProjectRefDTO{ID: doc.Project.ID, Name: doc.Project.Name}
+	}
+	if doc.Issue != nil {
+		dto.Issue = &IssueRefDTO{Identifier: doc.Issue.Identifier, Title: doc.Issue.Title}
+	}
+	if doc.Team != nil {
+		dto.Team = &TeamRefDTO{ID: doc.Team.ID, Key: doc.Team.Key, Name: doc.Team.Name}
+	}
+	return dto
 }
 
 // CommentToDTO converts a comment to DTO

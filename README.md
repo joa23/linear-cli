@@ -84,6 +84,7 @@ linear auth login
   - [Search](#search)
   - [Dependencies](#dependencies)
   - [Projects](#projects)
+  - [Documents](#documents)
   - [Cycles](#cycles)
   - [Teams](#teams)
   - [Labels](#labels)
@@ -641,6 +642,35 @@ linear projects get PROJECT-ID
 linear projects create "Q1 Release" --team ENG
 linear projects update PROJECT-ID --state completed
 ```
+
+### Documents
+
+Long-form markdown (specs, PRDs, runbooks) attached to a project, an issue, or a team.
+References accept a UUID, a slug, or the full Linear document URL.
+
+```bash
+linear documents list                        # Whole workspace, newest first
+linear documents list --project "Platform" --team ENG
+linear documents list --issue ENG-123
+linear documents list --team ENG --query "runbook"
+linear documents list --output json
+
+linear documents get my-spec-abc123def456    # Full content (slug from the URL)
+linear documents get https://linear.app/acme/document/my-spec-abc123def456
+linear documents get my-spec-abc123def456 --format compact   # Metadata only
+
+# Create — exactly one parent: --project, --issue, or --team (default from .linear.yaml)
+linear documents create --title "API Spec" --project "Platform" --content-file spec.md
+cat notes.md | linear documents create --title "Notes" --issue ENG-123 --content -
+linear documents create --title "Team Charter" --team ENG --content "# Charter"
+
+linear documents update my-spec-abc123def456 --title "API Spec v2"
+linear documents update my-spec-abc123def456 --content-file spec.md
+linear documents update my-spec-abc123def456 --project "Other"   # Move to another parent
+linear documents delete my-spec-abc123def456                      # Moves to trash
+```
+
+> **Note:** `documents list` never returns bodies (they can be large). Use `documents get` for content. Alias: `docs`.
 
 ### Cycles
 

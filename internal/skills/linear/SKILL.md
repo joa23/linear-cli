@@ -58,6 +58,13 @@ linear i react <ID> 👍                   # Add reaction
 linear p list [--mine]                   # List projects
 linear p create <name> [flags]           # Create project
 
+# Documents (alias: docs)
+linear docs list [-P project|-i issue|-t team] [-q query]   # List documents (no bodies)
+linear docs get <ID|slug|URL>            # Get document with content
+linear docs create --title <t> [--project|--issue|--team] [--content|--content-file]
+linear docs update <ID> [flags]          # Update title, content, or parent
+linear docs delete <ID>                  # Move to trash
+
 # Cycles (alias: c)
 linear c list [--active]                 # List cycles
 linear c get <number>                    # Get cycle (requires init)
@@ -109,6 +116,7 @@ linear cycles analyze --team CEN --output json > velocity.json
 - `issues list`, `issues get`
 - `cycles list`, `cycles get`, `cycles analyze`
 - `projects list`, `projects get`
+- `documents list`, `documents get`, `documents create`, `documents update`
 - `teams list`, `teams get`, `teams labels`, `teams states`
 - `users list`, `users get`, `users me`
 - `search` (all operations)

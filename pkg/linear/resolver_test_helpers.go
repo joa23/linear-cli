@@ -2,6 +2,7 @@ package linear
 
 import (
 	"github.com/joa23/linear-cli/pkg/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/documents"
 	"github.com/joa23/linear-cli/pkg/linear/comments"
 	"github.com/joa23/linear-cli/pkg/linear/attachments"
 	"github.com/joa23/linear-cli/pkg/linear/issues"
@@ -32,6 +33,7 @@ func setupMockServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, 
 		Projects:      projects.NewClient(baseClient),
 		Notifications: users.NewNotificationClient(baseClient),
 		Attachments:   attachments.NewClient(baseClient),
+		Documents:     documents.NewClient(baseClient),
 	}
 
 	return server, client
