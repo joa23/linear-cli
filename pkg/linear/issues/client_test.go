@@ -2,9 +2,12 @@ package issues
 
 import (
 	"encoding/json"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/joa23/linear-cli/pkg/linear/core"
+	"github.com/joa23/linear-cli/pkg/linear/testutil"
 )
 
 func TestBuildUpdateInput_DelegateID(t *testing.T) {
@@ -352,5 +355,262 @@ func TestLabelParent_Deserialization(t *testing.T) {
 	second := response.Issue.Labels.Nodes[1]
 	if second.Parent != nil {
 		t.Errorf("Labels.Nodes[1].Parent = %+v, want nil", second.Parent)
+	}
+}
+
+// newCapturingTestClient wires an issues.Client to a testutil.CapturingTransport,
+// so tests can inspect the outgoing GraphQL request while feeding back a canned
+// response body.
+func newCapturingTestClient(responseBody interface{}) (*Client, *testutil.CapturingTransport) {
+	transport := testutil.NewCapturingTransport(http.StatusOK, responseBody)
+	base := core.NewBaseClient("test-token")
+	base.SetHTTPClient(&http.Client{Transport: transport})
+	return NewClient(base), transport
+}
+
+// assertQueryRequestsFields fails the test if any of the given field names is
+// not present as a token in the outgoing GraphQL selection set. This is a
+// lightweight substring check (not a GraphQL parser), used as regression
+// protection against a field silently going missing from a query's selection
+// set — the exact bug class TL-563 fixed for SearchIssuesEnhanced,
+// ListAssignedIssues, and ListAllIssues.
+func assertQueryRequestsFields(t *testing.T, query string, fields []string) {
+	t.Helper()
+	for _, field := range fields {
+		if !strings.Contains(query, field) {
+			t.Errorf("query does not request field %q:\n%s", field, query)
+		}
+	}
+}
+
+// requiredIssueFields is the set of fields TL-563 added to SearchIssuesEnhanced,
+// ListAssignedIssues, and ListAllIssues, matching what GetIssue already requested.
+var requiredIssueFields = []string{"dueDate", "estimate", "delegate"}
+
+// TestSearchIssuesEnhanced_RequestsAndDecodesDueDateEstimateDelegate is a
+// regression test for TL-563: SearchIssuesEnhanced's query silently omitted
+// dueDate, estimate, and delegate, so "issues list"/"search" never returned
+// them even though GetIssue's identical selection worked fine.
+func TestSearchIssuesEnhanced_RequestsAndDecodesDueDateEstimateDelegate(t *testing.T) {
+	responseBody := testutil.NewGraphQLDataResponse(testutil.IssuesData{
+		Issues: testutil.IssuesNodes{
+			Nodes: []interface{}{
+				// Populated: has a due date, estimate, and delegate.
+				map[string]interface{}{
+					"id":         "issue-1",
+					"identifier": "TL-1",
+					"title":      "Issue with due date, estimate, and delegate",
+					"state":      map[string]interface{}{"id": "state-1", "name": "Todo"},
+					"priority":   2,
+					"estimate":   3.5,
+					"dueDate":    "2026-09-01",
+					"delegate":   map[string]interface{}{"id": "delegate-1", "name": "Bot", "email": "bot@example.com"},
+					"createdAt":  "2026-01-01T00:00:00Z",
+					"updatedAt":  "2026-01-02T00:00:00Z",
+					"url":        "https://linear.app/test/issue/TL-1",
+				},
+				// Unpopulated: none of the three fields set.
+				map[string]interface{}{
+					"id":         "issue-2",
+					"identifier": "TL-2",
+					"title":      "Issue without due date, estimate, or delegate",
+					"state":      map[string]interface{}{"id": "state-1", "name": "Todo"},
+					"labels":     map[string]interface{}{"nodes": []interface{}{}},
+					"createdAt":  "2026-01-01T00:00:00Z",
+					"updatedAt":  "2026-01-02T00:00:00Z",
+					"url":        "https://linear.app/test/issue/TL-2",
+				},
+			},
+			PageInfo: &testutil.PageInfo{HasNextPage: false},
+		},
+	})
+
+	client, transport := newCapturingTestClient(responseBody)
+
+	result, err := client.SearchIssuesEnhanced(&core.IssueSearchFilters{TeamID: "team-1"})
+	if err != nil {
+		t.Fatalf("SearchIssuesEnhanced returned error: %v", err)
+	}
+
+	query, err := transport.CapturedQuery()
+	if err != nil {
+		t.Fatalf("failed to extract captured query: %v", err)
+	}
+	assertQueryRequestsFields(t, query, requiredIssueFields)
+
+	if len(result.Issues) != 2 {
+		t.Fatalf("expected 2 issues, got %d", len(result.Issues))
+	}
+
+	populated := result.Issues[0]
+	if populated.Estimate == nil || *populated.Estimate != 3.5 {
+		t.Errorf("Issues[0].Estimate = %v, want 3.5", populated.Estimate)
+	}
+	if populated.DueDate == nil || *populated.DueDate != "2026-09-01" {
+		t.Errorf("Issues[0].DueDate = %v, want \"2026-09-01\"", populated.DueDate)
+	}
+	if populated.Delegate == nil || populated.Delegate.ID != "delegate-1" {
+		t.Errorf("Issues[0].Delegate = %v, want ID \"delegate-1\"", populated.Delegate)
+	}
+
+	unpopulated := result.Issues[1]
+	if unpopulated.Estimate != nil {
+		t.Errorf("Issues[1].Estimate = %v, want nil", unpopulated.Estimate)
+	}
+	if unpopulated.DueDate != nil {
+		t.Errorf("Issues[1].DueDate = %v, want nil", unpopulated.DueDate)
+	}
+	if unpopulated.Delegate != nil {
+		t.Errorf("Issues[1].Delegate = %v, want nil", unpopulated.Delegate)
+	}
+}
+
+// TestListAssignedIssues_RequestsAndDecodesDueDateEstimateDelegate is a
+// regression test for TL-563: ListAssignedIssues's query, like
+// SearchIssuesEnhanced's, silently omitted dueDate, estimate, and delegate.
+func TestListAssignedIssues_RequestsAndDecodesDueDateEstimateDelegate(t *testing.T) {
+	responseBody := testutil.NewGraphQLDataResponse(testutil.IssuesData{
+		Issues: testutil.IssuesNodes{
+			Nodes: []interface{}{
+				map[string]interface{}{
+					"id":         "issue-1",
+					"identifier": "TL-1",
+					"title":      "Issue with due date, estimate, and delegate",
+					"state":      map[string]interface{}{"id": "state-1", "name": "Todo"},
+					"estimate":   2.0,
+					"dueDate":    "2026-09-01",
+					"delegate":   map[string]interface{}{"id": "delegate-1", "name": "Bot", "email": "bot@example.com"},
+					"createdAt":  "2026-01-01T00:00:00Z",
+					"updatedAt":  "2026-01-02T00:00:00Z",
+					"url":        "https://linear.app/test/issue/TL-1",
+				},
+				map[string]interface{}{
+					"id":         "issue-2",
+					"identifier": "TL-2",
+					"title":      "Issue without due date, estimate, or delegate",
+					"state":      map[string]interface{}{"id": "state-1", "name": "Todo"},
+					"createdAt":  "2026-01-01T00:00:00Z",
+					"updatedAt":  "2026-01-02T00:00:00Z",
+					"url":        "https://linear.app/test/issue/TL-2",
+				},
+			},
+		},
+	})
+
+	client, transport := newCapturingTestClient(responseBody)
+
+	issues, err := client.ListAssignedIssues(10)
+	if err != nil {
+		t.Fatalf("ListAssignedIssues returned error: %v", err)
+	}
+
+	query, err := transport.CapturedQuery()
+	if err != nil {
+		t.Fatalf("failed to extract captured query: %v", err)
+	}
+	assertQueryRequestsFields(t, query, requiredIssueFields)
+
+	if len(issues) != 2 {
+		t.Fatalf("expected 2 issues, got %d", len(issues))
+	}
+
+	populated := issues[0]
+	if populated.Estimate == nil || *populated.Estimate != 2.0 {
+		t.Errorf("issues[0].Estimate = %v, want 2.0", populated.Estimate)
+	}
+	if populated.DueDate == nil || *populated.DueDate != "2026-09-01" {
+		t.Errorf("issues[0].DueDate = %v, want \"2026-09-01\"", populated.DueDate)
+	}
+	if populated.Delegate == nil || populated.Delegate.ID != "delegate-1" {
+		t.Errorf("issues[0].Delegate = %v, want ID \"delegate-1\"", populated.Delegate)
+	}
+
+	unpopulated := issues[1]
+	if unpopulated.Estimate != nil {
+		t.Errorf("issues[1].Estimate = %v, want nil", unpopulated.Estimate)
+	}
+	if unpopulated.DueDate != nil {
+		t.Errorf("issues[1].DueDate = %v, want nil", unpopulated.DueDate)
+	}
+	if unpopulated.Delegate != nil {
+		t.Errorf("issues[1].Delegate = %v, want nil", unpopulated.Delegate)
+	}
+}
+
+// TestListAllIssues_RequestsAndDecodesDueDateEstimateDelegate is a regression
+// test for TL-563: ListAllIssues's query, like SearchIssuesEnhanced's and
+// ListAssignedIssues's, silently omitted dueDate, estimate, and delegate.
+// Unlike those two, ListAllIssues decodes into a local anonymous struct and
+// maps into core.IssueWithDetails, so this also exercises that mapping.
+func TestListAllIssues_RequestsAndDecodesDueDateEstimateDelegate(t *testing.T) {
+	responseBody := testutil.NewGraphQLDataResponse(testutil.IssuesData{
+		Issues: testutil.IssuesNodes{
+			Nodes: []interface{}{
+				map[string]interface{}{
+					"id":         "issue-1",
+					"identifier": "TL-1",
+					"title":      "Issue with due date, estimate, and delegate",
+					"priority":   2,
+					"estimate":   1.5,
+					"dueDate":    "2026-09-01",
+					"createdAt":  "2026-01-01T00:00:00Z",
+					"updatedAt":  "2026-01-02T00:00:00Z",
+					"state":      map[string]interface{}{"id": "state-1", "name": "Todo", "type": "unstarted"},
+					"delegate":   map[string]interface{}{"id": "delegate-1", "name": "Bot", "email": "bot@example.com"},
+					"team":       map[string]interface{}{"id": "team-1", "name": "Team", "key": "TL"},
+				},
+				map[string]interface{}{
+					"id":         "issue-2",
+					"identifier": "TL-2",
+					"title":      "Issue without due date, estimate, or delegate",
+					"priority":   1,
+					"createdAt":  "2026-01-01T00:00:00Z",
+					"updatedAt":  "2026-01-02T00:00:00Z",
+					"state":      map[string]interface{}{"id": "state-1", "name": "Todo", "type": "unstarted"},
+					"labels":     map[string]interface{}{"nodes": []interface{}{}},
+					"team":       map[string]interface{}{"id": "team-1", "name": "Team", "key": "TL"},
+				},
+			},
+			PageInfo: &testutil.PageInfo{HasNextPage: false},
+		},
+	})
+
+	client, transport := newCapturingTestClient(responseBody)
+
+	result, err := client.ListAllIssues(&core.IssueFilter{First: 10})
+	if err != nil {
+		t.Fatalf("ListAllIssues returned error: %v", err)
+	}
+
+	query, err := transport.CapturedQuery()
+	if err != nil {
+		t.Fatalf("failed to extract captured query: %v", err)
+	}
+	assertQueryRequestsFields(t, query, requiredIssueFields)
+
+	if len(result.Issues) != 2 {
+		t.Fatalf("expected 2 issues, got %d", len(result.Issues))
+	}
+
+	populated := result.Issues[0]
+	if populated.Estimate == nil || *populated.Estimate != 1.5 {
+		t.Errorf("Issues[0].Estimate = %v, want 1.5", populated.Estimate)
+	}
+	if populated.DueDate == nil || *populated.DueDate != "2026-09-01" {
+		t.Errorf("Issues[0].DueDate = %v, want \"2026-09-01\"", populated.DueDate)
+	}
+	if populated.Delegate == nil || populated.Delegate.ID != "delegate-1" {
+		t.Errorf("Issues[0].Delegate = %v, want ID \"delegate-1\"", populated.Delegate)
+	}
+
+	unpopulated := result.Issues[1]
+	if unpopulated.Estimate != nil {
+		t.Errorf("Issues[1].Estimate = %v, want nil", unpopulated.Estimate)
+	}
+	if unpopulated.DueDate != nil {
+		t.Errorf("Issues[1].DueDate = %v, want nil", unpopulated.DueDate)
+	}
+	if unpopulated.Delegate != nil {
+		t.Errorf("Issues[1].Delegate = %v, want nil", unpopulated.Delegate)
 	}
 }

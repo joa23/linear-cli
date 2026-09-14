@@ -705,10 +705,13 @@ type IssueWithDetails struct {
 	Title       string                  `json:"title"`
 	Description string                  `json:"description"`
 	Priority    int                     `json:"priority"`
+	Estimate    *float64                `json:"estimate,omitempty"`
+	DueDate     *string                 `json:"dueDate,omitempty"`
 	CreatedAt   string                  `json:"createdAt"`
 	UpdatedAt   string                  `json:"updatedAt"`
 	State       WorkflowState           `json:"state"`
 	Assignee    *User                   `json:"assignee,omitempty"`
+	Delegate    *User                   `json:"delegate,omitempty"`
 	Labels      []Label                 `json:"labels"`
 	Project     *Project                `json:"project,omitempty"`
 	Team        Team                    `json:"team"`

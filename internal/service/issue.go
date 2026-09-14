@@ -406,7 +406,10 @@ func convertIssueDetails(details []core.IssueWithDetails) []core.Issue {
 				Name string `json:"name"`
 			}{ID: d.State.ID, Name: d.State.Name},
 			Priority:  &priority,
+			Estimate:  d.Estimate,
+			DueDate:   d.DueDate,
 			Assignee:  d.Assignee,
+			Delegate:  d.Delegate,
 			CreatedAt: d.CreatedAt,
 			UpdatedAt: d.UpdatedAt,
 		}

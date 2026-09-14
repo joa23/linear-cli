@@ -43,6 +43,63 @@ func NewSuccessTransport(body interface{}) *MockTransport {
 	return NewMockTransport(http.StatusOK, body)
 }
 
+// CapturingTransport implements http.RoundTripper for testing HTTP clients.
+// It records the outgoing request body (so tests can assert on the GraphQL
+// query text that was actually sent) while returning a canned response.
+type CapturingTransport struct {
+	Response *http.Response
+
+	// CapturedBody holds the raw bytes of the last request body seen by
+	// RoundTrip. Populated after the request under test has been made.
+	CapturedBody []byte
+}
+
+// RoundTrip implements the http.RoundTripper interface.
+func (c *CapturingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Body != nil {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		req.Body.Close()
+		c.CapturedBody = body
+	}
+	return c.Response, nil
+}
+
+// NewCapturingTransport creates a capturing transport with a JSON response body.
+func NewCapturingTransport(statusCode int, body interface{}) *CapturingTransport {
+	var bodyBytes []byte
+	switch v := body.(type) {
+	case string:
+		bodyBytes = []byte(v)
+	case []byte:
+		bodyBytes = v
+	default:
+		bodyBytes, _ = json.Marshal(body)
+	}
+
+	return &CapturingTransport{
+		Response: &http.Response{
+			StatusCode: statusCode,
+			Body:       io.NopCloser(bytes.NewBuffer(bodyBytes)),
+			Header:     make(http.Header),
+		},
+	}
+}
+
+// CapturedQuery extracts the "query" field from the captured GraphQL request
+// body, so tests can assert on the selection set that was actually sent.
+func (c *CapturingTransport) CapturedQuery() (string, error) {
+	var payload struct {
+		Query string `json:"query"`
+	}
+	if err := json.Unmarshal(c.CapturedBody, &payload); err != nil {
+		return "", err
+	}
+	return payload.Query, nil
+}
+
 // GraphQLResponse is a helper for building GraphQL response bodies.
 type GraphQLResponse struct {
 	Data   interface{} `json:"data,omitempty"`
