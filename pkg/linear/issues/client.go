@@ -73,6 +73,25 @@ linear_create_issue("Task title", "Description", teams[0].id)`)
 						name
 						email
 					}
+					priority
+					estimate
+					dueDate
+					labels {
+						nodes {
+							id
+							name
+							color
+							parent {
+								id
+								name
+							}
+						}
+					}
+					cycle {
+						id
+						number
+						name
+					}
 					createdAt
 					updatedAt
 					url

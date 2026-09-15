@@ -304,6 +304,20 @@ func IssueToCompactDTO(issue *core.Issue) IssueCompactDTO {
 }
 
 // populateIssueBase populates the shared base fields from a core.Issue.
+//
+// Empty collections are rendered as `[]`, never `null` and never an omitted key.
+// Why: a consumer reading `.labels` gets an iterable array in every case, instead
+// of having to handle missing-key / null / list as three separate shapes. A
+// collection rendered as `null` is ambiguous between "this issue has none" and
+// "this renderer does not report them" — that ambiguity is exactly what made a
+// label-less `issues create --output json` response indistinguishable from a
+// broken one.
+//
+// Delegate deliberately differs: it keeps `omitempty` and disappears when nil.
+// That is correct and must not be "harmonised" with the collections. An absent
+// scalar/object field unambiguously means "no delegate", whereas an absent or
+// null *collection* is ambiguous. Flipping either one to match the other
+// reintroduces the confusion.
 func populateIssueBase(issue *core.Issue) issueBaseFields {
 	base := issueBaseFields{
 		Identifier:  issue.Identifier,
@@ -345,13 +359,13 @@ func populateIssueBase(issue *core.Issue) issueBaseFields {
 		}
 	}
 
-	if issue.Labels != nil && len(issue.Labels.Nodes) > 0 {
-		base.Labels = make([]LabelDTO, len(issue.Labels.Nodes))
-		for i, label := range issue.Labels.Nodes {
-			base.Labels[i] = LabelDTO{
+	base.Labels = []LabelDTO{}
+	if issue.Labels != nil {
+		for _, label := range issue.Labels.Nodes {
+			base.Labels = append(base.Labels, LabelDTO{
 				ID:   label.ID,
 				Name: label.Name,
-			}
+			})
 		}
 	}
 
@@ -378,21 +392,19 @@ func populateIssueBase(issue *core.Issue) issueBaseFields {
 		}
 	}
 
-	if issue.Children.Nodes != nil && len(issue.Children.Nodes) > 0 {
-		base.Children = make([]IssueRefDTO, len(issue.Children.Nodes))
-		for i, child := range issue.Children.Nodes {
-			base.Children[i] = IssueRefDTO{
-				Identifier: child.Identifier,
-				Title:      child.Title,
-				State:      child.State.Name,
-			}
-		}
+	base.Children = []IssueRefDTO{}
+	for _, child := range issue.Children.Nodes {
+		base.Children = append(base.Children, IssueRefDTO{
+			Identifier: child.Identifier,
+			Title:      child.Title,
+			State:      child.State.Name,
+		})
 	}
 
-	if issue.Attachments != nil && len(issue.Attachments.Nodes) > 0 {
-		base.Attachments = make([]AttachmentDTO, len(issue.Attachments.Nodes))
-		for i, att := range issue.Attachments.Nodes {
-			base.Attachments[i] = AttachmentToDTO(&att)
+	base.Attachments = []AttachmentDTO{}
+	if issue.Attachments != nil {
+		for _, att := range issue.Attachments.Nodes {
+			base.Attachments = append(base.Attachments, AttachmentToDTO(&att))
 		}
 	}
 
@@ -403,10 +415,13 @@ func populateIssueBase(issue *core.Issue) issueBaseFields {
 func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 	dto := IssueFullDTO{issueBaseFields: populateIssueBase(issue)}
 
-	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
-		dto.Comments = make([]CommentDTO, len(issue.Comments.Nodes))
-		for i, comment := range issue.Comments.Nodes {
-			dto.Comments[i] = CommentDTO{
+	// Empty renders as [], for the reasons documented on populateIssueBase.
+	// Emitting `"labels": []` next to `"comments": null` in the same object would
+	// reproduce the very ambiguity that fix removes.
+	dto.Comments = []CommentDTO{}
+	if issue.Comments != nil {
+		for _, comment := range issue.Comments.Nodes {
+			dto.Comments = append(dto.Comments, CommentDTO{
 				ID:   comment.ID,
 				Body: comment.Body,
 				User: &UserDTO{
@@ -414,7 +429,7 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 					Name: comment.User.Name,
 				},
 				CreatedAt: comment.CreatedAt,
-			}
+			})
 		}
 	}
 
@@ -425,18 +440,19 @@ func IssueToFullDTO(issue *core.Issue) IssueFullDTO {
 func IssueToDetailedDTO(issue *core.Issue) IssueDetailedDTO {
 	dto := IssueDetailedDTO{issueBaseFields: populateIssueBase(issue)}
 
-	if issue.Comments != nil && len(issue.Comments.Nodes) > 0 {
-		dto.Comments = make([]CommentSummaryDTO, len(issue.Comments.Nodes))
-		for i, comment := range issue.Comments.Nodes {
-			dto.Comments[i] = CommentSummaryDTO{
-				ID:        comment.ID,
-				Body:      truncate(cleanDescription(comment.Body), 200),
+	// Empty renders as [], matching IssueToFullDTO and populateIssueBase.
+	dto.Comments = []CommentSummaryDTO{}
+	if issue.Comments != nil {
+		for _, comment := range issue.Comments.Nodes {
+			dto.Comments = append(dto.Comments, CommentSummaryDTO{
+				ID:   comment.ID,
+				Body: truncate(cleanDescription(comment.Body), 200),
 				User: &UserDTO{
 					ID:   comment.User.ID,
 					Name: comment.User.Name,
 				},
 				CreatedAt: comment.CreatedAt,
-			}
+			})
 		}
 	}
 
