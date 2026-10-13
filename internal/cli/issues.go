@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/joa23/linear-cli/internal/format"
-	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
 	"github.com/joa23/linear-cli/internal/service"
+	paginationutil "github.com/joa23/linear-cli/pkg/linear/pagination"
 	"github.com/spf13/cobra"
 )
 
@@ -40,21 +40,21 @@ func newIssuesCmd() *cobra.Command {
 
 func newIssuesListCmd() *cobra.Command {
 	var (
-		teamID     string
-		project    string
-		state      string
-		priority   string
-		assignee   string
-		cycle      string
-		labels     string
+		teamID        string
+		project       string
+		state         string
+		priority      string
+		assignee      string
+		cycle         string
+		labels        string
 		excludeLabels string
-		sortBy     string
+		sortBy        string
 		createdSince  string
 		createdAfter  string
 		createdBefore string
-		limit      int
-		formatStr  string
-		outputType string
+		limit         int
+		formatStr     string
+		outputType    string
 	)
 
 	cmd := &cobra.Command{
@@ -243,7 +243,7 @@ Images in the description (uploads.linear.app/...) require auth — use:
 
   # Download a private image from the issue description
   linear attachments download "https://uploads.linear.app/..."`,
-		Args:  cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			issueID := args[0]
 
@@ -442,7 +442,7 @@ TIP: Run 'linear init' first to set default team.`,
 
 			output, err := deps.Issues.Create(input, outType)
 			if err != nil {
-				return fmt.Errorf("failed to create issue: %w", err)
+				return err
 			}
 
 			fmt.Println(output)
@@ -534,16 +534,18 @@ LABEL MODES:
 				return err
 			}
 
-// Get team from flag or config (for cycle resolution)
+			// Get team from flag or config (for cycle resolution)
 			if team == "" {
 				team = GetDefaultTeam()
 			}
 			// Note: team can still be "" if no .linear.yaml, will fallback to issue identifier
 
 			// Check if any updates provided (description="-" means stdin)
+			labelsChanged := cmd.Flags().Changed("labels")
+			addLabelsChanged := cmd.Flags().Changed("add-labels")
+			removeLabelsChanged := cmd.Flags().Changed("remove-labels")
 			hasFlags := title != "" || description != "" || state != "" ||
-				priority != "" || estimate != "" || labels != "" ||
-				addLabels != "" || removeLabels != "" ||
+				priority != "" || estimate != "" || labelsChanged || addLabelsChanged || removeLabelsChanged ||
 				cycle != "" || project != "" || assignee != "" ||
 				dueDate != "" || parent != "" || dependsOn != "" || blockedBy != "" ||
 				len(attachFiles) > 0
@@ -553,8 +555,8 @@ LABEL MODES:
 			}
 
 			// Validate mutual exclusivity: --labels cannot be used with --add-labels or --remove-labels
-			if labels != "" && (addLabels != "" || removeLabels != "") {
-				return fmt.Errorf("--labels cannot be combined with --add-labels or --remove-labels. Use --labels to replace all labels, or --add-labels/--remove-labels for incremental changes")
+			if err := validateIssueLabelModeFlags(labelsChanged, addLabelsChanged, removeLabelsChanged); err != nil {
+				return err
 			}
 
 			// Get description from flag or stdin
@@ -597,8 +599,11 @@ LABEL MODES:
 				}
 				input.Estimate = &e
 			}
-			if labels != "" {
+			if labelsChanged {
 				input.LabelIDs = parseCommaSeparated(labels)
+				if input.LabelIDs == nil {
+					input.LabelIDs = []string{}
+				}
 			}
 			if addLabels != "" {
 				input.AddLabelIDs = parseCommaSeparated(addLabels)
@@ -636,7 +641,7 @@ LABEL MODES:
 
 			output, err := deps.Issues.Update(issueID, input)
 			if err != nil {
-				return fmt.Errorf("failed to update issue: %w", err)
+				return err
 			}
 
 			fmt.Println(output)
@@ -664,6 +669,13 @@ LABEL MODES:
 	cmd.Flags().StringVarP(&team, "team", "t", "", TeamFlagDescription)
 
 	return cmd
+}
+
+func validateIssueLabelModeFlags(labelsChanged, addLabelsChanged, removeLabelsChanged bool) error {
+	if labelsChanged && (addLabelsChanged || removeLabelsChanged) {
+		return fmt.Errorf("--labels cannot be combined with --add-labels or --remove-labels. Use --labels to replace all labels, or --add-labels/--remove-labels for incremental changes")
+	}
+	return nil
 }
 
 func newIssuesCommentCmd() *cobra.Command {

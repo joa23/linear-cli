@@ -54,6 +54,9 @@ func (m *mockIssueClient) ResolveCycleIdentifier(num, team string) (string, erro
 func (m *mockIssueClient) ResolveLabelIdentifier(label, team string) (string, error) {
 	return m.resolveLabelResult, m.resolveLabelErr
 }
+func (m *mockIssueClient) ResolveLabelMetadata(label, team string) (*core.Label, error) {
+	return &core.Label{ID: m.resolveLabelResult, Name: label}, m.resolveLabelErr
+}
 func (m *mockIssueClient) ResolveProjectIdentifier(nameOrID, teamID string) (string, error) {
 	return m.resolveProjectResult, m.resolveProjectErr
 }
@@ -103,9 +106,9 @@ func (m *mockSearchClient) ResolveProjectIdentifier(nameOrID, teamID string) (st
 	return m.resolveProjectResult, m.resolveProjectErr
 }
 func (m *mockSearchClient) IssueClient() *issues.Client       { return nil }
-func (m *mockSearchClient) ProjectClient() *projects.Client    { return nil }
-func (m *mockSearchClient) TeamClient() *teams.Client          { return nil }
-func (m *mockSearchClient) WorkflowClient() *workflows.Client  { return m.workflowClient }
+func (m *mockSearchClient) ProjectClient() *projects.Client   { return nil }
+func (m *mockSearchClient) TeamClient() *teams.Client         { return nil }
+func (m *mockSearchClient) WorkflowClient() *workflows.Client { return m.workflowClient }
 
 // --- IssueService.Search tests ---
 

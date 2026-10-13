@@ -7,6 +7,21 @@ import (
 	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
+func TestBuildUpdateInput_PreservesExplicitEmptyLabels(t *testing.T) {
+	input := core.UpdateIssueInput{LabelIDs: []string{}}
+	result := buildUpdateInput(input)
+	labels, ok := result["labelIds"]
+	if !ok {
+		t.Fatal("labelIds missing for explicit empty label list")
+	}
+	if got := labels.([]string); got == nil || len(got) != 0 {
+		t.Fatalf("labelIds = %#v, want non-nil empty slice", labels)
+	}
+	if !hasFieldsToUpdate(input) {
+		t.Fatal("explicit empty label list should trigger update")
+	}
+}
+
 func TestBuildUpdateInput_DelegateID(t *testing.T) {
 	tests := []struct {
 		name           string

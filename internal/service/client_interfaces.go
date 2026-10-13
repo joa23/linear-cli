@@ -29,6 +29,7 @@ type IssueClientOperations interface {
 	ResolveUserIdentifier(nameOrEmail string) (*linear.ResolvedUser, error)
 	ResolveCycleIdentifier(numberOrNameOrID, teamID string) (string, error)
 	ResolveLabelIdentifier(labelName, teamID string) (string, error)
+	ResolveLabelMetadata(labelName, teamID string) (*core.Label, error)
 	ResolveProjectIdentifier(nameOrID, teamID string) (string, error)
 
 	// Relation operations

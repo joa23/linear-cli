@@ -38,18 +38,18 @@ func (tc *Client) GetTeams() ([]core.Team, error) {
 			}
 		}
 	`
-	
+
 	var response struct {
 		Teams struct {
 			Nodes []core.Team `json:"nodes"`
 		} `json:"teams"`
 	}
-	
+
 	err := tc.base.ExecuteRequest(query, nil, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get teams: %w", err)
 	}
-	
+
 	return response.Teams.Nodes, nil
 }
 
@@ -109,16 +109,16 @@ func (tc *Client) GetViewer() (*core.User, error) {
 			}
 		}
 	`
-	
+
 	var response struct {
 		Viewer core.User `json:"viewer"`
 	}
-	
+
 	err := tc.base.ExecuteRequest(query, nil, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get viewer: %w", err)
 	}
-	
+
 	return &response.Viewer, nil
 }
 
@@ -428,24 +428,24 @@ func (tc *Client) GetUser(userID string) (*core.User, error) {
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"userId": userID,
 	}
-	
+
 	var response struct {
 		User *core.User `json:"user"`
 	}
-	
+
 	err := tc.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
-	
+
 	if response.User == nil {
 		return nil, fmt.Errorf("user not found")
 	}
-	
+
 	return response.User, nil
 }
 
@@ -478,30 +478,30 @@ func (tc *Client) GetUserByEmail(email string) (*core.User, error) {
 			}
 		}
 	`
-	
+
 	variables := map[string]interface{}{
 		"email": email,
 	}
-	
+
 	var response struct {
 		Users struct {
 			Nodes []core.User `json:"nodes"`
 		} `json:"users"`
 	}
-	
+
 	err := tc.base.ExecuteRequest(query, variables, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by email: %w", err)
 	}
-	
+
 	if len(response.Users.Nodes) == 0 {
 		return nil, fmt.Errorf("user not found with email: %s", email)
 	}
-	
+
 	if len(response.Users.Nodes) > 1 {
 		return nil, fmt.Errorf("multiple users found with email: %s", email)
 	}
-	
+
 	return &response.Users.Nodes[0], nil
 }
 
@@ -565,9 +565,9 @@ func (tc *Client) ListUsersWithDisplayNameFilter(displayName string, activeOnly 
 // discover available labels for issue tagging and organization.
 func (tc *Client) ListLabels(teamID string) ([]core.Label, error) {
 	const query = `
-		query GetTeamLabels($teamId: String!) {
+		query GetTeamLabels($teamId: String!, $first: Int!, $after: String) {
 			team(id: $teamId) {
-				labels {
+				labels(first: $first, after: $after) {
 					nodes {
 						id
 						name
@@ -578,33 +578,56 @@ func (tc *Client) ListLabels(teamID string) ([]core.Label, error) {
 							name
 						}
 					}
+					pageInfo {
+						hasNextPage
+						endCursor
+					}
 				}
 			}
 		}
 	`
-	
-	variables := map[string]interface{}{
-		"teamId": teamID,
+
+	const first = 50
+	var labels []core.Label
+	var after string
+	for {
+		variables := map[string]interface{}{
+			"teamId": teamID,
+			"first":  first,
+		}
+		if after != "" {
+			variables["after"] = after
+		}
+
+		var response struct {
+			Team *struct {
+				Labels struct {
+					Nodes    []core.Label `json:"nodes"`
+					PageInfo struct {
+						HasNextPage bool   `json:"hasNextPage"`
+						EndCursor   string `json:"endCursor"`
+					} `json:"pageInfo"`
+				} `json:"labels"`
+			} `json:"team"`
+		}
+
+		if err := tc.base.ExecuteRequest(query, variables, &response); err != nil {
+			return nil, fmt.Errorf("failed to list labels: %w", err)
+		}
+		if response.Team == nil {
+			return nil, fmt.Errorf("team not found")
+		}
+
+		page := response.Team.Labels
+		labels = append(labels, page.Nodes...)
+		if !page.PageInfo.HasNextPage {
+			return labels, nil
+		}
+		if page.PageInfo.EndCursor == "" || page.PageInfo.EndCursor == after {
+			return nil, fmt.Errorf("failed to list labels: pagination returned no advancing cursor")
+		}
+		after = page.PageInfo.EndCursor
 	}
-	
-	var response struct {
-		Team *struct {
-			Labels struct {
-				Nodes []core.Label `json:"nodes"`
-			} `json:"labels"`
-		} `json:"team"`
-	}
-	
-	err := tc.base.ExecuteRequest(query, variables, &response)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list labels: %w", err)
-	}
-	
-	if response.Team == nil {
-		return nil, fmt.Errorf("team not found")
-	}
-	
-	return response.Team.Labels.Nodes, nil
 }
 
 // CreateLabel creates a new label for a team

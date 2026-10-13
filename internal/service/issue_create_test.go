@@ -54,6 +54,12 @@ func (m *mockIssueClientForCreate) ResolveCycleIdentifier(num, team string) (str
 func (m *mockIssueClientForCreate) ResolveLabelIdentifier(label, team string) (string, error) {
 	return "label-uuid-" + label, nil
 }
+func (m *mockIssueClientForCreate) ResolveLabelMetadata(label, team string) (*core.Label, error) {
+	if label == "Tests" || label == "Improvement" {
+		return &core.Label{ID: "label-uuid-" + label, Name: label, Parent: &core.LabelRef{ID: "group-uuid", Name: "Issue Type"}}, nil
+	}
+	return &core.Label{ID: "label-uuid-" + label, Name: label}, nil
+}
 
 // Unused interface methods.
 func (m *mockIssueClientForCreate) GetIssue(id string) (*core.Issue, error) { return nil, nil }
@@ -82,6 +88,23 @@ func (m *mockIssueClientForCreate) TeamClient() *teams.Client         { return n
 // makeIssueServiceForCreate creates an IssueService backed by the given mock.
 func makeIssueServiceForCreate(mock *mockIssueClientForCreate) *IssueService {
 	return NewIssueService(mock, format.New())
+}
+
+func TestIssueService_Create_RejectsExclusiveLabelConflictBeforeMutation(t *testing.T) {
+	mock := &mockIssueClientForCreate{}
+	svc := makeIssueServiceForCreate(mock)
+
+	_, err := svc.Create(&CreateIssueInput{
+		Title:    "Conflict",
+		TeamID:   "TL",
+		LabelIDs: []string{"Tests", "Improvement"},
+	}, format.OutputText)
+	if err == nil || !strings.Contains(err.Error(), "Issue Type") || !strings.Contains(err.Error(), "Tests") || !strings.Contains(err.Error(), "Improvement") {
+		t.Fatalf("error = %v, want actionable label conflict", err)
+	}
+	if mock.createCalled {
+		t.Fatal("CreateIssue called despite local label conflict")
+	}
 }
 
 func TestIssueService_Create_AtomicFields(t *testing.T) {

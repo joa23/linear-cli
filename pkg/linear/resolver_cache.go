@@ -1,14 +1,21 @@
 package linear
 
 import (
-
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/joa23/linear-cli/pkg/linear/core"
 )
 
 // cacheEntry represents a cached value with expiration time
 type cacheEntry struct {
 	value     string
+	expiresAt time.Time
+}
+
+type labelCacheEntry struct {
+	label     core.Label
 	expiresAt time.Time
 }
 
@@ -34,8 +41,9 @@ type resolverCache struct {
 	// Issue resolution cache
 	issueByIdentifier map[string]*cacheEntry // CEN-123 → issueID
 
-	// Label resolution cache (keyed by teamID:labelName)
-	labelByName map[string]*cacheEntry // teamID:labelName → labelID
+	// Label resolution caches are keyed by normalized team and label values.
+	labelByName map[string]*cacheEntry      // teamID:normalized-name → labelID
+	labelData   map[string]*labelCacheEntry // teamID:normalized-id → label metadata
 
 	// Project resolution cache
 	projectByName map[string]*cacheEntry // project name → projectID
@@ -53,6 +61,7 @@ func newResolverCache(ttl time.Duration) *resolverCache {
 		teamByKey:         make(map[string]*cacheEntry),
 		issueByIdentifier: make(map[string]*cacheEntry),
 		labelByName:       make(map[string]*cacheEntry),
+		labelData:         make(map[string]*labelCacheEntry),
 		projectByName:     make(map[string]*cacheEntry),
 		ttl:               ttl,
 	}
@@ -176,26 +185,69 @@ func (rc *resolverCache) setIssueByIdentifier(identifier, issueID string) {
 
 // Label cache methods
 
+func labelKey(teamID, value string) string {
+	return strings.ToLower(strings.TrimSpace(teamID)) + ":" + strings.ToLower(strings.TrimSpace(value))
+}
+
+func cloneLabel(label core.Label) core.Label {
+	copy := label
+	if label.Parent != nil {
+		parent := *label.Parent
+		copy.Parent = &parent
+	}
+	return copy
+}
+
 func (rc *resolverCache) getLabelByName(teamID, labelName string) (string, bool) {
 	rc.mu.RLock()
 	defer rc.mu.RUnlock()
 
-	key := teamID + ":" + labelName
-	entry, exists := rc.labelByName[key]
+	entry, exists := rc.labelByName[labelKey(teamID, labelName)]
 	if !exists || entry.isExpired() {
 		return "", false
 	}
 	return entry.value, true
 }
 
-func (rc *resolverCache) setLabelByName(teamID, labelName, labelID string) {
+func (rc *resolverCache) getLabelByID(teamID, labelID string) (core.Label, bool) {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+
+	entry, exists := rc.labelData[labelKey(teamID, labelID)]
+	if !exists || entry.expiresAt.Before(time.Now()) {
+		return core.Label{}, false
+	}
+	return cloneLabel(entry.label), true
+}
+
+func (rc *resolverCache) setLabels(teamID string, labels []core.Label) {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
 
-	key := teamID + ":" + labelName
-	rc.labelByName[key] = &cacheEntry{
-		value:     labelID,
-		expiresAt: time.Now().Add(rc.ttl),
+	teamPrefix := strings.ToLower(strings.TrimSpace(teamID)) + ":"
+	for key := range rc.labelByName {
+		if strings.HasPrefix(key, teamPrefix) {
+			delete(rc.labelByName, key)
+		}
+	}
+	for key := range rc.labelData {
+		if strings.HasPrefix(key, teamPrefix) {
+			delete(rc.labelData, key)
+		}
+	}
+
+	expiresAt := time.Now().Add(rc.ttl)
+	nameCounts := make(map[string]int, len(labels))
+	for _, label := range labels {
+		nameCounts[labelKey(teamID, label.Name)]++
+	}
+	for _, label := range labels {
+		copy := cloneLabel(label)
+		idKey := labelKey(teamID, label.ID)
+		rc.labelData[idKey] = &labelCacheEntry{label: copy, expiresAt: expiresAt}
+		if nameCounts[labelKey(teamID, label.Name)] == 1 {
+			rc.labelByName[labelKey(teamID, label.Name)] = &cacheEntry{value: label.ID, expiresAt: expiresAt}
+		}
 	}
 }
 
@@ -265,10 +317,14 @@ func (rc *resolverCache) cleanup() {
 		}
 	}
 
-	// Clean up label cache
 	for key, entry := range rc.labelByName {
 		if entry.expiresAt.Before(now) {
 			delete(rc.labelByName, key)
+		}
+	}
+	for key, entry := range rc.labelData {
+		if entry.expiresAt.Before(now) {
+			delete(rc.labelData, key)
 		}
 	}
 
@@ -304,5 +360,6 @@ func (rc *resolverCache) clear() {
 	rc.teamByKey = make(map[string]*cacheEntry)
 	rc.issueByIdentifier = make(map[string]*cacheEntry)
 	rc.labelByName = make(map[string]*cacheEntry)
+	rc.labelData = make(map[string]*labelCacheEntry)
 	rc.projectByName = make(map[string]*cacheEntry)
 }
