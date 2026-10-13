@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/pkg/linear/projects"
@@ -23,7 +24,7 @@ func NewProjectService(client ProjectClientOperations, formatter *format.Formatt
 
 // Get retrieves a single project by ID (legacy method)
 func (s *ProjectService) Get(projectID string) (string, error) {
-	project, err := s.client.ProjectClient().GetProject(projectID)
+	project, err := s.client.GetProject(projectID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get project %s: %w", projectID, err)
 	}
@@ -33,7 +34,7 @@ func (s *ProjectService) Get(projectID string) (string, error) {
 
 // GetWithOutput retrieves a single project with new renderer architecture
 func (s *ProjectService) GetWithOutput(projectID string, verbosity format.Verbosity, outputType format.OutputType) (string, error) {
-	project, err := s.client.ProjectClient().GetProject(projectID)
+	project, err := s.client.GetProject(projectID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get project %s: %w", projectID, err)
 	}
@@ -47,7 +48,7 @@ func (s *ProjectService) ListAll(limit int) (string, error) {
 		limit = 50
 	}
 
-	projects, err := s.client.ProjectClient().ListAllProjects(limit)
+	projects, err := s.client.ListAllProjectsWithStatus(limit, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to list projects: %w", err)
 	}
@@ -61,7 +62,7 @@ func (s *ProjectService) ListAllWithOutput(limit int, verbosity format.Verbosity
 		limit = 50
 	}
 
-	projects, err := s.client.ProjectClient().ListAllProjects(limit)
+	projects, err := s.client.ListAllProjectsWithStatus(limit, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to list projects: %w", err)
 	}
@@ -81,7 +82,7 @@ func (s *ProjectService) ListByTeam(teamID string, limit int) (string, error) {
 		return "", fmt.Errorf("failed to resolve team '%s': %w", teamID, err)
 	}
 
-	projects, err := s.client.ProjectClient().ListByTeam(resolvedTeamID, limit)
+	projects, err := s.client.ListByTeamWithStatus(resolvedTeamID, limit, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to list projects by team: %w", err)
 	}
@@ -101,7 +102,7 @@ func (s *ProjectService) ListByTeamWithOutput(teamID string, limit int, verbosit
 		return "", fmt.Errorf("failed to resolve team '%s': %w", teamID, err)
 	}
 
-	projects, err := s.client.ProjectClient().ListByTeam(resolvedTeamID, limit)
+	projects, err := s.client.ListByTeamWithStatus(resolvedTeamID, limit, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to list projects by team: %w", err)
 	}
@@ -116,12 +117,12 @@ func (s *ProjectService) ListUserProjects(limit int) (string, error) {
 	}
 
 	// Get current user
-	viewer, err := s.client.TeamClient().GetViewer()
+	viewer, err := s.client.GetViewer()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current user: %w", err)
 	}
 
-	projects, err := s.client.ProjectClient().ListUserProjects(viewer.ID, limit)
+	projects, err := s.client.ListUserProjectsWithStatus(viewer.ID, limit, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to list user projects: %w", err)
 	}
@@ -136,12 +137,12 @@ func (s *ProjectService) ListUserProjectsWithOutput(limit int, verbosity format.
 	}
 
 	// Get current user
-	viewer, err := s.client.TeamClient().GetViewer()
+	viewer, err := s.client.GetViewer()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current user: %w", err)
 	}
 
-	projects, err := s.client.ProjectClient().ListUserProjects(viewer.ID, limit)
+	projects, err := s.client.ListUserProjectsWithStatus(viewer.ID, limit, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to list user projects: %w", err)
 	}
@@ -149,7 +150,62 @@ func (s *ProjectService) ListUserProjectsWithOutput(limit int, verbosity format.
 	return s.formatter.RenderProjectList(projects, verbosity, outputType, nil), nil
 }
 
-// CreateProjectInput represents input for creating a project
+// ListByTeamWithStatusOutput lists team projects filtered by named status values.
+func (s *ProjectService) ListByTeamWithStatusOutput(teamID string, limit int, status string, verbosity format.Verbosity, outputType format.OutputType) (string, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	statusIDs, err := s.resolveStatusIDs(status)
+	if err != nil {
+		return "", err
+	}
+	resolvedTeamID, err := s.client.ResolveTeamIdentifier(teamID)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve team '%s': %w", teamID, err)
+	}
+	projects, err := s.client.ListByTeamWithStatus(resolvedTeamID, limit, statusIDs)
+	if err != nil {
+		return "", fmt.Errorf("failed to list projects by team: %w", err)
+	}
+	return s.formatter.RenderProjectList(projects, verbosity, outputType, nil), nil
+}
+
+// ListUserProjectsWithStatusOutput lists the viewer's projects filtered by named status values.
+func (s *ProjectService) ListUserProjectsWithStatusOutput(limit int, status string, verbosity format.Verbosity, outputType format.OutputType) (string, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	statusIDs, err := s.resolveStatusIDs(status)
+	if err != nil {
+		return "", err
+	}
+	viewer, err := s.client.GetViewer()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current user: %w", err)
+	}
+	projects, err := s.client.ListUserProjectsWithStatus(viewer.ID, limit, statusIDs)
+	if err != nil {
+		return "", fmt.Errorf("failed to list user projects: %w", err)
+	}
+	return s.formatter.RenderProjectList(projects, verbosity, outputType, nil), nil
+}
+
+// ListAllWithStatusOutput lists workspace projects filtered by named statuses.
+func (s *ProjectService) ListAllWithStatusOutput(limit int, status string, verbosity format.Verbosity, outputType format.OutputType) (string, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	statusIDs, err := s.resolveStatusIDs(status)
+	if err != nil {
+		return "", err
+	}
+	projects, err := s.client.ListAllProjectsWithStatus(limit, statusIDs)
+	if err != nil {
+		return "", fmt.Errorf("failed to list projects: %w", err)
+	}
+	return s.formatter.RenderProjectList(projects, verbosity, outputType, nil), nil
+}
+
 type CreateProjectInput struct {
 	Name        string
 	Description string
@@ -207,7 +263,7 @@ func (s *ProjectService) Create(input *CreateProjectInput) (string, error) {
 			return "", fmt.Errorf("failed to update project after creation: %w", err)
 		}
 		// Re-fetch to get updated project
-		project, err = s.client.ProjectClient().GetProject(project.ID)
+		project, err = s.client.GetProject(project.ID)
 		if err != nil {
 			return "", fmt.Errorf("failed to get updated project: %w", err)
 		}
@@ -260,10 +316,17 @@ func (s *ProjectService) Update(projectID string, input *UpdateProjectInput) (st
 	}
 
 	// Update project
-	project, err := s.client.ProjectClient().UpdateProject(projectID, linearInput)
+	project, err := s.client.UpdateProject(projectID, linearInput)
 	if err != nil {
 		return "", fmt.Errorf("failed to update project: %w", err)
 	}
 
 	return s.formatter.Project(project), nil
+}
+
+func (s *ProjectService) resolveStatusIDs(raw string) ([]string, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	return s.client.ResolveProjectStatusNames(strings.Split(raw, ","))
 }

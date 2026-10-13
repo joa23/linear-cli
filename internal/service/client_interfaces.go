@@ -65,13 +65,20 @@ type ProjectClientOperations interface {
 	// Smart resolver-aware methods (kept in Phase 2)
 	CreateProject(name, description, teamKeyOrName string) (*core.Project, error)
 
+	// Project reads and named-status filtering
+	GetProject(projectID string) (*core.Project, error)
+	ListAllProjectsWithStatus(limit int, statusIDs []string) ([]core.Project, error)
+	ListByTeamWithStatus(teamID string, limit int, statusIDs []string) ([]core.Project, error)
+	ListUserProjectsWithStatus(userID string, limit int, statusIDs []string) ([]core.Project, error)
+	ResolveProjectStatusNames(names []string) ([]string, error)
+
+	// Viewer and project mutation operations
+	GetViewer() (*core.User, error)
+	UpdateProject(projectID string, input projects.UpdateProjectInput) (*core.Project, error)
+
 	// Resolver operations
 	ResolveTeamIdentifier(keyOrName string) (string, error)
 	ResolveUserIdentifier(nameOrEmail string) (*linear.ResolvedUser, error)
-
-	// Sub-client access (Phase 2 - use sub-clients directly)
-	ProjectClient() *projects.Client
-	TeamClient() *teams.Client
 }
 
 // UserClientOperations defines the minimal interface needed by UserService
