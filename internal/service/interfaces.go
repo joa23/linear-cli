@@ -43,6 +43,7 @@ type ProjectServiceInterface interface {
 	ListByTeamWithOutput(teamID string, limit int, verbosity format.Verbosity, outputType format.OutputType) (string, error)
 	ListUserProjects(limit int) (string, error)
 	ListUserProjectsWithOutput(limit int, verbosity format.Verbosity, outputType format.OutputType) (string, error)
+	ListByInitiativeWithOutput(initiativeRef, teamID string, limit int, verbosity format.Verbosity, outputType format.OutputType) (string, error)
 	Create(input *CreateProjectInput) (string, error)
 	Update(projectID string, input *UpdateProjectInput) (string, error)
 }
@@ -99,4 +100,5 @@ var (
 	_ LabelServiceInterface      = (*LabelService)(nil)
 	_ TaskExportServiceInterface = (*TaskExportService)(nil)
 	_ DocumentServiceInterface   = (*DocumentService)(nil)
+	_ InitiativeServiceInterface = (*InitiativeService)(nil)
 )

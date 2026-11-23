@@ -86,7 +86,8 @@ Issues (alias: i):
 
 Projects (alias: p):
   p list [--mine]              List projects
-  p get <ID>                   Get project details
+  p list --initiative <ref>    List projects in an initiative
+  p get <ID>                   Get project details (incl. initiatives)
   p create <name> [flags]      Create project
   p update <ID> [flags]        Update project
 
@@ -126,6 +127,17 @@ Documents (alias: docs) — long-form markdown on a project, issue, or team:
   docs delete <ID>             Move document to trash
 
   Content flags: --content "text" | --content - (stdin) | --content-file <path>
+
+Initiatives (alias: initiative) — collections of projects; ref = UUID, slug, URL, or name:
+  initiatives list [flags]     List (--status, --owner, -q query, --include-archived)
+  initiatives get <ref>        Details, linked projects, recent status updates
+  initiatives create <name>    Create (--owner, --status, --target-date, -P project...)
+  initiatives update <ref>     Update fields (--name, --status, --content, ...)
+  initiatives archive|unarchive|delete <ref>
+  initiatives add-project <ref> <project>     Link a project
+  initiatives remove-project <ref> <project>  Unlink a project
+  initiatives updates list <ref>              Status updates (newest first)
+  initiatives updates create <ref> --body <text|-> [--health onTrack|atRisk|offTrack]
 
 Users (alias: u):
   u list [--team <ID>]         List users
@@ -177,6 +189,7 @@ Configuration:
 		newNotificationsCmd(),
 		newAttachmentsCmd(),
 		newDocumentsCmd(),
+		newInitiativesCmd(),
 
 		// Analysis
 		newDepsCmd(),

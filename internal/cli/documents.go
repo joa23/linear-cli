@@ -401,22 +401,28 @@ func newDocumentsDeleteCmd() *cobra.Command {
 // "-" reads stdin. set reports whether the caller supplied content at all
 // (so an explicit --content "" is distinguishable from no flag).
 func readContentFlags(cmd *cobra.Command, content, contentFile string) (body string, set bool, err error) {
-	flags := cmd.Flags()
-	contentSet := flags.Changed("content")
-	fileSet := flags.Changed("content-file")
+	return readTextFlags(cmd, "content", "content-file", content, contentFile)
+}
 
-	if contentSet && fileSet {
-		return "", false, fmt.Errorf("--content and --content-file are mutually exclusive")
+// readTextFlags resolves a text flag and its file-flag counterpart (e.g. --body / --body-file).
+// A value of "-" reads stdin. The two flags are mutually exclusive.
+func readTextFlags(cmd *cobra.Command, textFlag, fileFlag, text, file string) (body string, set bool, err error) {
+	flags := cmd.Flags()
+	textSet := flags.Changed(textFlag)
+	fileSet := flags.Changed(fileFlag)
+
+	if textSet && fileSet {
+		return "", false, fmt.Errorf("--%s and --%s are mutually exclusive", textFlag, fileFlag)
 	}
 	if fileSet {
-		data, err := os.ReadFile(contentFile)
+		data, err := os.ReadFile(file)
 		if err != nil {
-			return "", false, fmt.Errorf("failed to read --content-file: %w", err)
+			return "", false, fmt.Errorf("failed to read --%s: %w", fileFlag, err)
 		}
 		return string(data), true, nil
 	}
-	if contentSet {
-		body, err := getDescriptionFromFlagOrStdin(content)
+	if textSet {
+		body, err := getDescriptionFromFlagOrStdin(text)
 		if err != nil {
 			return "", false, err
 		}

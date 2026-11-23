@@ -56,6 +56,8 @@ linear i react <ID> 👍                   # Add reaction
 
 # Projects (alias: p)
 linear p list [--mine]                   # List projects
+linear p list --initiative <ref>         # Projects in an initiative
+linear p get <ID>                        # Project details (incl. its initiatives)
 linear p create <name> [flags]           # Create project
 
 # Documents (alias: docs)
@@ -64,6 +66,17 @@ linear docs get <ID|slug|URL>            # Get document with content
 linear docs create --title <t> [--project|--issue|--team] [--content|--content-file]
 linear docs update <ID> [flags]          # Update title, content, or parent
 linear docs delete <ID>                  # Move to trash
+
+# Initiatives (alias: initiative) — <ref> = UUID, slug, URL, or exact name
+linear initiatives list [--status Planned|Active|Completed] [--owner me] [-q query]
+linear initiatives get <ref>             # Content, linked projects (status, progress), recent updates
+linear initiatives create <name> [--owner me] [--status] [--target-date YYYY-MM-DD] [-P project,...] [--content|--content-file]
+linear initiatives update <ref> [flags]  # --name, --status, --owner, --target-date, --content ...
+linear initiatives add-project <ref> <project>
+linear initiatives remove-project <ref> <project>
+linear initiatives updates list <ref>    # Status updates, newest first
+linear initiatives updates create <ref> --health onTrack|atRisk|offTrack --body <text|-> | --body-file <path>
+linear initiatives archive|unarchive|delete <ref>
 
 # Cycles (alias: c)
 linear c list [--active]                 # List cycles
@@ -117,6 +130,7 @@ linear cycles analyze --team CEN --output json > velocity.json
 - `cycles list`, `cycles get`, `cycles analyze`
 - `projects list`, `projects get`
 - `documents list`, `documents get`, `documents create`, `documents update`
+- `initiatives list`, `initiatives get`, `initiatives create`, `initiatives update`, `initiatives updates list|create`
 - `teams list`, `teams get`, `teams labels`, `teams states`
 - `users list`, `users get`, `users me`
 - `search` (all operations)

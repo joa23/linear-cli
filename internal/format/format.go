@@ -159,6 +159,30 @@ func (f *Formatter) RenderDocumentList(docs []core.Document, verbosity Verbosity
 	return renderer.RenderDocumentList(docs, verbosity, page)
 }
 
+// RenderInitiative renders a single initiative
+func (f *Formatter) RenderInitiative(initiative *core.Initiative, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderInitiative(initiative, verbosity)
+}
+
+// RenderInitiativeList renders a list of initiatives
+func (f *Formatter) RenderInitiativeList(initiatives []core.Initiative, verbosity Verbosity, outputType OutputType, page *Pagination) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderInitiativeList(initiatives, verbosity, page)
+}
+
+// RenderInitiativeUpdate renders a single initiative status update
+func (f *Formatter) RenderInitiativeUpdate(update *core.InitiativeUpdate, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderInitiativeUpdate(update, verbosity)
+}
+
+// RenderInitiativeUpdateList renders a list of initiative status updates
+func (f *Formatter) RenderInitiativeUpdateList(updates []core.InitiativeUpdate, verbosity Verbosity, outputType OutputType) string {
+	renderer := f.factory.GetRenderer(outputType)
+	return renderer.RenderInitiativeUpdateList(updates, verbosity)
+}
+
 // --- Utility functions ---
 
 // line creates a horizontal separator line

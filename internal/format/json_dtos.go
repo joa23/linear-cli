@@ -114,14 +114,15 @@ type CycleFullDTO struct {
 
 // ProjectDTO represents a project in JSON format
 type ProjectDTO struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	State       string          `json:"state"`
-	Content     string          `json:"content"`
-	Issues      []IssueRefDTO   `json:"issues"`
-	CreatedAt   string          `json:"createdAt"`
-	UpdatedAt   string          `json:"updatedAt"`
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	State       string             `json:"state"`
+	Content     string             `json:"content"`
+	Issues      []IssueRefDTO      `json:"issues"`
+	Initiatives []InitiativeRefDTO `json:"initiatives,omitempty"`
+	CreatedAt   string             `json:"createdAt"`
+	UpdatedAt   string             `json:"updatedAt"`
 }
 
 // --- Team DTOs ---
@@ -250,6 +251,66 @@ type TeamRefDTO struct {
 	ID   string `json:"id"`
 	Key  string `json:"key"`
 	Name string `json:"name"`
+}
+
+// InitiativeDTO represents an initiative
+type InitiativeDTO struct {
+	ID               string                 `json:"id"`
+	SlugID           string                 `json:"slugId"`
+	Name             string                 `json:"name"`
+	URL              string                 `json:"url"`
+	Status           string                 `json:"status"`
+	Health           string                 `json:"health,omitempty"`
+	Description      string                 `json:"description,omitempty"`
+	Content          string                 `json:"content,omitempty"`
+	Icon             string                 `json:"icon,omitempty"`
+	Color            string                 `json:"color,omitempty"`
+	TargetDate       *string                `json:"targetDate,omitempty"`
+	StartedAt        *string                `json:"startedAt,omitempty"`
+	CompletedAt      *string                `json:"completedAt,omitempty"`
+	CreatedAt        string                 `json:"createdAt"`
+	UpdatedAt        string                 `json:"updatedAt"`
+	ArchivedAt       *string                `json:"archivedAt,omitempty"`
+	Owner            *UserRefDTO            `json:"owner,omitempty"`
+	Creator          *UserRefDTO            `json:"creator,omitempty"`
+	ParentInitiative *InitiativeRefDTO      `json:"parentInitiative,omitempty"`
+	ProjectCount     int                    `json:"projectCount"`
+	Projects         []InitiativeProjectDTO `json:"projects,omitempty"`
+	SubInitiatives   []InitiativeRefDTO     `json:"subInitiatives,omitempty"`
+	Updates          []InitiativeUpdateDTO  `json:"updates,omitempty"`
+}
+
+// InitiativeRefDTO is a minimal initiative reference
+type InitiativeRefDTO struct {
+	ID     string `json:"id"`
+	SlugID string `json:"slugId,omitempty"`
+	Name   string `json:"name"`
+	Status string `json:"status,omitempty"`
+}
+
+// InitiativeProjectDTO is a project linked to an initiative
+type InitiativeProjectDTO struct {
+	ID         string      `json:"id"`
+	Name       string      `json:"name"`
+	SlugID     string      `json:"slugId,omitempty"`
+	URL        string      `json:"url,omitempty"`
+	Status     string      `json:"status,omitempty"`
+	StatusType string      `json:"statusType,omitempty"`
+	Progress   float64     `json:"progress"`
+	TargetDate *string     `json:"targetDate,omitempty"`
+	Lead       *UserRefDTO `json:"lead,omitempty"`
+}
+
+// InitiativeUpdateDTO is an initiative status update
+type InitiativeUpdateDTO struct {
+	ID         string            `json:"id"`
+	Health     string            `json:"health"`
+	Body       string            `json:"body"`
+	URL        string            `json:"url,omitempty"`
+	CreatedAt  string            `json:"createdAt"`
+	EditedAt   *string           `json:"editedAt,omitempty"`
+	User       *UserRefDTO       `json:"user,omitempty"`
+	Initiative *InitiativeRefDTO `json:"initiative,omitempty"`
 }
 
 // CommentRefDTO is a minimal comment reference
@@ -527,6 +588,10 @@ func ProjectToDTO(project *core.Project) ProjectDTO {
 		}
 	}
 
+	for _, ini := range project.GetInitiatives() {
+		dto.Initiatives = append(dto.Initiatives, initiativeRef(&ini))
+	}
+
 	return dto
 }
 
@@ -622,6 +687,94 @@ func DocumentToDTO(doc *core.Document, includeContent bool) DocumentDTO {
 		dto.Team = &TeamRefDTO{ID: doc.Team.ID, Key: doc.Team.Key, Name: doc.Team.Name}
 	}
 	return dto
+}
+
+// InitiativeToDTO converts an initiative to DTO. Content, linked project details,
+// sub-initiatives, and status updates are included only when includeDetails is set.
+func InitiativeToDTO(ini *core.Initiative, includeDetails bool) InitiativeDTO {
+	dto := InitiativeDTO{
+		ID:           ini.ID,
+		SlugID:       ini.SlugID,
+		Name:         ini.Name,
+		URL:          ini.URL,
+		Status:       ini.Status,
+		Health:       ini.Health,
+		Description:  ini.Description,
+		Icon:         ini.Icon,
+		Color:        ini.Color,
+		TargetDate:   ini.TargetDate,
+		StartedAt:    ini.StartedAt,
+		CompletedAt:  ini.CompletedAt,
+		CreatedAt:    ini.CreatedAt,
+		UpdatedAt:    ini.UpdatedAt,
+		ArchivedAt:   ini.ArchivedAt,
+		Owner:        userRef(ini.Owner),
+		Creator:      userRef(ini.Creator),
+		ProjectCount: len(ini.GetProjects()),
+	}
+	if ini.ParentInitiative != nil {
+		ref := initiativeRef(ini.ParentInitiative)
+		dto.ParentInitiative = &ref
+	}
+	if !includeDetails {
+		return dto
+	}
+
+	dto.Content = ini.Content
+	for _, p := range ini.GetProjects() {
+		pd := InitiativeProjectDTO{
+			ID:         p.ID,
+			Name:       p.Name,
+			SlugID:     p.SlugID,
+			URL:        p.URL,
+			Progress:   p.Progress,
+			TargetDate: p.TargetDate,
+			Lead:       userRef(p.Lead),
+		}
+		if p.Status != nil {
+			pd.Status = p.Status.Name
+			pd.StatusType = p.Status.Type
+		}
+		dto.Projects = append(dto.Projects, pd)
+	}
+	for _, sub := range ini.GetSubInitiatives() {
+		dto.SubInitiatives = append(dto.SubInitiatives, initiativeRef(&sub))
+	}
+	for _, u := range ini.GetUpdates() {
+		dto.Updates = append(dto.Updates, InitiativeUpdateToDTO(&u))
+	}
+	return dto
+}
+
+// InitiativeUpdateToDTO converts an initiative status update to DTO
+func InitiativeUpdateToDTO(u *core.InitiativeUpdate) InitiativeUpdateDTO {
+	dto := InitiativeUpdateDTO{
+		ID:        u.ID,
+		Health:    u.Health,
+		Body:      u.Body,
+		URL:       u.URL,
+		CreatedAt: u.CreatedAt,
+		EditedAt:  u.EditedAt,
+		User:      userRef(u.User),
+	}
+	if u.Initiative != nil {
+		ref := initiativeRef(u.Initiative)
+		dto.Initiative = &ref
+	}
+	return dto
+}
+
+// initiativeRef builds a minimal initiative reference
+func initiativeRef(ini *core.Initiative) InitiativeRefDTO {
+	return InitiativeRefDTO{ID: ini.ID, SlugID: ini.SlugID, Name: ini.Name, Status: ini.Status}
+}
+
+// userRef builds a minimal user reference, or nil
+func userRef(u *core.User) *UserRefDTO {
+	if u == nil {
+		return nil
+	}
+	return &UserRefDTO{ID: u.ID, Name: u.Name, DisplayName: u.DisplayName}
 }
 
 // CommentToDTO converts a comment to DTO

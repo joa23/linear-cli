@@ -128,6 +128,33 @@ test_cmd "$BINARY documents get $DOC_ID --output json"
 test_cmd "$BINARY documents update $DOC_SLUG --title \"Release Test Doc (updated)\" --content \"# Updated\""
 test_cmd "$BINARY documents delete $DOC_SLUG"
 
+section "10c. Test Initiatives - CRUD, project links, status updates"
+
+INI_JSON=$($BINARY initiatives create "Release Test Initiative $(date +%s)" --status Planned --content "# Release test" --output json)
+INI_ID=$(echo "$INI_JSON" | jq -r '.id')
+INI_SLUG=$(echo "$INI_JSON" | jq -r '.slugId')
+echo -e "${GREEN}Created initiative: $INI_ID (slug $INI_SLUG)${NC}"
+
+test_cmd "$BINARY initiatives list --limit 3"
+test_cmd "$BINARY initiatives list --status Planned --limit 3 --output json"
+test_cmd "$BINARY initiatives get $INI_SLUG"
+test_cmd "$BINARY initiatives get $INI_ID --output json"
+test_cmd "$BINARY initiatives update $INI_SLUG --status Active --target-date $(date -d '+30 days' +%F 2>/dev/null || date -v+30d +%F)"
+test_cmd "$BINARY initiatives updates create $INI_ID --health onTrack --body \"Release test update\""
+test_cmd "$BINARY initiatives updates list $INI_ID --output json"
+
+PROJECT_ID=$($BINARY projects list --team $TEAM --limit 1 --output json | jq -r '.[0].id // empty')
+if [ -n "$PROJECT_ID" ]; then
+    test_cmd "$BINARY initiatives add-project $INI_ID $PROJECT_ID"
+    test_cmd "$BINARY projects list --initiative $INI_ID"
+    test_cmd "$BINARY projects get $PROJECT_ID --output json | jq '.initiatives'"
+    test_cmd "$BINARY initiatives remove-project $INI_ID $PROJECT_ID"
+fi
+
+test_cmd "$BINARY initiatives archive $INI_ID"
+test_cmd "$BINARY initiatives unarchive $INI_ID"
+test_cmd "$BINARY initiatives delete $INI_ID"
+
 section "11. Test JSON Piping to jq"
 
 echo -e "${GREEN}Testing JSON output with jq filtering...${NC}"

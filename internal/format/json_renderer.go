@@ -240,6 +240,44 @@ func (r *JSONRenderer) RenderDocumentList(docs []core.Document, verbosity Verbos
 	return r.marshal(dtos)
 }
 
+// --- Initiative Rendering ---
+
+func (r *JSONRenderer) RenderInitiative(initiative *core.Initiative, verbosity Verbosity) string {
+	if initiative == nil {
+		return r.renderError("Initiative is nil")
+	}
+	return r.marshal(InitiativeToDTO(initiative, true))
+}
+
+func (r *JSONRenderer) RenderInitiativeList(initiatives []core.Initiative, verbosity Verbosity, page *Pagination) string {
+	if len(initiatives) == 0 {
+		return "[]"
+	}
+	dtos := make([]InitiativeDTO, len(initiatives))
+	for i := range initiatives {
+		dtos[i] = InitiativeToDTO(&initiatives[i], false)
+	}
+	return r.marshal(dtos)
+}
+
+func (r *JSONRenderer) RenderInitiativeUpdate(update *core.InitiativeUpdate, verbosity Verbosity) string {
+	if update == nil {
+		return r.renderError("Initiative update is nil")
+	}
+	return r.marshal(InitiativeUpdateToDTO(update))
+}
+
+func (r *JSONRenderer) RenderInitiativeUpdateList(updates []core.InitiativeUpdate, verbosity Verbosity) string {
+	if len(updates) == 0 {
+		return "[]"
+	}
+	dtos := make([]InitiativeUpdateDTO, len(updates))
+	for i := range updates {
+		dtos[i] = InitiativeUpdateToDTO(&updates[i])
+	}
+	return r.marshal(dtos)
+}
+
 // --- Helper methods ---
 
 // marshal converts an object to pretty-printed JSON
