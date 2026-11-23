@@ -1,0 +1,14 @@
+# Proposes PRs for Go module, toolchain and GitHub Actions updates.
+# Every update is a reviewed PR; nothing is applied automatically.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

@@ -39,8 +39,10 @@ type Handler struct {
 // newCodeVerifier returns a random 43-char base64url PKCE code verifier.
 func newCodeVerifier() string {
 	b := make([]byte, 32)
+	// Since Go 1.24 crypto/rand.Read never returns an error (it aborts the
+	// program instead), so PKCE can never be silently skipped.
 	if _, err := rand.Read(b); err != nil {
-		return ""
+		panic("oauth: crypto/rand failed: " + err.Error())
 	}
 	return base64.RawURLEncoding.EncodeToString(b)
 }
@@ -438,6 +440,8 @@ func (a *RefresherAdapter) RefreshAccessToken(refreshToken string) (*token.Token
 // GenerateState generates a random state parameter for OAuth
 func GenerateState() string {
 	bytes := make([]byte, 16)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		panic("oauth: crypto/rand failed: " + err.Error())
+	}
 	return hex.EncodeToString(bytes)
 }

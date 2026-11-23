@@ -86,8 +86,14 @@ jobs:
           # No build cache in the release job: avoids cache poisoning.
           cache: false
 
-      - name: Show toolchain
-        run: go version && go env GOTOOLCHAIN GOFLAGS GOPROXY GOSUMDB
+      - name: Verify toolchain matches go.mod
+        run: |
+          go version && go env GOTOOLCHAIN GOFLAGS GOPROXY GOSUMDB
+          want="$(awk '/^toolchain /{print $2}' go.mod)"
+          got="$(go env GOVERSION)"
+          if [ -n "$want" ] && [ "$got" != "$want" ]; then
+            echo "::error::toolchain mismatch: go.mod wants $want, got $got"; exit 1
+          fi
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0

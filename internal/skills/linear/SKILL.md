@@ -76,7 +76,7 @@ linear initiatives add-project <ref> <project>
 linear initiatives remove-project <ref> <project>
 linear initiatives updates list <ref>    # Status updates, newest first
 linear initiatives updates create <ref> --health onTrack|atRisk|offTrack --body <text|-> | --body-file <path>
-linear initiatives archive|unarchive|delete <ref>
+linear initiatives archive|unarchive|delete <ref>  # prefer archive; only delete or remove-project when the user explicitly asks
 
 # Cycles (alias: c)
 linear c list [--active]                 # List cycles
