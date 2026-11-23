@@ -8,6 +8,9 @@ import (
 
 // defaultHTTPTransport provides optimized transport settings for Linear API
 var defaultHTTPTransport = &http.Transport{
+	// Honor HTTP_PROXY/HTTPS_PROXY/NO_PROXY so corporate egress proxies apply.
+	Proxy: http.ProxyFromEnvironment,
+
 	// Connection pooling settings
 	MaxIdleConns:        100,              // Maximum idle connections across all hosts
 	MaxIdleConnsPerHost: 10,               // Maximum idle connections per host

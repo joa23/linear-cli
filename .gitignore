@@ -49,3 +49,6 @@ marketing/
 
 # Internal planning documents (not for public repo)
 CODE_QUALITY_TASKS.md
+
+# Per-developer Claude Code permissions; never commit
+.claude/settings.local.json

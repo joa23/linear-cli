@@ -35,6 +35,7 @@ func TestIsLinearUploadURL(t *testing.T) {
 		{"https://UPLOADS.linear.app/a/b", true},
 		{"https://github.com/o/r", false},
 		{"not a url", false},
+		{"http://uploads.linear.app/a/b", false}, // token must never go over cleartext
 	}
 	for _, tt := range tests {
 		if got := isLinearUploadURL(tt.url); got != tt.want {

@@ -93,3 +93,25 @@ func TestOAuthFlow(t *testing.T) {
 		}
 	})
 }
+func TestPKCEParameters(t *testing.T) {
+	h := NewHandler("cid", "secret")
+	if len(h.codeVerifier) < 43 {
+		t.Fatalf("code verifier too short: %d", len(h.codeVerifier))
+	}
+	for _, raw := range []string{
+		h.GetAuthorizationURL("http://localhost:1/cb", "s"),
+		h.GetAppAuthorizationURL("http://localhost:1/cb", "s"),
+	} {
+		u, err := url.Parse(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		q := u.Query()
+		if q.Get("code_challenge_method") != "S256" || q.Get("code_challenge") != h.codeChallenge() {
+			t.Errorf("missing/incorrect PKCE params in %s", raw)
+		}
+		if q.Get("code_challenge") == h.codeVerifier {
+			t.Error("challenge must not equal verifier")
+		}
+	}
+}

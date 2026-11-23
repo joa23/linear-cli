@@ -50,8 +50,12 @@ func NewManager(configPath string) *Manager {
 	if configPath == "" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			// Fallback to current directory
-			configPath = ".config/linear/config.yaml"
+			// Never fall back to the current directory (could be a git repo).
+			if cfg, cerr := os.UserConfigDir(); cerr == nil {
+				configPath = filepath.Join(cfg, "linear", "config.yaml")
+			} else {
+				configPath = filepath.Join(os.TempDir(), fmt.Sprintf("linear-%d", os.Getuid()), "config.yaml")
+			}
 		} else {
 			configPath = filepath.Join(homeDir, ".config", "linear", "config.yaml")
 		}

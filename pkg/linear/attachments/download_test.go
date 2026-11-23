@@ -79,6 +79,7 @@ func TestIsPrivateLinearURL(t *testing.T) {
 		{"https://github.com/org/repo", false},
 		{"https://example.com/uploads.linear.app.fake", false},
 		{"not-a-valid-url", false},
+		{"http://uploads.linear.app/abc/image.png", false}, // token must never go over cleartext
 	}
 	for _, c := range cases {
 		got := isPrivateLinearURL(c.url)

@@ -654,7 +654,8 @@ func isPrivateLinearURL(u string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.EqualFold(parsed.Hostname(), "uploads.linear.app")
+	// Require https so the Linear token is never sent in cleartext.
+	return parsed.Scheme == "https" && strings.EqualFold(parsed.Hostname(), "uploads.linear.app")
 }
 
 // attemptDownload performs a single download attempt

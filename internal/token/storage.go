@@ -141,9 +141,12 @@ func (s *Storage) DeleteToken() error {
 func GetDefaultTokenPath() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		// Fallback to current directory if home dir unavailable
-		// This might happen in restricted environments or containers
-		return ".config/linear/token"
+		// Never fall back to the current directory: that could place the
+		// token inside a git repository. Use a per-user config dir instead.
+		if cfg, cerr := os.UserConfigDir(); cerr == nil {
+			return filepath.Join(cfg, "linear", "token")
+		}
+		return filepath.Join(os.TempDir(), fmt.Sprintf("linear-%d", os.Getuid()), "token")
 	}
 
 	return filepath.Join(homeDir, ".config", "linear", "token")

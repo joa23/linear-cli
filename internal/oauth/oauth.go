@@ -2,6 +2,8 @@ package oauth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -27,6 +29,35 @@ type Handler struct {
 	clientID     string
 	clientSecret string
 	httpClient   *http.Client
+	// codeVerifier is the PKCE (RFC 7636) secret for this login attempt.
+	// The S256 challenge derived from it is sent in the authorization URL and
+	// the verifier itself in the token exchange, so an intercepted
+	// authorization code cannot be redeemed by anyone else.
+	codeVerifier string
+}
+
+// newCodeVerifier returns a random 43-char base64url PKCE code verifier.
+func newCodeVerifier() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// codeChallenge returns the S256 PKCE challenge for the handler's verifier.
+func (h *Handler) codeChallenge() string {
+	sum := sha256.Sum256([]byte(h.codeVerifier))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// addPKCE adds PKCE challenge parameters when a verifier is available.
+func (h *Handler) addPKCE(params url.Values) {
+	if h.codeVerifier == "" {
+		return
+	}
+	params.Set("code_challenge", h.codeChallenge())
+	params.Set("code_challenge_method", "S256")
 }
 
 // TokenResponse represents the response from Linear's token endpoint.
@@ -59,6 +90,7 @@ func NewHandler(clientID, clientSecret string) *Handler {
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		httpClient:   http.DefaultClient, // Use default client for backward compatibility
+		codeVerifier: newCodeVerifier(),
 	}
 }
 
@@ -71,6 +103,7 @@ func NewHandlerWithClient(clientID, clientSecret string, httpClient *http.Client
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		httpClient:   httpClient,
+		codeVerifier: newCodeVerifier(),
 	}
 }
 
@@ -91,7 +124,8 @@ func (h *Handler) GetAuthorizationURL(redirectURI, state string) string {
 		"state":         []string{state},
 		"scope":         []string{"read write"},
 	}
-	
+	h.addPKCE(params)
+
 	return linearAuthURL + "?" + params.Encode()
 }
 
@@ -106,6 +140,7 @@ func (h *Handler) GetAppAuthorizationURL(redirectURI, state string) string {
 		"actor":         []string{"app"},
 		"prompt":        []string{"consent"}, // Force consent screen for multi-workspace support
 	}
+	h.addPKCE(params)
 
 	return linearAuthURL + "?" + params.Encode()
 }
@@ -166,7 +201,7 @@ func (h *Handler) HandleCallback(port, expectedState string) (string, error) {
 	
 	// Start server
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    "127.0.0.1:" + port, // loopback only: never expose the callback to the network
 		Handler: mux,
 	}
 	
@@ -180,6 +215,8 @@ func (h *Handler) HandleCallback(port, expectedState string) (string, error) {
 	var code, state string
 	timeout := time.After(5 * time.Minute) // 5 minute timeout
 	
+	defer server.Close() // always release the port, on every return path
+
 	select {
 	case code = <-codeChan:
 		state = <-stateChan
@@ -220,6 +257,9 @@ func (h *Handler) exchangeCodeForToken(code, redirectURI string) (*TokenResponse
 		"client_secret": []string{h.clientSecret},
 		"code":          []string{code},
 		"redirect_uri":  []string{redirectURI},
+	}
+	if h.codeVerifier != "" {
+		data.Set("code_verifier", h.codeVerifier)
 	}
 
 	// Make request to Linear's token endpoint
@@ -294,7 +334,7 @@ func (h *Handler) HandleCallbackWithFullResponse(port, expectedState string) (*T
 
 	// Start server
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    "127.0.0.1:" + port, // loopback only: never expose the callback to the network
 		Handler: mux,
 	}
 
@@ -307,6 +347,8 @@ func (h *Handler) HandleCallbackWithFullResponse(port, expectedState string) (*T
 	// Wait for callback or timeout
 	var code, state string
 	timeout := time.After(5 * time.Minute) // 5 minute timeout
+
+	defer server.Close() // always release the port, on every return path
 
 	select {
 	case code = <-codeChan:

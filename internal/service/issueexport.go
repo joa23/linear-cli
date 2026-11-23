@@ -141,7 +141,8 @@ func isLinearUploadURL(u string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.EqualFold(parsed.Hostname(), "uploads.linear.app")
+	// Require https so the Linear token is never sent in cleartext.
+	return parsed.Scheme == "https" && strings.EqualFold(parsed.Hostname(), "uploads.linear.app")
 }
 
 // sanitizeFilename strips path separators and trims to a safe base name.

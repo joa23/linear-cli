@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	neturl "net/url"
+	"strings"
 
 	"github.com/joa23/linear-cli/internal/format"
 	"github.com/joa23/linear-cli/internal/service"
@@ -238,6 +240,9 @@ Use this instead of WebFetch or curl, which will 401 on private Linear uploads.`
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			url := args[0]
+			if !isLinearUploadsURL(url) {
+				return fmt.Errorf("refusing to download %q: only https://uploads.linear.app URLs are supported", url)
+			}
 			deps, err := getDeps(cmd)
 			if err != nil {
 				return err
@@ -285,4 +290,15 @@ func newAttachmentsDeleteCmd() *cobra.Command {
 	}
 
 	return cmd
+}
+
+// isLinearUploadsURL reports whether raw is an https URL on uploads.linear.app.
+// The download command is limited to Linear's upload host so it cannot be used
+// (e.g. by a prompt-injected agent) to fetch arbitrary URLs.
+func isLinearUploadsURL(raw string) bool {
+	u, err := neturl.Parse(raw)
+	if err != nil {
+		return false
+	}
+	return u.Scheme == "https" && strings.EqualFold(u.Hostname(), "uploads.linear.app")
 }
