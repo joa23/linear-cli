@@ -18,11 +18,13 @@ Linear becomes the coordination layer—tracking what's planned, what's in progr
 
 ## Quickstart
 
-Install with Homebrew:
+Install a pinned, verified release (see [Installation](#installation)):
 
 ```bash
-brew tap joa23/linear-cli https://github.com/joa23/linear-cli
-brew install linear-cli
+VERSION=vX.Y.Z   # the version your team has approved
+gh release download "$VERSION" --repo Relynk/linear-cli \
+  --pattern 'linear-cli_Darwin_arm64.tar.gz' --pattern checksums.txt
+sha256sum --ignore-missing -c checksums.txt && tar -xzf linear-cli_Darwin_arm64.tar.gz linear
 ```
 
 Then configure in 3 steps:
@@ -51,11 +53,8 @@ linear issues create "My first issue" --team YOUR-TEAM
 
 ### Updating
 
-Already installed? Update to the latest version:
-
-```bash
-brew upgrade linear-cli
-```
+Updates are deliberate: when a new version is approved, repeat the pinned
+install above with the new `VERSION`. Do not auto-upgrade.
 
 If you encounter issues after updating, try re-authenticating:
 ```bash
@@ -105,30 +104,20 @@ linear auth login
 
 ## Installation
 
-### Homebrew (Recommended)
+Builds are published only from [Relynk/linear-cli releases](https://github.com/Relynk/linear-cli/releases),
+built in CI from a tag, reproducible, and shipped with `checksums.txt` and build
+provenance attestations. Always install a specific version, never `latest`.
+
+Archive names: `linear-cli_Darwin_arm64.tar.gz`, `linear-cli_Darwin_x86_64.tar.gz`,
+`linear-cli_Linux_x86_64.tar.gz`, `linear-cli_Linux_arm64.tar.gz`, `linear-cli_Windows_x86_64.zip`.
 
 ```bash
-brew tap joa23/linear-cli https://github.com/joa23/linear-cli
-brew install linear-cli
-```
-
-### Manual Download
-
-**macOS:**
-```bash
-# Apple Silicon
-curl -L https://github.com/joa23/linear-cli/releases/latest/download/linear-darwin-arm64.tar.gz | tar -xz
-chmod +x linear
-
-# Intel
-curl -L https://github.com/joa23/linear-cli/releases/latest/download/linear-darwin-amd64.tar.gz | tar -xz
-chmod +x linear
-```
-
-**Linux:**
-```bash
-curl -L https://github.com/joa23/linear-cli/releases/latest/download/linear-linux-amd64.tar.gz | tar -xz
-chmod +x linear
+VERSION=vX.Y.Z
+ASSET=linear-cli_Darwin_arm64.tar.gz   # pick your platform
+gh release download "$VERSION" --repo Relynk/linear-cli --pattern "$ASSET" --pattern checksums.txt
+sha256sum --ignore-missing -c checksums.txt          # macOS: shasum -a 256 --ignore-missing -c checksums.txt
+gh attestation verify "$ASSET" --repo Relynk/linear-cli
+tar -xzf "$ASSET" linear && install -m 0755 linear ~/.local/bin/linear
 ```
 
 ### Verifying a release
@@ -138,7 +127,7 @@ Relynk builds are published at [Relynk/linear-cli releases](https://github.com/R
 ### Build from Source
 
 ```bash
-git clone https://github.com/joa23/linear-cli.git
+git clone https://github.com/Relynk/linear-cli.git
 cd linear-cli
 make build
 ```
