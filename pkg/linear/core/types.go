@@ -380,6 +380,111 @@ type Document struct {
 	Team       *Team    `json:"team,omitempty"`    // Parent team (if any)
 }
 
+// Initiative represents a Linear initiative: a named, owned collection of projects
+// with a status (Planned/Active/Completed), health, and target date.
+type Initiative struct {
+	ID               string                       `json:"id"`
+	SlugID           string                       `json:"slugId"`
+	Name             string                       `json:"name"`
+	Description      string                       `json:"description,omitempty"`
+	Content          string                       `json:"content,omitempty"` // Markdown body (omitted in list queries)
+	Icon             string                       `json:"icon,omitempty"`
+	Color            string                       `json:"color,omitempty"`
+	URL              string                       `json:"url"`
+	Status           string                       `json:"status"`           // Planned, Active, Completed
+	Health           string                       `json:"health,omitempty"` // onTrack, atRisk, offTrack
+	HealthUpdatedAt  *string                      `json:"healthUpdatedAt,omitempty"`
+	TargetDate       *string                      `json:"targetDate,omitempty"` // YYYY-MM-DD
+	StartedAt        *string                      `json:"startedAt,omitempty"`
+	CompletedAt      *string                      `json:"completedAt,omitempty"`
+	CreatedAt        string                       `json:"createdAt"`
+	UpdatedAt        string                       `json:"updatedAt"`
+	ArchivedAt       *string                      `json:"archivedAt,omitempty"`
+	Owner            *User                        `json:"owner,omitempty"`
+	Creator          *User                        `json:"creator,omitempty"`
+	ParentInitiative *Initiative                  `json:"parentInitiative,omitempty"`
+	SubInitiatives   *InitiativeConnection        `json:"subInitiatives,omitempty"`
+	Projects         *InitiativeProjectConnection `json:"projects,omitempty"`
+	Updates          *InitiativeUpdateConnection  `json:"initiativeUpdates,omitempty"`
+}
+
+// InitiativeConnection is a GraphQL connection of initiatives
+type InitiativeConnection struct {
+	Nodes []Initiative `json:"nodes"`
+}
+
+// InitiativeProjectConnection is a GraphQL connection of projects linked to an initiative
+type InitiativeProjectConnection struct {
+	Nodes []InitiativeProject `json:"nodes"`
+}
+
+// InitiativeUpdateConnection is a GraphQL connection of initiative status updates
+type InitiativeUpdateConnection struct {
+	Nodes []InitiativeUpdate `json:"nodes"`
+}
+
+// GetSubInitiatives returns sub-initiatives, handling a nil connection
+func (i *Initiative) GetSubInitiatives() []Initiative {
+	if i.SubInitiatives == nil {
+		return nil
+	}
+	return i.SubInitiatives.Nodes
+}
+
+// GetProjects returns linked projects, handling a nil connection
+func (i *Initiative) GetProjects() []InitiativeProject {
+	if i.Projects == nil {
+		return nil
+	}
+	return i.Projects.Nodes
+}
+
+// GetUpdates returns status updates, handling a nil connection
+func (i *Initiative) GetUpdates() []InitiativeUpdate {
+	if i.Updates == nil {
+		return nil
+	}
+	return i.Updates.Nodes
+}
+
+// InitiativeProject is a project as seen from an initiative (name, status, progress)
+type InitiativeProject struct {
+	ID         string                `json:"id"`
+	Name       string                `json:"name"`
+	SlugID     string                `json:"slugId,omitempty"`
+	URL        string                `json:"url,omitempty"`
+	Progress   float64               `json:"progress"` // 0.0 - 1.0
+	TargetDate *string               `json:"targetDate,omitempty"`
+	Status     *ProjectStatusSummary `json:"status,omitempty"`
+	Lead       *User                 `json:"lead,omitempty"`
+}
+
+// ProjectStatusSummary is the minimal project status (e.g. "In Progress", type "started")
+type ProjectStatusSummary struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// InitiativeUpdate is a status post on an initiative (body + health)
+type InitiativeUpdate struct {
+	ID         string      `json:"id"`
+	Body       string      `json:"body"`
+	Health     string      `json:"health"` // onTrack, atRisk, offTrack
+	URL        string      `json:"url,omitempty"`
+	CreatedAt  string      `json:"createdAt"`
+	UpdatedAt  string      `json:"updatedAt,omitempty"`
+	EditedAt   *string     `json:"editedAt,omitempty"`
+	User       *User       `json:"user,omitempty"`
+	Initiative *Initiative `json:"initiative,omitempty"`
+}
+
+// InitiativeToProject is the link between an initiative and a project
+type InitiativeToProject struct {
+	ID         string      `json:"id"`
+	Initiative *Initiative `json:"initiative,omitempty"`
+	Project    *Project    `json:"project,omitempty"`
+}
+
 // ExternalUser represents a user from external systems (like Slack)
 type ExternalUser struct {
 	ID          string `json:"id"`
@@ -425,9 +530,18 @@ type Project struct {
 	Content     string                 `json:"content,omitempty"`   // Long markdown content (no limit)
 	State       string                 `json:"state"`               // planned, started, completed, etc.
 	Issues      *IssueConnection       `json:"issues,omitempty"`
+	Initiatives *InitiativeConnection  `json:"initiatives,omitempty"` // Initiatives this project belongs to (get only)
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt   string                 `json:"createdAt"`
 	UpdatedAt   string                 `json:"updatedAt"`
+}
+
+// GetInitiatives returns the initiatives a project belongs to, handling a nil connection
+func (p *Project) GetInitiatives() []Initiative {
+	if p.Initiatives == nil {
+		return nil
+	}
+	return p.Initiatives.Nodes
 }
 
 // IssueConnection represents the GraphQL connection for issues

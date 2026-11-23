@@ -12,6 +12,7 @@ import (
 	"github.com/joa23/linear-cli/pkg/linear/cycles"
 	"github.com/joa23/linear-cli/pkg/linear/documents"
 	"github.com/joa23/linear-cli/pkg/linear/identifiers"
+	"github.com/joa23/linear-cli/pkg/linear/initiatives"
 	"github.com/joa23/linear-cli/pkg/linear/issues"
 	"github.com/joa23/linear-cli/pkg/linear/projects"
 	"github.com/joa23/linear-cli/pkg/linear/teams"
@@ -38,6 +39,7 @@ type Client struct {
 	Attachments   *attachments.Client
 	Cycles        *cycles.Client
 	Documents     *documents.Client
+	Initiatives   *initiatives.Client
 
 	// Resolver for human-readable identifier translation
 	resolver *Resolver
@@ -74,6 +76,7 @@ func NewClientWithAuthMode(apiToken string, authMode string) *Client {
 		Attachments:   attachments.NewClient(base),
 		Cycles:        cycles.NewClient(base),
 		Documents:     documents.NewClient(base),
+		Initiatives:   initiatives.NewClient(base),
 		apiToken:      apiToken,
 		authMode:      authMode,
 	}
@@ -154,6 +157,7 @@ func NewClientWithTokenPath(tokenPath string) *Client {
 		Attachments:   attachments.NewClient(base),
 		Cycles:        cycles.NewClient(base),
 		Documents:     documents.NewClient(base),
+		Initiatives:   initiatives.NewClient(base),
 		apiToken:      apiToken,
 		authMode:      authMode,
 	}
@@ -241,6 +245,10 @@ func (c *Client) TeamClient() *teams.Client {
 
 func (c *Client) DocumentClient() *documents.Client {
 	return c.Documents
+}
+
+func (c *Client) InitiativeClient() *initiatives.Client {
+	return c.Initiatives
 }
 
 // Direct method delegates for backward compatibility

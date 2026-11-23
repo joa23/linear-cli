@@ -123,6 +123,14 @@ func (pc *Client) GetProject(projectID string) (*core.Project, error) {
 				state
 				createdAt
 				updatedAt
+				initiatives(first: 20) {
+					nodes {
+						id
+						slugId
+						name
+						status
+					}
+				}
 				issues {
 					nodes {
 						id
@@ -330,6 +338,79 @@ func (pc *Client) ListByTeam(teamID string, limit int) ([]core.Project, error) {
 	}
 
 	return response.Team.Projects.Nodes, nil
+}
+
+// ListByInitiative retrieves projects linked to an initiative, optionally scoped to a team.
+// Both IDs must be UUIDs; teamID may be empty.
+func (pc *Client) ListByInitiative(initiativeID, teamID string, limit int) ([]core.Project, error) {
+	if initiativeID == "" {
+		return nil, &core.ValidationError{Field: "initiativeID", Message: "initiativeID cannot be empty"}
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+
+	const query = `
+		query ListProjectsByInitiative($filter: ProjectFilter, $first: Int) {
+			projects(filter: $filter, first: $first) {
+				nodes {
+					id
+					name
+					description
+					content
+					state
+					createdAt
+					updatedAt
+				}
+			}
+		}
+	`
+
+	variables := map[string]interface{}{
+		"filter": buildInitiativeProjectFilter(initiativeID, teamID),
+		"first":  limit,
+	}
+
+	var response struct {
+		Projects struct {
+			Nodes []core.Project `json:"nodes"`
+		} `json:"projects"`
+	}
+
+	if err := pc.base.ExecuteRequest(query, variables, &response); err != nil {
+		return nil, fmt.Errorf("failed to list projects by initiative: %w", err)
+	}
+
+	for i := range response.Projects.Nodes {
+		p := &response.Projects.Nodes[i]
+		if p.Content != "" {
+			p.Metadata, p.Content = metadata.ExtractMetadataFromDescription(p.Content)
+		} else if p.Description != "" {
+			p.Metadata, p.Description = metadata.ExtractMetadataFromDescription(p.Description)
+		}
+	}
+
+	return response.Projects.Nodes, nil
+}
+
+// buildInitiativeProjectFilter builds a ProjectFilter matching projects in an initiative
+// and, when teamID is set, accessible to that team.
+func buildInitiativeProjectFilter(initiativeID, teamID string) map[string]interface{} {
+	filter := map[string]interface{}{
+		"initiatives": map[string]interface{}{
+			"some": map[string]interface{}{
+				"id": map[string]interface{}{"eq": initiativeID},
+			},
+		},
+	}
+	if teamID != "" {
+		filter["accessibleTeams"] = map[string]interface{}{
+			"some": map[string]interface{}{
+				"id": map[string]interface{}{"eq": teamID},
+			},
+		}
+	}
+	return filter
 }
 
 // ListUserProjects retrieves projects that have issues assigned to a specific user
