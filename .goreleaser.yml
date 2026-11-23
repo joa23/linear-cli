@@ -2,10 +2,14 @@ version: 2
 
 project_name: linear-cli
 
+# Never mutate dependencies at release time (no `go mod tidy`): only check
+# that the module cache matches go.sum. Tests run in a separate CI job with a
+# read-only token (see .github/workflows/release.yml), so they are not run
+# here where GITHUB_TOKEN is in the environment.
 before:
   hooks:
-    - go mod tidy
-    - go test ./...
+    - go mod download
+    - go mod verify
 
 builds:
   - id: linear
@@ -13,6 +17,11 @@ builds:
     main: ./cmd/linear
     env:
       - CGO_ENABLED=0
+    # Reproducible builds: no local paths in the binary, and file mtimes
+    # taken from the commit rather than the build time.
+    flags:
+      - -trimpath
+    mod_timestamp: '{{ .CommitTimestamp }}'
     goos:
       - linux
       - windows
@@ -29,7 +38,7 @@ builds:
 
 archives:
   - id: linear-cli
-    builds:
+    ids:
       - linear
     name_template: >-
       {{ .ProjectName }}_
@@ -37,12 +46,27 @@ archives:
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
     files:
-      - README.md
-      - LICENSE
+      # Fixed metadata so archives are byte-for-byte reproducible.
+      - src: README.md
+        info:
+          mtime: '{{ .CommitDate }}'
+          owner: root
+          group: root
+          mode: 0644
+      - src: LICENSE
+        info:
+          mtime: '{{ .CommitDate }}'
+          owner: root
+          group: root
+          mode: 0644
 
 checksum:
   name_template: 'checksums.txt'
+  algorithm: sha256
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
@@ -67,9 +91,13 @@ changelog:
 
 release:
   github:
-    owner: joa23
+    owner: Relynk
     name: linear-cli
-  draft: false
+  # Created as a draft; the release workflow publishes it only after the
+  # build provenance attestation succeeded (works with GitHub immutable
+  # releases, which lock assets once a release is published).
+  draft: true
+  replace_existing_draft: true
   prerelease: auto
   mode: replace
   header: |
@@ -77,14 +105,16 @@ release:
 
     A token-efficient CLI for Linear.
 
-    ### Installation
+    ### Installation and verification
+
+    Download the archive for your platform and `checksums.txt`, then:
 
     ```bash
-    brew tap joa23/linear-cli
-    brew install linear-cli
+    sha256sum --ignore-missing -c checksums.txt
+    gh attestation verify linear-cli_<Os>_<Arch>.tar.gz --repo Relynk/linear-cli
     ```
 
-    Or download the binary for your platform from the assets below.
+    See docs/RELEASING.md for details and how to reproduce the build.
 
   footer: |
-    **Full Changelog**: https://github.com/joa23/linear-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/Relynk/linear-cli/compare/{{ .PreviousTag }}...{{ .Tag }}

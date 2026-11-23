@@ -130,6 +130,10 @@ curl -L https://github.com/joa23/linear-cli/releases/latest/download/linear-linu
 chmod +x linear
 ```
 
+### Verifying a release
+
+Relynk builds are published at [Relynk/linear-cli releases](https://github.com/Relynk/linear-cli/releases) with a `checksums.txt` and GitHub build provenance attestations, and are reproducible from source. See [docs/RELEASING.md](docs/RELEASING.md) for installing a pinned version, verifying it (`sha256sum -c checksums.txt`, `gh attestation verify`), and rebuilding it locally (`make release-local`).
+
 ### Build from Source
 
 ```bash
