@@ -30,13 +30,14 @@ func newProjectsCmd() *cobra.Command {
 func newProjectsListCmd() *cobra.Command {
 	var mine bool
 	var teamID string
+	var initiative string
 	var limit int
 	var formatStr, outputType string
 
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List projects for a team",
-		Long:  "List projects for a specific team.",
+		Long:  "List projects for a specific team, your projects (--mine), or an initiative's projects (--initiative).",
 		Example: `  # List projects for team (uses .linear.yaml)
   linear projects list
 
@@ -45,6 +46,9 @@ func newProjectsListCmd() *cobra.Command {
 
   # List projects you're involved in
   linear projects list --mine
+
+  # List projects in an initiative (add --team to restrict to a team)
+  linear projects list --initiative "Q1 Platform"
 
   # List with custom limit
   linear projects list --limit 50
@@ -73,8 +77,15 @@ func newProjectsListCmd() *cobra.Command {
 				return err
 			}
 
+			if mine && initiative != "" {
+				return errors.New("--mine and --initiative cannot be combined")
+			}
+
 			var result string
-			if mine {
+			if initiative != "" {
+				// --initiative overrides the team requirement; an explicit --team narrows it
+				result, err = deps.Projects.ListByInitiativeWithOutput(initiative, teamID, limit, verbosity, output)
+			} else if mine {
 				// --mine overrides team requirement
 				result, err = deps.Projects.ListUserProjectsWithOutput(limit, verbosity, output)
 			} else {
@@ -98,6 +109,7 @@ func newProjectsListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&mine, "mine", false, "Only show projects you're involved in (ignores team)")
+	cmd.Flags().StringVar(&initiative, "initiative", "", "Only show projects in this initiative (UUID, slug, URL, or name; ignores default team)")
 	cmd.Flags().StringVarP(&teamID, "team", "t", "", TeamFlagDescription)
 	cmd.Flags().IntVarP(&limit, "limit", "n", 25, "Number of projects to return")
 	cmd.Flags().StringVarP(&formatStr, "format", "f", "compact", "Verbosity: minimal|compact|detailed|full")

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `initiatives` command (alias `initiative`) — first-class support for Linear initiatives: `list` (filters `--status`, `--owner`, `--query`, `--include-archived`, `--limit`), `get` (content, owner, status, health, target date, parent and sub-initiatives, linked projects with status and progress, and the five most recent status updates at `detailed`/`full`), `create` (`--description`, `--content`/`--content -`/`--content-file`, `--owner`, `--status`, `--target-date`, `--icon`, `--color`, and `--project` to link projects on creation), `update` (same fields; `--owner ""` and `--target-date ""` clear), `archive`, `unarchive`, and `delete` (moves to trash). Initiative references accept a UUID, a slug, the full Linear initiative URL, or the exact name (case-insensitive).
+- `initiatives add-project <initiative> <project>` / `initiatives remove-project <initiative> <project>` to link and unlink projects.
+- `initiatives updates list <initiative>` and `initiatives updates create <initiative> --body <text|-> | --body-file <path> [--health onTrack|atRisk|offTrack]` for initiative status updates.
+- `projects list --initiative <ref>` lists an initiative's projects (combine with `--team` to narrow); `projects get` now shows the initiatives a project belongs to (text and JSON `initiatives` field).
+- All new read and write commands support `--output json` and `--format minimal|compact|detailed|full`.
+
 ## [1.11.0] - 2026-09-13
 
 ### Added

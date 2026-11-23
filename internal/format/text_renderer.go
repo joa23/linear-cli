@@ -349,6 +349,15 @@ func (r *TextRenderer) projectFull(project *core.Project) string {
 	b.WriteString(fmtSprintf("Created: %s\n", formatDateTime(project.CreatedAt)))
 	b.WriteString(fmtSprintf("Updated: %s\n", formatDateTime(project.UpdatedAt)))
 
+	// Initiatives this project belongs to (populated by 'projects get')
+	if inis := project.GetInitiatives(); len(inis) > 0 {
+		names := make([]string, len(inis))
+		for i, ini := range inis {
+			names[i] = ini.Name
+		}
+		b.WriteString(fmtSprintf("Initiatives: %s\n", strings.Join(names, ", ")))
+	}
+
 	// Content (long description) - truncated for display
 	if project.Content != "" {
 		b.WriteString("\nCONTENT\n")
@@ -801,6 +810,263 @@ func userLabel(u *core.User) string {
 		return u.DisplayName
 	}
 	return u.Name
+}
+
+// --- Initiative Rendering ---
+
+// initiativeContentPreviewLen caps the body shown at detailed verbosity.
+const initiativeContentPreviewLen = 500
+
+// initiativeUpdatePreviewLen caps status update bodies shown below full verbosity.
+const initiativeUpdatePreviewLen = 200
+
+func (r *TextRenderer) RenderInitiative(ini *core.Initiative, verbosity Verbosity) string {
+	if ini == nil {
+		return ""
+	}
+
+	var b strings.Builder
+
+	b.WriteString(fmtSprintf("%s\n", ini.Name))
+	b.WriteString(fmtSprintf("  ID: %s\n", ini.ID))
+	if verbosity < VerbosityCompact {
+		return b.String()
+	}
+
+	if ini.SlugID != "" {
+		b.WriteString(fmtSprintf("  Slug: %s\n", ini.SlugID))
+	}
+	b.WriteString(fmtSprintf("  Status: %s\n", initiativeStatusLabel(ini)))
+	if ini.Owner != nil {
+		b.WriteString(fmtSprintf("  Owner: %s\n", userLabel(ini.Owner)))
+	}
+	if ini.TargetDate != nil && *ini.TargetDate != "" {
+		b.WriteString(fmtSprintf("  Target: %s\n", formatDate(*ini.TargetDate)))
+	}
+	if ini.ParentInitiative != nil {
+		b.WriteString(fmtSprintf("  Parent: %s\n", ini.ParentInitiative.Name))
+	}
+	if ini.Projects != nil {
+		b.WriteString(fmtSprintf("  Projects: %d\n", len(ini.Projects.Nodes)))
+	}
+	b.WriteString(fmtSprintf("  Updated: %s\n", formatDate(ini.UpdatedAt)))
+	if ini.ArchivedAt != nil {
+		b.WriteString(fmtSprintf("  Archived: %s\n", formatDate(*ini.ArchivedAt)))
+	}
+	if ini.URL != "" {
+		b.WriteString(fmtSprintf("  URL: %s\n", ini.URL))
+	}
+
+	if verbosity < VerbosityDetailed {
+		return b.String()
+	}
+
+	created := formatDate(ini.CreatedAt)
+	if ini.Creator != nil {
+		created += " by " + userLabel(ini.Creator)
+	}
+	b.WriteString(fmtSprintf("  Created: %s\n", created))
+	if ini.StartedAt != nil {
+		b.WriteString(fmtSprintf("  Started: %s\n", formatDate(*ini.StartedAt)))
+	}
+	if ini.CompletedAt != nil {
+		b.WriteString(fmtSprintf("  Completed: %s\n", formatDate(*ini.CompletedAt)))
+	}
+	if ini.Description != "" {
+		b.WriteString(fmtSprintf("  Description: %s\n", ini.Description))
+	}
+
+	if ini.Content != "" {
+		b.WriteString("\n")
+		if verbosity >= VerbosityFull {
+			b.WriteString(ini.Content)
+		} else {
+			b.WriteString(truncate(ini.Content, initiativeContentPreviewLen))
+		}
+		b.WriteString("\n")
+	}
+
+	// Project nodes in list queries only carry IDs; only show the table when names are present.
+	if projects := ini.GetProjects(); len(projects) > 0 && projects[0].Name != "" {
+		b.WriteString(fmtSprintf("\nPROJECTS (%d)\n", len(projects)))
+		b.WriteString(line(40))
+		b.WriteString("\n")
+		for i := range projects {
+			b.WriteString(fmtSprintf("  %s\n", initiativeProjectLine(&projects[i])))
+		}
+	}
+
+	if subs := ini.GetSubInitiatives(); len(subs) > 0 {
+		b.WriteString(fmtSprintf("\nSUB-INITIATIVES (%d)\n", len(subs)))
+		b.WriteString(line(40))
+		b.WriteString("\n")
+		for i := range subs {
+			sub := &subs[i]
+			b.WriteString(fmtSprintf("  %s  %s  [%s]\n", initiativeShortRef(sub), sub.Name, initiativeStatusLabel(sub)))
+		}
+	}
+
+	if updates := ini.GetUpdates(); len(updates) > 0 {
+		b.WriteString(fmtSprintf("\nRECENT UPDATES (%d)\n", len(updates)))
+		b.WriteString(line(40))
+		b.WriteString("\n")
+		for i := range updates {
+			b.WriteString(r.initiativeUpdateBlock(&updates[i], verbosity))
+		}
+	}
+
+	return b.String()
+}
+
+func (r *TextRenderer) RenderInitiativeList(initiatives []core.Initiative, verbosity Verbosity, page *Pagination) string {
+	if len(initiatives) == 0 {
+		return "No initiatives found.\n"
+	}
+
+	var b strings.Builder
+	b.WriteString(fmtSprintf("INITIATIVES (%d)\n", len(initiatives)))
+	b.WriteString(line(40))
+	b.WriteString("\n")
+
+	for i := range initiatives {
+		ini := &initiatives[i]
+		if verbosity >= VerbosityDetailed {
+			b.WriteString(r.RenderInitiative(ini, verbosity))
+			b.WriteString("\n")
+			continue
+		}
+		if verbosity < VerbosityCompact {
+			b.WriteString(fmtSprintf("%s  %s  [%s]\n", initiativeShortRef(ini), ini.Name, ini.Status))
+			continue
+		}
+		row := fmtSprintf("%s  %s  [%s]", initiativeShortRef(ini), ini.Name, initiativeStatusLabel(ini))
+		if ini.Owner != nil {
+			row += "  @" + userLabel(ini.Owner)
+		}
+		if ini.TargetDate != nil && *ini.TargetDate != "" {
+			row += "  target " + formatDate(*ini.TargetDate)
+		}
+		if ini.Projects != nil {
+			row += fmtSprintf("  %d projects", len(ini.Projects.Nodes))
+		}
+		b.WriteString(row + "\n")
+	}
+
+	if page != nil && page.HasNextPage && page.EndCursor != "" {
+		b.WriteString(line(40))
+		b.WriteString("\n")
+		b.WriteString(fmtSprintf("Next: cursor=%s\n", page.EndCursor))
+	}
+
+	return b.String()
+}
+
+func (r *TextRenderer) RenderInitiativeUpdate(update *core.InitiativeUpdate, verbosity Verbosity) string {
+	if update == nil {
+		return ""
+	}
+	var b strings.Builder
+	if update.Initiative != nil {
+		b.WriteString(fmtSprintf("Initiative: %s\n", update.Initiative.Name))
+	}
+	b.WriteString(r.initiativeUpdateBlock(update, verbosity))
+	if update.URL != "" && verbosity >= VerbosityCompact {
+		b.WriteString(fmtSprintf("URL: %s\n", update.URL))
+	}
+	return b.String()
+}
+
+func (r *TextRenderer) RenderInitiativeUpdateList(updates []core.InitiativeUpdate, verbosity Verbosity) string {
+	if len(updates) == 0 {
+		return "No initiative updates found.\n"
+	}
+
+	var b strings.Builder
+	b.WriteString(fmtSprintf("INITIATIVE UPDATES (%d)\n", len(updates)))
+	b.WriteString(line(40))
+	b.WriteString("\n")
+	for i := range updates {
+		b.WriteString(r.initiativeUpdateBlock(&updates[i], verbosity))
+	}
+	return b.String()
+}
+
+// initiativeUpdateBlock renders one status update: a header line, then the body
+// (omitted at minimal, truncated below full).
+func (r *TextRenderer) initiativeUpdateBlock(u *core.InitiativeUpdate, verbosity Verbosity) string {
+	var b strings.Builder
+	author := "unknown"
+	if u.User != nil {
+		author = userLabel(u.User)
+	}
+	b.WriteString(fmtSprintf("[%s] %s by %s\n", healthLabel(u.Health), formatDate(u.CreatedAt), author))
+	if verbosity < VerbosityCompact || u.Body == "" {
+		return b.String()
+	}
+	body := u.Body
+	if verbosity < VerbosityFull {
+		body = truncate(body, initiativeUpdatePreviewLen)
+	}
+	for _, l := range strings.Split(strings.TrimRight(body, "\n"), "\n") {
+		b.WriteString("  " + l + "\n")
+	}
+	b.WriteString("\n")
+	return b.String()
+}
+
+// initiativeStatusLabel combines status and health, e.g. "Active, On track".
+func initiativeStatusLabel(ini *core.Initiative) string {
+	status := ini.Status
+	if status == "" {
+		status = "-"
+	}
+	if ini.Health != "" {
+		return status + ", " + healthLabel(ini.Health)
+	}
+	return status
+}
+
+// initiativeProjectLine renders a linked project: name [status] progress, target, lead.
+func initiativeProjectLine(p *core.InitiativeProject) string {
+	status := "-"
+	if p.Status != nil && p.Status.Name != "" {
+		status = p.Status.Name
+	}
+	s := fmtSprintf("%s [%s] %d%%", p.Name, status, int(p.Progress*100+0.5))
+	if p.TargetDate != nil && *p.TargetDate != "" {
+		s += "  target " + formatDate(*p.TargetDate)
+	}
+	if p.Lead != nil {
+		s += "  @" + userLabel(p.Lead)
+	}
+	return s
+}
+
+// healthLabel converts Linear's health enum into readable text.
+func healthLabel(health string) string {
+	switch health {
+	case "onTrack":
+		return "On track"
+	case "atRisk":
+		return "At risk"
+	case "offTrack":
+		return "Off track"
+	case "":
+		return "No health"
+	default:
+		return health
+	}
+}
+
+// initiativeShortRef returns the slug, or the first 8 chars of the ID when no slug exists.
+func initiativeShortRef(ini *core.Initiative) string {
+	if ini.SlugID != "" {
+		return ini.SlugID
+	}
+	if len(ini.ID) > 8 {
+		return ini.ID[:8]
+	}
+	return ini.ID
 }
 
 func (r *TextRenderer) commentCompact(comment *core.Comment) string {

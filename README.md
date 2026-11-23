@@ -85,6 +85,7 @@ linear auth login
   - [Dependencies](#dependencies)
   - [Projects](#projects)
   - [Documents](#documents)
+  - [Initiatives](#initiatives)
   - [Cycles](#cycles)
   - [Teams](#teams)
   - [Labels](#labels)
@@ -642,7 +643,8 @@ linear issues react ENG-123 👍               # Add reaction
 ```bash
 linear projects list
 linear projects list --mine                  # Your projects only
-linear projects get PROJECT-ID
+linear projects list --initiative "Q1 Platform"   # Projects in an initiative
+linear projects get PROJECT-ID               # Includes the initiatives it belongs to
 linear projects create "Q1 Release" --team ENG
 linear projects update PROJECT-ID --state completed
 ```
@@ -675,6 +677,42 @@ linear documents delete my-spec-abc123def456                      # Moves to tra
 ```
 
 > **Note:** `documents list` never returns bodies (they can be large). Use `documents get` for content. Alias: `docs`.
+
+### Initiatives
+
+Initiatives group projects under an owner, status (Planned/Active/Completed), health, and target date.
+References accept a UUID, a slug, the full Linear initiative URL, or the exact name (case-insensitive).
+
+```bash
+linear initiatives list                                  # Most recently updated first
+linear initiatives list --status Active --owner me
+linear initiatives list --query "platform" --include-archived --output json
+
+linear initiatives get "Q1 Platform"                     # Content, linked projects, sub-initiatives, recent updates
+linear initiatives get q1-platform-3c7a2b1d9e0f --format compact
+linear initiatives get https://linear.app/acme/initiative/q1-platform-3c7a2b1d9e0f --output json
+
+# Create — link projects up front with --project (repeatable or comma-separated)
+linear initiatives create "Q1 Platform" --owner me --status Active --target-date 2026-03-31 \
+  --description "Stabilize the platform" --content-file brief.md --project "Auth Revamp,Billing v2"
+cat brief.md | linear initiatives create "Q1 Platform" --content -
+
+linear initiatives update "Q1 Platform" --status Completed
+linear initiatives update "Q1 Platform" --owner "" --target-date ""      # Clear owner / target date
+
+linear initiatives add-project "Q1 Platform" "Auth Revamp"
+linear initiatives remove-project "Q1 Platform" "Auth Revamp"       # Unlinks; the project is kept
+
+# Status updates (health: onTrack | atRisk | offTrack)
+linear initiatives updates list "Q1 Platform" --limit 5
+linear initiatives updates create "Q1 Platform" --health atRisk --body "Billing slipped a week"
+cat update.md | linear initiatives updates create "Q1 Platform" --health onTrack --body -
+
+linear initiatives archive "Q1 Platform"                 # Reversible: initiatives unarchive
+linear initiatives delete "Q1 Platform"                  # Moves to trash; linked projects are kept
+```
+
+> **Note:** `initiatives list` omits content and linked-project details (it shows a project count). Use `initiatives get` for the full picture. Alias: `initiative`.
 
 ### Cycles
 

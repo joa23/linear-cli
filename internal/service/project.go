@@ -149,6 +149,34 @@ func (s *ProjectService) ListUserProjectsWithOutput(limit int, verbosity format.
 	return s.formatter.RenderProjectList(projects, verbosity, outputType, nil), nil
 }
 
+// ListByInitiativeWithOutput lists projects linked to an initiative (UUID, slug, URL, or name),
+// optionally restricted to projects accessible to a team.
+func (s *ProjectService) ListByInitiativeWithOutput(initiativeRef, teamID string, limit int, verbosity format.Verbosity, outputType format.OutputType) (string, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	initiativeID, err := resolveInitiativeID(s.client.InitiativeClient(), initiativeRef)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve initiative '%s': %w", initiativeRef, err)
+	}
+
+	resolvedTeamID := ""
+	if teamID != "" {
+		resolvedTeamID, err = s.client.ResolveTeamIdentifier(teamID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve team '%s': %w", teamID, err)
+		}
+	}
+
+	projects, err := s.client.ProjectClient().ListByInitiative(initiativeID, resolvedTeamID, limit)
+	if err != nil {
+		return "", fmt.Errorf("failed to list projects by initiative: %w", err)
+	}
+
+	return s.formatter.RenderProjectList(projects, verbosity, outputType, nil), nil
+}
+
 // CreateProjectInput represents input for creating a project
 type CreateProjectInput struct {
 	Name        string

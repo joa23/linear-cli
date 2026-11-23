@@ -5,6 +5,7 @@ import (
 	"github.com/joa23/linear-cli/pkg/linear/comments"
 	"github.com/joa23/linear-cli/pkg/linear/core"
 	"github.com/joa23/linear-cli/pkg/linear/cycles"
+	"github.com/joa23/linear-cli/pkg/linear/initiatives"
 	"github.com/joa23/linear-cli/pkg/linear/issues"
 	"github.com/joa23/linear-cli/pkg/linear/projects"
 	"github.com/joa23/linear-cli/pkg/linear/teams"
@@ -72,6 +73,7 @@ type ProjectClientOperations interface {
 	// Sub-client access (Phase 2 - use sub-clients directly)
 	ProjectClient() *projects.Client
 	TeamClient() *teams.Client
+	InitiativeClient() *initiatives.Client
 }
 
 // UserClientOperations defines the minimal interface needed by UserService

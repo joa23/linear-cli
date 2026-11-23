@@ -28,4 +28,10 @@ type Renderer interface {
 	// Document rendering
 	RenderDocument(doc *core.Document, verbosity Verbosity) string
 	RenderDocumentList(docs []core.Document, verbosity Verbosity, page *Pagination) string
+
+	// Initiative rendering
+	RenderInitiative(initiative *core.Initiative, verbosity Verbosity) string
+	RenderInitiativeList(initiatives []core.Initiative, verbosity Verbosity, page *Pagination) string
+	RenderInitiativeUpdate(update *core.InitiativeUpdate, verbosity Verbosity) string
+	RenderInitiativeUpdateList(updates []core.InitiativeUpdate, verbosity Verbosity) string
 }

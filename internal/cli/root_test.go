@@ -23,10 +23,11 @@ func TestRootCmdHasSubcommands(t *testing.T) {
 
 	// Only test commands that are actually registered
 	expectedCommands := map[string]bool{
-		"onboard":   false,
-		"auth":      false,
-		"issues":    false,
-		"documents": false,
+		"onboard":     false,
+		"auth":        false,
+		"issues":      false,
+		"documents":   false,
+		"initiatives": false,
 	}
 
 	for _, subCmd := range cmd.Commands() {
@@ -314,4 +315,107 @@ func TestReadContentFlags(t *testing.T) {
 		_, _, err := readContentFlags(c, "", "/nonexistent/x.md")
 		require.Error(t, err)
 	})
+}
+
+func TestInitiativesSubcommands(t *testing.T) {
+	cmd := NewRootCmd()
+	iniCmd, _, err := cmd.Find([]string{"initiatives"})
+	require.NoError(t, err)
+	assert.Contains(t, iniCmd.Aliases, "initiative")
+
+	aliasCmd, _, err := cmd.Find([]string{"initiative", "list"})
+	require.NoError(t, err)
+	assert.Equal(t, "list", aliasCmd.Name())
+
+	for _, path := range [][]string{
+		{"initiatives", "list"},
+		{"initiatives", "get"},
+		{"initiatives", "create"},
+		{"initiatives", "update"},
+		{"initiatives", "archive"},
+		{"initiatives", "unarchive"},
+		{"initiatives", "delete"},
+		{"initiatives", "add-project"},
+		{"initiatives", "remove-project"},
+		{"initiatives", "updates", "list"},
+		{"initiatives", "updates", "create"},
+	} {
+		sub, _, err := cmd.Find(path)
+		require.NoError(t, err, "%v", path)
+		assert.Equal(t, path[len(path)-1], sub.Name())
+	}
+
+	flagsFor := map[string][]string{
+		"list":   {"status", "owner", "query", "include-archived", "limit", "format", "output"},
+		"get":    {"format", "output"},
+		"create": {"description", "content", "content-file", "owner", "status", "target-date", "icon", "color", "project", "format", "output"},
+		"update": {"name", "description", "content", "content-file", "owner", "status", "target-date", "icon", "color", "format", "output"},
+	}
+	for sub, flags := range flagsFor {
+		c, _, err := cmd.Find([]string{"initiatives", sub})
+		require.NoError(t, err)
+		for _, flag := range flags {
+			assert.NotNil(t, c.Flags().Lookup(flag), "initiatives %s should have --%s", sub, flag)
+		}
+	}
+
+	upCreate, _, err := cmd.Find([]string{"initiatives", "updates", "create"})
+	require.NoError(t, err)
+	for _, flag := range []string{"body", "body-file", "health", "format", "output"} {
+		assert.NotNil(t, upCreate.Flags().Lookup(flag), "updates create should have --%s", flag)
+	}
+
+	projectsList, _, err := cmd.Find([]string{"projects", "list"})
+	require.NoError(t, err)
+	assert.NotNil(t, projectsList.Flags().Lookup("initiative"), "projects list should have --initiative")
+}
+
+func TestInitiativesCreate_ProjectFlagAcceptsListAndRepeats(t *testing.T) {
+	cmd := newInitiativesCreateCmd()
+	require.NoError(t, cmd.ParseFlags([]string{"--project", "A,B", "-P", "C"}))
+	got, err := cmd.Flags().GetStringSlice("project")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"A", "B", "C"}, got)
+}
+
+func TestInitiativesArgsValidation(t *testing.T) {
+	cmd := NewRootCmd()
+	for _, tc := range []struct {
+		path []string
+		args []string
+	}{
+		{[]string{"initiatives", "get"}, nil},
+		{[]string{"initiatives", "add-project"}, []string{"only-one"}},
+		{[]string{"initiatives", "remove-project"}, []string{"a", "b", "c"}},
+		{[]string{"initiatives", "list"}, []string{"unexpected"}},
+	} {
+		c, _, err := cmd.Find(tc.path)
+		require.NoError(t, err)
+		assert.Error(t, c.Args(c, tc.args), "%v should reject args %v", tc.path, tc.args)
+	}
+}
+
+func TestReadTextFlags_BodyFlags(t *testing.T) {
+	file := t.TempDir() + "/update.md"
+	require.NoError(t, os.WriteFile(file, []byte("Shipped\n"), 0o644))
+
+	newCmd := func() *cobra.Command {
+		c := &cobra.Command{Use: "x", Run: func(*cobra.Command, []string) {}}
+		c.Flags().String("body", "", "")
+		c.Flags().String("body-file", "", "")
+		return c
+	}
+
+	c := newCmd()
+	require.NoError(t, c.ParseFlags([]string{"--body-file", file}))
+	body, set, err := readTextFlags(c, "body", "body-file", "", file)
+	require.NoError(t, err)
+	assert.True(t, set)
+	assert.Equal(t, "Shipped\n", body)
+
+	c = newCmd()
+	require.NoError(t, c.ParseFlags([]string{"--body", "x", "--body-file", file}))
+	_, _, err = readTextFlags(c, "body", "body-file", "x", file)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--body and --body-file are mutually exclusive")
 }
