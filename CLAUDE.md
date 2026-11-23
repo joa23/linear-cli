@@ -114,6 +114,7 @@ linear issues get CEN-123 --format minimal --output json
 - `search` (all search operations)
 - `attachments list`, `attachments create`, `attachments update`
 - `documents list`, `documents get`, `documents create`, `documents update`
+- `initiatives list`, `initiatives get`, `initiatives create`, `initiatives update`, `initiatives updates list`, `initiatives updates create`
 - `deps` (dependency graph)
 
 ### Common Patterns
@@ -276,6 +277,35 @@ linear documents update my-spec-abc123def456 --issue CEN-124
 
 # Delete (moves to trash; restore in the Linear UI)
 linear documents delete my-spec-abc123def456
+```
+
+#### Initiatives
+
+Initiatives are owned collections of projects with a status (Planned/Active/Completed), health, and target date.
+References accept a UUID, a slug, the full Linear initiative URL, or the exact name (case-insensitive).
+
+```bash
+# List / read
+linear initiatives list --status Active --owner me
+linear initiatives list --query "platform" --output json
+linear initiatives get "Q1 Platform"                 # + linked projects, sub-initiatives, recent updates
+linear projects list --initiative "Q1 Platform"      # Projects in an initiative
+linear projects get <project-uuid>                   # Shows the initiatives it belongs to
+
+# Create / update (content: --content "text" | --content - | --content-file path)
+linear initiatives create "Q1 Platform" --owner me --status Planned --target-date 2026-03-31 --project "Auth Revamp"
+linear initiatives update "Q1 Platform" --status Active
+
+# Link / unlink projects
+linear initiatives add-project "Q1 Platform" "Auth Revamp"
+linear initiatives remove-project "Q1 Platform" "Auth Revamp"
+
+# Status updates
+linear initiatives updates list "Q1 Platform" --limit 3
+linear initiatives updates create "Q1 Platform" --health atRisk --body "Billing slipped a week"
+
+# Lifecycle
+linear initiatives archive|unarchive|delete "Q1 Platform"
 ```
 
 ### Skills Usage
