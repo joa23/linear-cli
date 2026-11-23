@@ -61,9 +61,9 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      # govulncheck v1.9.0 needs a newer Go than go.mod pins; let the go
-      # command fetch that toolchain (checksum-verified via sum.golang.org)
-      # only for installing the tool. The scan itself uses the go.mod toolchain.
+      # The go.mod toolchain (go1.27.4) satisfies govulncheck; GOTOOLCHAIN=auto
+      # is kept only as a fallback for installing the tool (checksum-verified
+      # via sum.golang.org). The scan itself uses the go.mod toolchain.
       - name: Install govulncheck
         env:
           GOTOOLCHAIN: auto

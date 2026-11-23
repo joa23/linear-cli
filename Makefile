@@ -2,8 +2,8 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 MODULE  := github.com/joa23/linear-cli
 
-# Go version pinned in go.mod; release builds use exactly this toolchain.
-GO_VERSION := $(shell awk '/^go /{print $$2}' go.mod)
+# Toolchain pinned in go.mod (toolchain line, else go line); release builds use exactly it.
+GO_VERSION := $(shell awk '/^toolchain go/{sub(/^go/,"",$$2); t=$$2} /^go /{g=$$2} END{print (t!=""?t:g)}' go.mod)
 
 # Static, path-independent builds. These flags must match .goreleaser.yml so
 # that `make release-local` reproduces the published release binaries.

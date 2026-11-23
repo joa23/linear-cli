@@ -4,7 +4,7 @@ Relynk distributes one static binary per platform from the GitHub Releases of
 [`Relynk/linear-cli`](https://github.com/Relynk/linear-cli). Each release is:
 
 - **built only in CI**, by `.github/workflows/release.yml`, from a `vX.Y.Z` tag;
-- **locked**: the Go toolchain is exactly the one in `go.mod`
+- **locked**: the Go toolchain is exactly the one in `go.mod` (`toolchain go1.27.4`; bump it for Go security releases)
   (`GOTOOLCHAIN=local`), dependencies come from `go.sum` and are checked with
   `go mod verify` (nothing is upgraded or tidied at release time), and every
   GitHub Action and GoReleaser itself is pinned to an exact version/commit;

@@ -2,6 +2,8 @@ module github.com/joa23/linear-cli
 
 go 1.24.2
 
+toolchain go1.27.4
+
 require (
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getoutreach/goql v1.13.5
