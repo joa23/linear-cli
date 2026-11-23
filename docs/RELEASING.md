@@ -3,36 +3,37 @@
 Relynk distributes one static binary per platform from the GitHub Releases of
 [`Relynk/linear-cli`](https://github.com/Relynk/linear-cli). Each release is:
 
-- **built only in CI**, by `.github/workflows/release.yml`, from a `vX.Y.Z` tag;
+- **built only in CI**, by `.github/workflows/release.yml`, from a tag
+  (`vX.Y.Z-relynk.N`);
 - **locked**: the Go toolchain is exactly the one in `go.mod` (`toolchain go1.27.4`; bump it for Go security releases)
   (`GOTOOLCHAIN=local`), dependencies come from `go.sum` and are checked with
   `go mod verify` (nothing is upgraded or tidied at release time), and every
   GitHub Action and GoReleaser itself is pinned to an exact version/commit;
 - **static and reproducible**: `CGO_ENABLED=0`, `-trimpath`, commit-derived
   timestamps, so the same tag gives byte-identical binaries and archives;
-- **verifiable**: `checksums.txt` (SHA-256) plus a GitHub build provenance
-  attestation (Sigstore, signed by the release workflow) for each binary,
-  archive and `checksums.txt`.
+- **verifiable**: `checksums.txt` (SHA-256) for every archive. Consumers pin
+  the SHA-256 of the archive they use, and anyone can rebuild from the tag and
+  compare hashes. (No GitHub artifact attestations: the repository is private
+  and they would need GitHub Enterprise Cloud.)
 
 ## Cutting a release
 
 1. Make sure `main` is green in CI (`.github/workflows/ci.yml`).
 2. Update `CHANGELOG.md`, commit, and push.
-3. Tag and push the tag (use a version above the upstream `v1.11.0`, so
-   Relynk builds never collide with upstream tags):
+3. Tag and push the tag. Relynk tags carry a `-relynk.N` suffix on top of the
+   upstream version they are based on, so they never collide with upstream
+   tags (`prerelease: false` in `.goreleaser.yml` keeps them normal releases):
    ```bash
-   git tag -s vX.Y.Z -m "vX.Y.Z"    # -s: signed tag, recommended
-   git push origin vX.Y.Z
+   git tag -s v1.12.0-relynk.1 -m "v1.12.0-relynk.1"   # -s: signed tag, recommended
+   git push origin v1.12.0-relynk.1
    ```
 4. The workflow then
    1. runs `go mod verify`, `go mod tidy -diff`, `go vet` and `go test` with a
       read-only token;
-   2. builds all platforms with GoReleaser and uploads them to a **draft**
-      release;
-   3. creates the build provenance attestation;
-   4. publishes the draft. If any step fails, the release stays a draft.
-5. Update `Formula/linear-cli.rb` (version + four `sha256` values) from
-   `gh release download vX.Y.Z --repo Relynk/linear-cli --pattern checksums.txt --output -`.
+   2. checks the Go toolchain matches `go.mod`, builds all platforms with
+      GoReleaser and publishes the release with `checksums.txt`.
+5. Update the pinned version and SHA-256 in the container build (below) from
+   `gh release download <tag> --repo Relynk/linear-cli --pattern checksums.txt --output -`.
 
 Never run `goreleaser release` locally; CI is the only source of release
 artifacts.
@@ -42,49 +43,67 @@ Recommended repository settings (admin):
   move or delete tags);
 - the `release` environment (created on first run) with required reviewers
   and "protected tags only";
+- branch protection on `main`;
 - **immutable releases** enabled, so published assets and tags cannot be
-  replaced (the draft-then-publish flow above is compatible with it).
+  replaced.
 
-Note: artifact attestations on a **private** repository require GitHub
-Enterprise Cloud. Without it the attestation step fails and the release stays
-a draft; in that case either make the repo public, or remove the attestation
-step and rely on `checksums.txt` plus reproducible builds.
+## Installing a pinned version (container build)
 
-## Installing a pinned version
+Developers get the binary through the sandbox container build. Pin an exact
+tag **and** the SHA-256 of the archive, and check the hash in the build. The
+hash is taken from `checksums.txt` once, when the version is approved, and
+committed with the build definition; a later change to the release assets
+then fails the build instead of shipping a different binary.
 
-Pick an exact tag and never use `latest`. With the GitHub CLI (also works for a
-private repository, using your `gh auth login` session):
+The repository is private, so the download needs a GitHub token with read
+access to `Relynk/linear-cli` (fine-grained PAT with "Contents: read", or a
+CI token). Pass it as a build secret so it never ends up in an image layer:
 
-```bash
-VERSION=vX.Y.Z
-ASSET=linear-cli_Darwin_arm64.tar.gz   # or _Darwin_x86_64, _Linux_x86_64, _Linux_arm64, _Windows_x86_64.zip
+```dockerfile
+# syntax=docker/dockerfile:1
+ARG LINEAR_CLI_VERSION=v1.12.0-relynk.1
+# SHA-256 of the archive for each architecture, from that release's checksums.txt
+ARG LINEAR_CLI_SHA256_AMD64=<sha256 of linear-cli_Linux_x86_64.tar.gz>
+ARG LINEAR_CLI_SHA256_ARM64=<sha256 of linear-cli_Linux_arm64.tar.gz>
+ARG TARGETARCH
 
-gh release download "$VERSION" --repo Relynk/linear-cli \
-  --pattern "$ASSET" --pattern checksums.txt
-
-# 1. Checksum
-sha256sum --ignore-missing -c checksums.txt        # macOS: shasum -a 256 --ignore-missing -c checksums.txt
-
-# 2. Provenance: built by our release workflow, from this tag
-gh attestation verify "$ASSET" --repo Relynk/linear-cli \
-  --signer-workflow Relynk/linear-cli/.github/workflows/release.yml \
-  --source-ref "refs/tags/$VERSION" \
-  --deny-self-hosted-runners
-
-tar -xzf "$ASSET" linear
-gh attestation verify linear --repo Relynk/linear-cli   # the binary itself is attested too
-install -m 0755 linear ~/.local/bin/linear              # or /usr/local/bin
-linear --version
+RUN --mount=type=secret,id=gh_token,required=true \
+    set -eu; \
+    case "$TARGETARCH" in \
+      amd64) asset=linear-cli_Linux_x86_64.tar.gz; sha="$LINEAR_CLI_SHA256_AMD64" ;; \
+      arm64) asset=linear-cli_Linux_arm64.tar.gz;  sha="$LINEAR_CLI_SHA256_ARM64" ;; \
+      *) echo "unsupported arch $TARGETARCH" >&2; exit 1 ;; \
+    esac; \
+    tok="$(cat /run/secrets/gh_token)"; \
+    api=https://api.github.com/repos/Relynk/linear-cli; \
+    id="$(curl -fsSL -H "Authorization: Bearer $tok" "$api/releases/tags/$LINEAR_CLI_VERSION" \
+          | jq -r --arg n "$asset" '.assets[] | select(.name==$n) | .id')"; \
+    curl -fsSL -H "Authorization: Bearer $tok" -H "Accept: application/octet-stream" \
+         -o "/tmp/$asset" "$api/releases/assets/$id"; \
+    echo "$sha  /tmp/$asset" | sha256sum -c -; \
+    tar -xzf "/tmp/$asset" -C /usr/local/bin linear; \
+    chmod 0755 /usr/local/bin/linear; rm -f "/tmp/$asset"; \
+    linear --version
 ```
 
-To pin a version for a team, record the tag **and** the SHA-256 of the
-archive (from `checksums.txt`) in your setup script or dotfiles and check it
-with `sha256sum -c` before installing; a hash pin still holds even if a
-release were tampered with later.
+```bash
+docker build --secret id=gh_token,env=GH_TOKEN .
+```
 
-Homebrew: `Formula/linear-cli.rb` points at the Relynk releases. If the
-repository is private, Homebrew cannot download the assets without
-authentication; use the `gh` steps above instead.
+If the build image has the GitHub CLI, the two `curl` calls can be replaced
+with `GH_TOKEN="$tok" gh release download "$LINEAR_CLI_VERSION" --repo
+Relynk/linear-cli --pattern "$asset" --dir /tmp`. Keep the `sha256sum -c`
+line either way: it is the actual pin.
+
+Outside a container (e.g. a one-off on a laptop):
+
+```bash
+VERSION=v1.12.0-relynk.1
+ASSET=linear-cli_Darwin_arm64.tar.gz   # or _Darwin_x86_64, _Linux_x86_64, _Linux_arm64, _Windows_x86_64.zip
+gh release download "$VERSION" --repo Relynk/linear-cli --pattern "$ASSET" --pattern checksums.txt
+sha256sum --ignore-missing -c checksums.txt   # macOS: shasum -a 256 --ignore-missing -c checksums.txt
+tar -xzf "$ASSET" linear && install -m 0755 linear ~/.local/bin/linear
+```
 
 ## Reproducing a release build
 
@@ -92,8 +111,8 @@ Anyone can rebuild a release binary from source and compare hashes:
 
 ```bash
 git clone https://github.com/Relynk/linear-cli && cd linear-cli
-git checkout vX.Y.Z          # clean checkout: local changes change the binary
-make release-local GOOS=darwin GOARCH=arm64
+git checkout v1.12.0-relynk.1   # clean checkout: local changes change the binary
+make release-local GOOS=linux GOARCH=amd64
 # prints the sha256 of bin/release/linear; compare with the release binary:
 shasum -a 256 bin/release/linear /path/to/extracted/linear
 ```

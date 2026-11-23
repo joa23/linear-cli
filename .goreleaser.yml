@@ -93,12 +93,10 @@ release:
   github:
     owner: Relynk
     name: linear-cli
-  # Created as a draft; the release workflow publishes it only after the
-  # build provenance attestation succeeded (works with GitHub immutable
-  # releases, which lock assets once a release is published).
-  draft: true
-  replace_existing_draft: true
-  prerelease: auto
+  draft: false
+  # Never auto-mark as prerelease, so Relynk suffixed tags such as
+  # v1.12.0-relynk.1 are normal releases.
+  prerelease: false
   mode: replace
   header: |
     ## Linear CLI {{.Tag}}
@@ -111,10 +109,10 @@ release:
 
     ```bash
     sha256sum --ignore-missing -c checksums.txt
-    gh attestation verify linear-cli_<Os>_<Arch>.tar.gz --repo Relynk/linear-cli
     ```
 
-    See docs/RELEASING.md for details and how to reproduce the build.
+    Pin the archive's SHA-256 in your container build. See docs/RELEASING.md
+    for details and how to reproduce the build.
 
   footer: |
     **Full Changelog**: https://github.com/Relynk/linear-cli/compare/{{ .PreviousTag }}...{{ .Tag }}

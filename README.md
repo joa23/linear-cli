@@ -105,8 +105,8 @@ linear auth login
 ## Installation
 
 Builds are published only from [Relynk/linear-cli releases](https://github.com/Relynk/linear-cli/releases),
-built in CI from a tag, reproducible, and shipped with `checksums.txt` and build
-provenance attestations. Always install a specific version, never `latest`.
+built in CI from a tag, reproducible, and shipped with `checksums.txt`.
+Always install a specific version, never `latest`, and pin its SHA-256.
 
 Archive names: `linear-cli_Darwin_arm64.tar.gz`, `linear-cli_Darwin_x86_64.tar.gz`,
 `linear-cli_Linux_x86_64.tar.gz`, `linear-cli_Linux_arm64.tar.gz`, `linear-cli_Windows_x86_64.zip`.
@@ -116,13 +116,12 @@ VERSION=vX.Y.Z
 ASSET=linear-cli_Darwin_arm64.tar.gz   # pick your platform
 gh release download "$VERSION" --repo Relynk/linear-cli --pattern "$ASSET" --pattern checksums.txt
 sha256sum --ignore-missing -c checksums.txt          # macOS: shasum -a 256 --ignore-missing -c checksums.txt
-gh attestation verify "$ASSET" --repo Relynk/linear-cli
 tar -xzf "$ASSET" linear && install -m 0755 linear ~/.local/bin/linear
 ```
 
 ### Verifying a release
 
-Relynk builds are published at [Relynk/linear-cli releases](https://github.com/Relynk/linear-cli/releases) with a `checksums.txt` and GitHub build provenance attestations, and are reproducible from source. See [docs/RELEASING.md](docs/RELEASING.md) for installing a pinned version, verifying it (`sha256sum -c checksums.txt`, `gh attestation verify`), and rebuilding it locally (`make release-local`).
+Relynk builds are published at [Relynk/linear-cli releases](https://github.com/Relynk/linear-cli/releases) with a `checksums.txt` and are reproducible from source. See [docs/RELEASING.md](docs/RELEASING.md) for installing a pinned version in a container build (SHA-256 pin), and rebuilding it locally (`make release-local`) to confirm a release matches its source.
 
 ### Build from Source
 

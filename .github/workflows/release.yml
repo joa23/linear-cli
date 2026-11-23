@@ -1,8 +1,8 @@
 name: Release
 
-# Builds release binaries, attests them (GitHub build provenance) and then
-# publishes the GitHub Release. GoReleaser uploads to a *draft* release; the
-# draft is only published after the attestation step succeeds.
+# Builds release binaries and publishes the GitHub Release with checksums.txt.
+# Integrity comes from SHA-256 pins plus reproducible builds (no attestations:
+# the repository is private and they would need GitHub Enterprise Cloud).
 # See docs/RELEASING.md for the release process and how to verify a release.
 #
 # Supply-chain notes:
@@ -70,8 +70,6 @@ jobs:
     environment: release
     permissions:
       contents: write      # create the GitHub Release and upload assets
-      id-token: write      # OIDC token for Sigstore (build provenance)
-      attestations: write  # store the provenance attestation
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -105,21 +103,3 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-        with:
-          # Raw binaries (so `gh attestation verify ./linear` works after
-          # extracting), the archives, and checksums.txt.
-          subject-path: |
-            dist/linear_*/linear
-            dist/linear_*/linear.exe
-            dist/*.tar.gz
-            dist/*.zip
-            dist/checksums.txt
-
-      - name: Publish the draft release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
-        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false

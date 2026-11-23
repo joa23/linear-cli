@@ -359,34 +359,21 @@ make test                    # Run unit tests
 
 ### Release Workflow
 
-1. **Update CHANGELOG.md** with the new version and changes
-2. **Commit** the changelog: `git commit -m "chore: Update CHANGELOG for vX.Y.Z"`
-3. **Create and push tag**:
+See `docs/RELEASING.md` for full details.
+
+1. **Update CHANGELOG.md** with the new version and changes, commit and push
+2. **Create and push tag** (Relynk tags use a `-relynk.N` suffix, e.g. `v1.12.0-relynk.1`):
    ```bash
-   git tag vX.Y.Z && git push && git push --tags
+   git tag vX.Y.Z-relynk.N && git push origin vX.Y.Z-relynk.N
    ```
-4. **Wait for GitHub Actions** to complete the release workflow (~2 min)
-   - Monitor at: `gh run watch` or check GitHub Actions tab
-   - The workflow runs goreleaser and uploads all artifacts
-5. **Get checksums** from the release:
+3. **Wait for GitHub Actions** to complete the release workflow (~2 min)
+   - The workflow verifies/tests, then runs goreleaser and uploads all artifacts
+4. **Get checksums** and update the pinned version + SHA-256 in the container build:
    ```bash
-   gh release download vX.Y.Z --pattern checksums.txt --output -
+   gh release download vX.Y.Z-relynk.N --repo Relynk/linear-cli --pattern checksums.txt --output -
    ```
-6. **Update Homebrew formula** (`Formula/linear-cli.rb`):
-   - Update `version "X.Y.Z"`
-   - Update all SHA256 checksums for each platform
-7. **Commit and push formula**:
-   ```bash
-   git add Formula/linear-cli.rb
-   git commit -m "chore: Update formula to vX.Y.Z"
-   git push
-   ```
-8. **Install locally** to verify:
-   ```bash
-   cd /opt/homebrew/Library/Taps/joa23/homebrew-linear-cli && git pull && cd -
-   brew upgrade linear-cli
-   linear --version
-   ```
+
+There is no Homebrew distribution.
 
 ### Why Not Local goreleaser?
 
